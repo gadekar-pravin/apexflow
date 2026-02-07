@@ -15,7 +15,8 @@ class ToolContext:
     Attributes:
         user_id: Authenticated user (required).
         trace_id: Unique correlation ID for the request.
-        deadline: Absolute epoch timestamp after which the request is expired.
+        deadline: Absolute monotonic timestamp (from ``time.monotonic()``)
+                  after which the request is expired.
         metadata: Arbitrary key-value bag for callers to attach extra info.
     """
 

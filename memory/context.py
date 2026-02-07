@@ -120,7 +120,7 @@ class ExecutionContextManager:
                 continue
 
             status = node_data.get("status", "pending")
-            if status in ["completed", "failed", "running"]:
+            if status in ["completed", "failed", "running", "waiting_input", "stopped", "skipped", "cost_exceeded"]:
                 continue
 
             predecessors = list(self.plan_graph.predecessors(node_id))

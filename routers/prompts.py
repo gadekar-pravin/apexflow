@@ -55,17 +55,25 @@ async def list_prompts() -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+def _validate_prompt_path(name: str, base: Path = PROMPTS_DIR) -> Path:
+    """Resolve a prompt path and ensure it stays within the base directory."""
+    path = (base / f"{name}.md").resolve()
+    if not path.is_relative_to(base.resolve()):
+        raise HTTPException(status_code=400, detail="Invalid prompt name")
+    return path
+
+
 @router.put("/prompts/{prompt_name}")
 async def update_prompt(prompt_name: str, request: UpdatePromptRequest) -> dict[str, Any]:
     """Update a prompt file's content. Creates backup on first edit."""
     _require_writes()
     try:
-        prompt_file = PROMPTS_DIR / f"{prompt_name}.md"
+        prompt_file = _validate_prompt_path(prompt_name)
         if not prompt_file.exists():
             raise HTTPException(status_code=404, detail=f"Prompt '{prompt_name}' not found")
 
         PROMPTS_BACKUP_DIR.mkdir(exist_ok=True)
-        backup_file = PROMPTS_BACKUP_DIR / f"{prompt_name}.md"
+        backup_file = _validate_prompt_path(prompt_name, PROMPTS_BACKUP_DIR)
         if not backup_file.exists():
             backup_file.write_text(prompt_file.read_text())
 
@@ -82,8 +90,8 @@ async def reset_prompt(prompt_name: str) -> dict[str, Any]:
     """Reset a prompt to its original content from backup."""
     _require_writes()
     try:
-        prompt_file = PROMPTS_DIR / f"{prompt_name}.md"
-        backup_file = PROMPTS_BACKUP_DIR / f"{prompt_name}.md"
+        prompt_file = _validate_prompt_path(prompt_name)
+        backup_file = _validate_prompt_path(prompt_name, PROMPTS_BACKUP_DIR)
 
         if not backup_file.exists():
             raise HTTPException(status_code=404, detail=f"No backup found for '{prompt_name}'")

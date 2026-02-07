@@ -35,9 +35,10 @@ logger = logging.getLogger(__name__)
 class AgentRunner:
     def __init__(self, service_registry: ServiceRegistry) -> None:
         self.service_registry = service_registry
+        self._root = Path(__file__).parent.parent
 
         # Load agent configurations
-        config_path = Path(__file__).parent.parent / "config" / "agent_config.yaml"
+        config_path = self._root / "config" / "agent_config.yaml"
         with open(config_path) as f:
             self.agent_configs: dict[str, Any] = yaml.safe_load(f)["agents"]
 
@@ -75,7 +76,7 @@ class AgentRunner:
 
         try:
             # 1. Load prompt template
-            prompt_template = Path(config["prompt_file"]).read_text(encoding="utf-8")
+            prompt_template = (self._root / config["prompt_file"]).read_text(encoding="utf-8")
 
             # 2. Get tools from specified services (backward compat: services or mcp_servers)
             tools_text = ""

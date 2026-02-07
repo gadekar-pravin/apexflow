@@ -497,8 +497,10 @@ class AgentLoop4:
                 context.plan_graph.graph["final_cost"] = accumulated_cost
                 break
 
-        # Final status
-        if context.stop_requested:
+        # Final status (preserve cost_exceeded if already set)
+        if context.plan_graph.graph.get("status") == "cost_exceeded":
+            pass
+        elif context.stop_requested:
             context.plan_graph.graph["status"] = "stopped"
         elif any(context.plan_graph.nodes[n]["status"] == "failed" for n in context.plan_graph.nodes):
             context.plan_graph.graph["status"] = "failed"

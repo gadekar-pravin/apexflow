@@ -89,12 +89,15 @@ class ServiceRegistry:
         """
         if service.name in self._services:
             logger.warning("Replacing existing service '%s'", service.name)
+            old_svc = self._services[service.name]
+            for old_tool in old_svc.tools:
+                self._tool_index.pop(old_tool.name, None)
 
         for tool in service.tools:
             if tool.name in self._tool_index:
                 existing_svc, _ = self._tool_index[tool.name]
                 raise ToolError(
-                    f"Tool name collision: '{tool.name}' already registered " f"by service '{existing_svc.name}'"
+                    f"Tool name collision: '{tool.name}' already registered by service '{existing_svc.name}'"
                 )
             self._tool_index[tool.name] = (service, tool)
 

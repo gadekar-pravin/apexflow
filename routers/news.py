@@ -8,11 +8,13 @@ Changes from v1:
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
 import os
+import socket
 from datetime import datetime
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import feedparser
 import requests
@@ -21,7 +23,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from config.settings_loader import save_settings, settings
+from config.settings_loader import load_settings, save_settings
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,27 @@ def _require_writes() -> None:
         raise HTTPException(status_code=403, detail="Local writes disabled. Set ALLOW_LOCAL_WRITES=1.")
 
 
+def _validate_url(url: str) -> None:
+    """Validate that a URL is safe to fetch (prevents SSRF)."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http/https URLs are allowed")
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL: no hostname")
+    try:
+        for _family, _, _, _, sockaddr in socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP):
+            ip = ipaddress.ip_address(sockaddr[0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                raise HTTPException(
+                    status_code=400, detail="URLs pointing to internal/private networks are not allowed"
+                )
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="Could not resolve hostname") from None
+
+
 def get_news_settings() -> dict[str, Any]:
+    settings = load_settings()
     if "news" not in settings:
         settings["news"] = {"sources": DEFAULT_SOURCES}
         if ALLOW_LOCAL_WRITES:
@@ -304,6 +326,7 @@ async def get_feed(source_id: str | None = None) -> dict[str, Any]:
 @router.get("/article")
 async def get_article_content(url: str) -> dict[str, Any]:
     """Fetch and render a full webpage using Playwright."""
+    _validate_url(url)
     try:
         is_pdf = url.lower().endswith(".pdf") or "arxiv.org/pdf/" in url
 
@@ -399,6 +422,7 @@ async def get_article_content(url: str) -> dict[str, Any]:
 @router.get("/reader")
 async def get_reader_content(url: str) -> dict[str, Any]:
     """Extract the main article content as markdown for reader mode."""
+    _validate_url(url)
     try:
         is_pdf = url.lower().endswith(".pdf") or "arxiv.org/pdf/" in url
         if not is_pdf:
@@ -457,6 +481,7 @@ async def get_reader_content(url: str) -> dict[str, Any]:
 @router.get("/proxy")
 async def proxy_content(url: str) -> StreamingResponse:
     """Proxy content to avoid CORS issues."""
+    _validate_url(url)
     try:
         if not url.startswith(("http://", "https://")):
             raise HTTPException(status_code=400, detail="Invalid URL")
