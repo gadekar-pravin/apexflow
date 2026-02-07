@@ -93,7 +93,7 @@ Each task (`node`) must include:
 {
   "id": "T003",
   "description": "...",
-  "agent": "RetrieverAgent" | "ThinkerAgent" | "DistillerAgent" | "CoderAgent" | "FormatterAgent" | "QAAgent" | "ClarificationAgent" | "SchedulerAgent" | "PlannerAgent",
+  "agent": "RetrieverAgent" | "ThinkerAgent" | "DistillerAgent" | "CoderAgent" | "FormatterAgent" | "QAAgent" | "ClarificationAgent" | "PlannerAgent",
   "agent_prompt": "...",
   "reads": [agent_output_T002, agent_result_T001],
   "writes": [agent_output_T003]

@@ -591,9 +591,11 @@ class AgentLoop4:
 
             output = result["output"]
 
-            # Check for clarification request (halt)
+            # Check for clarification request — route through mark_done
+            # so it awaits user input and writes the response into globals_schema.
             if output.get("clarificationMessage"):
-                return {"success": True, "status": "waiting_input", "output": output}
+                await context.mark_done(step_id, output)
+                return {"success": True, "output": output}
 
             iterations_data.append({"iteration": turn, "output": output})
 

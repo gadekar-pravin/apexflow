@@ -177,7 +177,7 @@ class AgentRunner:
             )
 
             # Calculate cost and tokens
-            input_text = str(input_data)
+            input_text = full_prompt
             output_text = str(output)
             cost_data = self.calculate_cost(input_text, output_text)
 

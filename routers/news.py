@@ -13,6 +13,7 @@ import logging
 import os
 import socket
 from datetime import UTC, datetime
+from html import escape as html_escape
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -169,8 +170,12 @@ async def add_source(request: AddSourceTabsRequest) -> dict[str, Any]:
     except Exception as e:
         logger.warning("Feed discovery failed for %s: %s", request.url, e)
 
+    source_id = request.name.lower().replace(" ", "_")
+    if any(s["id"] == source_id for s in news_settings["sources"]):
+        raise HTTPException(status_code=400, detail="A source with this name already exists")
+
     new_source: dict[str, Any] = {
-        "id": request.name.lower().replace(" ", "_"),
+        "id": source_id,
         "name": request.name,
         "url": request.url,
         "type": "rss" if feed_url else "scrape",
@@ -413,7 +418,7 @@ async def get_article_content(url: str) -> dict[str, Any]:
             await browser.close()
 
             if "<base" not in html_content.lower():
-                base_tag = f'<base href="{url}" target="_blank">'
+                base_tag = f'<base href="{html_escape(url, quote=True)}" target="_blank">'
                 html_content = html_content.replace("<head>", f"<head>{base_tag}", 1)
 
             return {"status": "success", "html": html_content, "url": url, "title": page_title}
@@ -487,16 +492,11 @@ async def proxy_content(url: str) -> StreamingResponse:
     """Proxy content to avoid CORS issues."""
     _validate_url(url)
     try:
-        if not url.startswith(("http://", "https://")):
-            raise HTTPException(status_code=400, detail="Invalid URL")
+        r = await asyncio.to_thread(requests.get, url, stream=True, timeout=30, allow_redirects=False)
 
-        r = requests.get(url, stream=True, timeout=30)
-
-        def iterfile() -> Any:
-            try:
-                yield from r.iter_content(chunk_size=8192)
-            except Exception as e:
-                logger.warning("Stream error: %s", e)
+        async def iterfile() -> Any:
+            for chunk in r.iter_content(chunk_size=8192):
+                yield chunk
 
         content_type = r.headers.get("Content-Type", "application/octet-stream")
 

@@ -106,8 +106,8 @@ class ModelManager:
             response = await asyncio.to_thread(
                 self.client.models.generate_content, model=self.model_info["model"], contents=prompt
             )
-            result_text: str = response.text.strip()
-            return result_text
+            result_text = response.text or ""
+            return result_text.strip()
 
         except ServerError:
             raise
@@ -121,8 +121,8 @@ class ModelManager:
             response = await asyncio.to_thread(
                 self.client.models.generate_content, model=self.model_info["model"], contents=contents
             )
-            result_text: str = response.text.strip()
-            return result_text
+            result_text = response.text or ""
+            return result_text.strip()
 
         except ServerError:
             raise

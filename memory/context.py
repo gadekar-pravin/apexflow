@@ -289,8 +289,12 @@ class ExecutionContextManager:
                 node_data["status"] = "running"
 
             except Exception as e:
-                logger.error("User interaction failed: %s", e)
+                logger.exception("User interaction failed: %s", e)
                 node_data["error"] = str(e)
+                node_data["status"] = "failed"
+                node_data["end_time"] = datetime.now(UTC).isoformat()
+                self._auto_save()
+                return
 
         # CODE EXECUTION CHECK
         execution_result: dict[str, Any] | None = None
@@ -466,7 +470,7 @@ class ExecutionContextManager:
         if self.debug_mode:
             return
         with contextlib.suppress(RuntimeError):
-            asyncio.get_event_loop().create_task(
+            asyncio.get_running_loop().create_task(
                 event_bus.publish(
                     "context_updated",
                     "ExecutionContextManager",
