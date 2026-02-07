@@ -1,0 +1,85 @@
+steps:
+  # Step 1: Install Python dependencies
+  - name: 'python:3.12-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install --quiet -e ".[dev]"
+        pip install --quiet psycopg2-binary
+    id: 'install-deps'
+
+  # Step 2: Lint with ruff
+  - name: 'python:3.12-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install --quiet ruff
+        ruff check .
+    id: 'lint'
+
+  # Step 3: Type check with mypy
+  - name: 'python:3.12-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install --quiet -e ".[dev]"
+        pip install --quiet asyncpg-stubs
+        mypy core/
+    id: 'typecheck'
+
+  # Step 4: Start pgvector container and apply schema
+  - name: 'docker/compose:latest'
+    args: ['-f', 'docker-compose.ci.yml', 'up', '-d']
+    id: 'start-db'
+
+  - name: 'python:3.12-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Wait for PostgreSQL to be ready
+        pip install --quiet psycopg2-binary
+        for i in $(seq 1 30); do
+          python -c "
+        import psycopg2
+        try:
+            conn = psycopg2.connect(host='localhost', user='apexflow', password='apexflow', dbname='apexflow')
+            conn.close()
+            exit(0)
+        except:
+            exit(1)
+        " && break || sleep 2
+        done
+    id: 'wait-for-db'
+    waitFor: ['start-db']
+
+  # Step 5: Run Alembic migrations
+  - name: 'python:3.12-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install --quiet -e ".[dev]"
+        pip install --quiet psycopg2-binary
+        export DB_HOST=localhost
+        alembic upgrade head
+    id: 'migrate'
+    waitFor: ['wait-for-db']
+
+  # Step 6: Run tests
+  - name: 'python:3.12-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install --quiet -e ".[dev]"
+        export DB_HOST=localhost
+        pytest tests/ -v
+    id: 'test'
+    waitFor: ['migrate']
+
+options:
+  machineType: 'E2_HIGHCPU_8'

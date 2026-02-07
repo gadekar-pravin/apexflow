@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  alloydb-omni:
+    image: google/alloydbomni:15.12.0
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: apexflow
+      POSTGRES_PASSWORD: apexflow
+      POSTGRES_DB: apexflow
+    volumes:
+      - alloydb_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    shm_size: '512mb'
+    ulimits:
+      nice:
+        soft: -20
+        hard: -20
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apexflow -d apexflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  alloydb_data:

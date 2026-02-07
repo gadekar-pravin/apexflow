@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: apexflow
+      POSTGRES_PASSWORD: apexflow
+      POSTGRES_DB: apexflow
+    volumes:
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apexflow -d apexflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
