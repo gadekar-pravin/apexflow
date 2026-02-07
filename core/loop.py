@@ -418,8 +418,26 @@ class AgentLoop4:
                 )
 
                 if not running_or_waiting:
+                    # Mark pending nodes whose predecessors failed as skipped
+                    stuck = False
+                    for n_id in context.plan_graph.nodes:
+                        if context.plan_graph.nodes[n_id].get("status") != "pending":
+                            continue
+                        preds = list(context.plan_graph.predecessors(n_id))
+                        if any(
+                            context.plan_graph.nodes[p].get("status") in ["failed", "skipped", "cost_exceeded"]
+                            for p in preds
+                        ):
+                            context.plan_graph.nodes[n_id]["status"] = "skipped"
+                            context.plan_graph.nodes[n_id]["error"] = "Skipped: dependency failed"
+                            log_step(f"Skipped {n_id}: dependency failed")
+                            stuck = True
+                    if stuck:
+                        context._auto_save()
+                        continue  # re-evaluate with newly skipped nodes
+
                     is_complete = all(
-                        context.plan_graph.nodes[n]["status"] in ["completed", "skipped", "cost_exceeded"]
+                        context.plan_graph.nodes[n]["status"] in ["completed", "failed", "skipped", "cost_exceeded"]
                         for n in context.plan_graph.nodes
                         if n != "ROOT"
                     )

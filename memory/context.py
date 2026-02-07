@@ -260,9 +260,9 @@ class ExecutionContextManager:
         writes: list[str] = node_data.get("writes", [])
 
         if output and isinstance(output, dict):
-            cost = cost or output.get("cost", 0.0)
-            input_tokens = input_tokens or output.get("input_tokens", 0)
-            output_tokens = output_tokens or output.get("output_tokens", 0)
+            cost = cost if cost is not None else output.get("cost", 0.0)
+            input_tokens = input_tokens if input_tokens is not None else output.get("input_tokens", 0)
+            output_tokens = output_tokens if output_tokens is not None else output.get("output_tokens", 0)
 
         # USER INTERACTION CHECK
         if self._is_clarification_request(agent_type, output):
@@ -385,10 +385,9 @@ class ExecutionContextManager:
         return inputs
 
     def all_done(self) -> bool:
-        """Check if all steps are completed or failed."""
-        return all(
-            self.plan_graph.nodes[node_id]["status"] in ["completed", "failed"] for node_id in self.plan_graph.nodes
-        )
+        """Check if all steps are in a terminal state."""
+        terminal = {"completed", "failed", "skipped", "stopped", "cost_exceeded"}
+        return all(self.plan_graph.nodes[node_id]["status"] in terminal for node_id in self.plan_graph.nodes)
 
     def get_execution_summary(self) -> dict[str, Any]:
         """Get execution summary with cost and token breakdown."""

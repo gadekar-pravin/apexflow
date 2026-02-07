@@ -12,7 +12,7 @@ import ipaddress
 import logging
 import os
 import socket
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -149,6 +149,7 @@ async def get_sources() -> dict[str, Any]:
 @router.post("/sources")
 async def add_source(request: AddSourceTabsRequest) -> dict[str, Any]:
     _require_writes()
+    _validate_url(request.url)
     news_settings = get_news_settings()
 
     if any(s["url"] == request.url for s in news_settings["sources"]):
@@ -228,7 +229,7 @@ async def fetch_hn() -> list[NewsItem]:
                                 title=story.get("title", ""),
                                 url=story.get("url", f"https://news.ycombinator.com/item?id={sid}"),
                                 source_name="Hacker News",
-                                timestamp=datetime.fromtimestamp(story.get("time", 0)).isoformat(),
+                                timestamp=datetime.fromtimestamp(story.get("time", 0), tz=UTC).isoformat(),
                                 points=story.get("score"),
                                 comments=len(story.get("kids", [])) if "kids" in story else 0,
                             )
@@ -259,7 +260,7 @@ async def fetch_rss(source: dict[str, Any]) -> list[NewsItem]:
             "Accept": "application/rss+xml,application/xml;q=0.9,*/*;q=0.8",
         }
 
-        response = requests.get(source["feed_url"], headers=headers, timeout=10)
+        response = await asyncio.to_thread(requests.get, source["feed_url"], headers=headers, timeout=10)
 
         if response.status_code != 200:
             logger.warning("RSS fetch failed for %s: Status %s", source["name"], response.status_code)
@@ -272,11 +273,11 @@ async def fetch_rss(source: dict[str, Any]) -> list[NewsItem]:
 
         items: list[NewsItem] = []
         for entry in feed.entries[:30]:
-            ts = datetime.now().isoformat()
+            ts = datetime.now(tz=UTC).isoformat()
             if hasattr(entry, "published_parsed") and entry.published_parsed:
-                ts = datetime(*entry.published_parsed[:6]).isoformat()
+                ts = datetime(*entry.published_parsed[:6]).replace(tzinfo=UTC).isoformat()
             elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
-                ts = datetime(*entry.updated_parsed[:6]).isoformat()
+                ts = datetime(*entry.updated_parsed[:6]).replace(tzinfo=UTC).isoformat()
 
             items.append(
                 NewsItem(
@@ -381,6 +382,9 @@ async def get_article_content(url: str) -> dict[str, Any]:
                 await page.goto(url, wait_until="networkidle", timeout=15000)
             except Exception:
                 await page.goto(url, wait_until="domcontentloaded", timeout=15000)
+
+            # Re-validate final URL after redirects (SSRF defense-in-depth)
+            _validate_url(page.url)
 
             page_title = await page.title()
             for _ in range(10):

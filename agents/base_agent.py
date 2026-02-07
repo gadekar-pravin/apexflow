@@ -94,9 +94,9 @@ class AgentRunner:
 
                         props: dict[str, Any] = params.get("properties", {})
                         arg_types: list[str] = []
-                        for _k, v in props.items():
+                        for param_name, v in props.items():
                             t: str = v.get("type", "any")
-                            arg_types.append(t)
+                            arg_types.append(f"{param_name}: {t}")
 
                         signature_str = ", ".join(arg_types)
                         tool_descriptions.append(f"- `{name}({signature_str})` # {description}")
