@@ -28,3 +28,5 @@ repos:
           - numpy>=1.26.0
           - google-genai>=1.0.0
           - types-requests>=2.31.0
+          - pytest>=8.0.0
+          - pytest-asyncio>=0.23.0
