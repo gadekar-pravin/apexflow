@@ -95,6 +95,8 @@ ruff>=0.6.0
 mypy>=1.11.0
 pre-commit>=3.8.0
 alembic>=1.13.0
+psycopg2-binary>=2.9.9        # Required by Alembic for sync migrations
+asyncpg-stubs>=0.29.0         # Required by mypy strict mode for core/database.py
 ```
 
 ## Step 1.3: Create docker-compose.yml
@@ -138,7 +140,9 @@ volumes:
 
 ### CI Profile: docker-compose.ci.yml
 
-For CI environments where AlloyDB Omni is unavailable, use a pgvector-enabled PostgreSQL image. This profile uses the **same `init-db.sql`** — the `DO $$ ... $$;` blocks will detect that `alloydb_scann` is missing and create IVFFlat indexes instead.
+For CI environments where AlloyDB Omni is unavailable, use a pgvector-enabled PostgreSQL image. The CI container starts with an **empty database** — Alembic applies the schema as the single source of truth.
+
+> **IMPORTANT:** Do NOT mount `init-db.sql` via `docker-entrypoint-initdb.d` in CI. The CI pipeline runs `alembic upgrade head`, whose initial migration executes `init-db.sql`. If the Docker entrypoint also applies the schema, every `CREATE TABLE` statement will fail with `relation already exists` because the SQL uses `CREATE TABLE` (not `CREATE TABLE IF NOT EXISTS`). Alembic must be the sole schema applicator in CI.
 
 ```yaml
 # docker-compose.ci.yml
@@ -152,8 +156,7 @@ services:
       POSTGRES_USER: apexflow
       POSTGRES_PASSWORD: apexflow
       POSTGRES_DB: apexflow
-    volumes:
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    # No init-db.sql mount — Alembic applies the schema in CI
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U apexflow -d apexflow"]
       interval: 5s
@@ -164,8 +167,9 @@ services:
 Usage in CI pipelines:
 ```bash
 docker compose -f docker-compose.ci.yml up -d
-docker compose -f docker-compose.ci.yml exec postgres psql -U apexflow -d apexflow -c "\dt"
-# Expected: all 13 tables, IVFFlat indexes instead of ScaNN
+# Wait for postgres to be ready, then:
+alembic upgrade head
+# Expected: all 13 tables created by Alembic, IVFFlat indexes (not ScaNN)
 ```
 
 ### Docker Compose Notes
@@ -348,10 +352,13 @@ CREATE TABLE memories (
 );
 
 -- Vector similarity index (ScaNN on AlloyDB, IVFFlat on vanilla PG)
+-- NOTE: ScaNN requires non-empty tables. On AlloyDB Omni, we skip index creation
+-- here and create ScaNN indexes after initial data insertion via
+-- scripts/create-scann-indexes.sql.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'alloydb_scann') THEN
-        EXECUTE 'CREATE INDEX idx_memories_embedding ON memories USING scann (embedding cosine) WITH (num_leaves = 50)';
+        RAISE NOTICE 'AlloyDB detected — skipping ScaNN index on memories (create after data insertion)';
     ELSE
         EXECUTE 'CREATE INDEX idx_memories_embedding ON memories USING ivfflat (embedding vector_cosine_ops) WITH (lists = 50)';
     END IF;
@@ -399,10 +406,13 @@ CREATE TABLE document_chunks (
 );
 
 -- Vector similarity index (ScaNN on AlloyDB, IVFFlat on vanilla PG)
+-- NOTE: ScaNN requires non-empty tables. On AlloyDB Omni, we skip index creation
+-- here and create ScaNN indexes after initial data insertion via
+-- scripts/create-scann-indexes.sql.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'alloydb_scann') THEN
-        EXECUTE 'CREATE INDEX idx_chunks_embedding ON document_chunks USING scann (embedding cosine) WITH (num_leaves = 100)';
+        RAISE NOTICE 'AlloyDB detected — skipping ScaNN index on document_chunks (create after data insertion)';
     ELSE
         EXECUTE 'CREATE INDEX idx_chunks_embedding ON document_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)';
     END IF;
@@ -646,7 +656,7 @@ Relying solely on `docker-entrypoint-initdb.d` + "destroy the volume to re-run" 
 alembic init alembic
 ```
 
-Configure `alembic/env.py` to use `asyncpg` and read `DATABASE_URL` from the environment (or fall back to `DatabaseConfig.get_connection_string()`).
+Configure `alembic/env.py` to use `psycopg2` (sync driver) and read `DATABASE_URL` from the environment (or fall back to building from `DB_HOST`/`DB_USER`/etc env vars). Alembic runs synchronous migrations — using `asyncpg` would require a complex async wrapper that adds no value here.
 
 ### Migration workflow
 
@@ -666,7 +676,7 @@ Configure `alembic/env.py` to use `asyncpg` and read `DATABASE_URL` from the env
 ```
 alembic/
 ├── alembic.ini          # Config (DB URL from env)
-├── env.py               # Async engine setup
+├── env.py               # Sync engine setup (psycopg2)
 ├── script.py.mako       # Migration template
 └── versions/
     └── 001_initial_schema.py
@@ -681,8 +691,8 @@ alembic/
 If AlloyDB Omni is unavailable (CI environments, constrained machines, etc.), the app works on vanilla PostgreSQL 15+ with pgvector **using the same `init-db.sql` script** — no manual edits needed.
 
 The schema uses `DO $$ ... $$;` blocks that check `pg_available_extensions` at runtime:
-- **AlloyDB Omni**: Detects `alloydb_scann` → creates ScaNN indexes
-- **Vanilla PostgreSQL**: `alloydb_scann` missing → creates IVFFlat indexes instead
+- **AlloyDB Omni**: Detects `alloydb_scann` → **skips** vector index creation (ScaNN requires non-empty tables). Run `scripts/create-scann-indexes.sql` after inserting initial data.
+- **Vanilla PostgreSQL**: `alloydb_scann` missing → creates IVFFlat indexes immediately (IVFFlat works on empty tables)
 
 Use the [CI docker-compose profile](#ci-profile-docker-composeciyml) (`docker-compose.ci.yml` with `pgvector/pgvector:pg15`) for CI environments. This ensures `CREATE EXTENSION vector` succeeds without AlloyDB Omni.
 
@@ -918,13 +928,18 @@ psql -h localhost -U apexflow -d apexflow -c "\dt"
 
 # 5. Check indexes
 psql -h localhost -U apexflow -d apexflow -c "\di"
-# Expected: ScaNN indexes (idx_memories_embedding, idx_chunks_embedding),
-#   GIN index (idx_chunks_fts), plus B-tree indexes
+# Expected: GIN index (idx_chunks_fts), plus B-tree indexes.
+# NOTE: ScaNN indexes (idx_memories_embedding, idx_chunks_embedding) are NOT
+# created yet — ScaNN requires non-empty tables. They will be created after
+# initial data insertion via scripts/create-scann-indexes.sql.
 
-# 6. Test ScaNN works
+# 6. Test vector search (insert data, create ScaNN index, then query)
 psql -h localhost -U apexflow -d apexflow -c "
   INSERT INTO memories (id, user_id, text, embedding)
   VALUES ('test1', 'default', 'test memory', '[' || array_to_string(array(SELECT random() FROM generate_series(1,768)), ',') || ']');
+"
+psql -h localhost -U apexflow -d apexflow -f scripts/create-scann-indexes.sql
+psql -h localhost -U apexflow -d apexflow -c "
   SELECT id, 1 - (embedding <=> (SELECT embedding FROM memories WHERE id='test1')) AS similarity
   FROM memories ORDER BY embedding <=> (SELECT embedding FROM memories WHERE id='test1') LIMIT 1;
   DELETE FROM memories WHERE id='test1';
@@ -935,20 +950,20 @@ psql -h localhost -U apexflow -d apexflow -c "
 ### CI (PostgreSQL + pgvector)
 
 ```bash
-# 1. Start CI profile
+# 1. Start CI profile (empty database — no init-db.sql mount)
 docker compose -f docker-compose.ci.yml up -d
 
-# 2. Verify tables exist
-docker compose -f docker-compose.ci.yml exec postgres psql -U apexflow -d apexflow -c "\dt"
-# Expected: same 13 tables
+# 2. Apply schema via Alembic (sole schema applicator in CI)
+DB_HOST=localhost alembic upgrade head
+# Expected: all 13 tables created, no errors
 
-# 3. Verify IVFFlat indexes (not ScaNN)
+# 3. Verify tables exist
+docker compose -f docker-compose.ci.yml exec postgres psql -U apexflow -d apexflow -c "\dt"
+# Expected: 13 tables
+
+# 4. Verify IVFFlat indexes (not ScaNN)
 docker compose -f docker-compose.ci.yml exec postgres psql -U apexflow -d apexflow -c "\di"
 # Expected: idx_memories_embedding and idx_chunks_embedding using IVFFlat
-
-# 4. Run Alembic migrations
-alembic upgrade head
-# Expected: no errors (schema already matches)
 ```
 
 ### Production (Cloud Run + AlloyDB)
@@ -1009,14 +1024,15 @@ pytest tests/ -v
 pytest tests/ -v --asyncio-mode=auto
 ```
 
-### Minimal CI pipeline (GitHub Actions)
+### Minimal CI pipeline (Google Cloud Build)
 
-The CI pipeline must validate at minimum:
+We use Google Cloud Build (`cloudbuild.yaml`), not GitHub Actions. The CI pipeline must validate at minimum:
 1. `ruff check .` — linting passes
-2. `mypy .` — type checking passes
-3. Schema applies cleanly on pgvector Postgres (`docker compose -f docker-compose.ci.yml up -d` + `alembic upgrade head`)
+2. `mypy core/` — type checking passes
+3. Schema applies cleanly on pgvector Postgres via `alembic upgrade head` (Alembic is the sole schema applicator — no Docker entrypoint init)
 4. `pytest tests/` — unit tests pass
-5. Basic DB smoke test (insert + query + delete on each table)
+
+> **Cloud Build networking note:** Each Cloud Build step runs in a separate Docker container. To allow steps to reach the database, start the pgvector container on the shared `cloudbuild` network (`docker run --network=cloudbuild --name=postgres ...`) and connect via hostname `postgres`, **not** `localhost`. Using `docker compose` creates a separate Docker network that other steps cannot reach.
 
 ---
 
