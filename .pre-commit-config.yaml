@@ -21,3 +21,10 @@ repos:
           - pydantic>=2.9.0
           - asyncpg-stubs>=0.29.0
           - types-PyYAML>=6.0.0
+          - fastapi>=0.115.0
+          - starlette>=0.40.0
+          - httpx>=0.27.0
+          - networkx>=3.2
+          - numpy>=1.26.0
+          - google-genai>=1.0.0
+          - types-requests>=2.31.0
