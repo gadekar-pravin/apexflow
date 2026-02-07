@@ -30,7 +30,7 @@ for i in $(seq 1 30); do
   HEALTHY=$(gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
     --command="sudo docker compose -f /opt/apexflow/docker-compose.vm.yml ps --format '{{.Health}}' 2>/dev/null" \
     2>/dev/null || echo "")
-  if echo "$HEALTHY" | grep -qi "healthy"; then
+  if echo "$HEALTHY" | grep -qiw "healthy"; then
     echo "      AlloyDB Omni is healthy!"
     break
   fi

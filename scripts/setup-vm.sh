@@ -284,7 +284,7 @@ docker compose -f docker-compose.vm.yml up -d
 # 7. Wait for healthy
 echo "Waiting for AlloyDB Omni to become healthy..."
 for i in $(seq 1 30); do
-    if docker compose -f docker-compose.vm.yml ps | grep -q healthy; then
+    if docker compose -f docker-compose.vm.yml ps --format '{{.Health}}' | grep -qw healthy; then
         echo "AlloyDB Omni is healthy!"
         break
     fi
