@@ -8,8 +8,7 @@ services:
       POSTGRES_USER: apexflow
       POSTGRES_PASSWORD: apexflow
       POSTGRES_DB: apexflow
-    volumes:
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    # No init-db.sql mount — Alembic applies the schema in CI
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U apexflow -d apexflow"]
       interval: 5s

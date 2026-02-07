@@ -143,10 +143,12 @@ CREATE TABLE memories (
 );
 
 -- Vector similarity index (ScaNN on AlloyDB, IVFFlat on vanilla PG)
+-- NOTE: ScaNN requires non-empty tables. On AlloyDB Omni, we skip index creation
+-- here and create ScaNN indexes after initial data insertion.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'alloydb_scann') THEN
-        EXECUTE 'CREATE INDEX idx_memories_embedding ON memories USING scann (embedding cosine) WITH (num_leaves = 50)';
+        RAISE NOTICE 'AlloyDB detected — skipping ScaNN index on memories (create after data insertion)';
     ELSE
         EXECUTE 'CREATE INDEX idx_memories_embedding ON memories USING ivfflat (embedding vector_cosine_ops) WITH (lists = 50)';
     END IF;
@@ -194,10 +196,12 @@ CREATE TABLE document_chunks (
 );
 
 -- Vector similarity index (ScaNN on AlloyDB, IVFFlat on vanilla PG)
+-- NOTE: ScaNN requires non-empty tables. On AlloyDB Omni, we skip index creation
+-- here and create ScaNN indexes after initial data insertion.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'alloydb_scann') THEN
-        EXECUTE 'CREATE INDEX idx_chunks_embedding ON document_chunks USING scann (embedding cosine) WITH (num_leaves = 100)';
+        RAISE NOTICE 'AlloyDB detected — skipping ScaNN index on document_chunks (create after data insertion)';
     ELSE
         EXECUTE 'CREATE INDEX idx_chunks_embedding ON document_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)';
     END IF;

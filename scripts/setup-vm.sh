@@ -168,7 +168,7 @@ CREATE TABLE memories (
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'alloydb_scann') THEN
-        EXECUTE 'CREATE INDEX idx_memories_embedding ON memories USING scann (embedding cosine) WITH (num_leaves = 50)';
+        RAISE NOTICE 'AlloyDB detected — skipping ScaNN index (create after data insertion)';
     ELSE
         EXECUTE 'CREATE INDEX idx_memories_embedding ON memories USING ivfflat (embedding vector_cosine_ops) WITH (lists = 50)';
     END IF;
@@ -205,7 +205,7 @@ CREATE TABLE document_chunks (
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'alloydb_scann') THEN
-        EXECUTE 'CREATE INDEX idx_chunks_embedding ON document_chunks USING scann (embedding cosine) WITH (num_leaves = 100)';
+        RAISE NOTICE 'AlloyDB detected — skipping ScaNN index (create after data insertion)';
     ELSE
         EXECUTE 'CREATE INDEX idx_chunks_embedding ON document_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)';
     END IF;
