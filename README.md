@@ -18,6 +18,9 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 | Layer | Technology |
 |-------|------------|
 | Framework | FastAPI + Uvicorn |
+| Frontend | React 19 + TypeScript + Vite |
+| UI | Tailwind CSS, Radix UI, ReactFlow (DAG visualization) |
+| State | TanStack Query (server), Zustand (client) |
 | Database | AlloyDB Omni (PostgreSQL 15) with ScaNN vector indexes |
 | Async DB Driver | asyncpg |
 | LLM | Google Gemini (`google-genai` + Vertex AI) |
@@ -26,11 +29,24 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 | Auth | Firebase Admin SDK |
 | CI/CD | Google Cloud Build |
 | Python | 3.12+ |
+| Node.js | 18+ (frontend) |
 
 ## Project Structure
 
 ```
 apexflow/
+├── frontend/                  # React 19 + TypeScript + Vite SPA
+│   ├── src/
+│   │   ├── components/        # UI components (graph, documents, runs, layout)
+│   │   ├── services/          # API client layer (runs, rag, settings)
+│   │   ├── contexts/          # SSE connection, execution metrics
+│   │   ├── hooks/             # API health, SSE subscription
+│   │   ├── pages/             # Dashboard, Documents, Settings
+│   │   ├── store/             # Zustand stores (app state, graph state)
+│   │   └── types/             # TypeScript type definitions
+│   ├── package.json
+│   ├── vite.config.ts         # Dev proxy → backend :8000
+│   └── tailwind.config.js
 ├── api.py                     # FastAPI app with lifespan manager
 ├── core/
 │   ├── database.py            # Async connection pool
@@ -91,6 +107,7 @@ apexflow/
 ### Prerequisites
 
 - Python 3.12+
+- Node.js 18+ and npm (for the frontend)
 - PostgreSQL 15+ with pgvector extension (or AlloyDB Omni)
 - A Gemini API key (for local development)
 
@@ -111,6 +128,9 @@ pip install -e ".[dev]"
 
 # Set up pre-commit hooks
 pre-commit install
+
+# Install frontend dependencies
+cd frontend && npm install
 ```
 
 ### Configuration
@@ -149,10 +169,14 @@ alembic upgrade head
 ### Running Locally
 
 ```bash
+# Terminal 1: Start backend
 AUTH_DISABLED=1 uvicorn api:app --reload
+
+# Terminal 2: Start frontend
+cd frontend && npm run dev
 ```
 
-The API will be available at `http://localhost:8000`. Interactive docs at `/docs`.
+The API will be available at `http://localhost:8000` (docs at `/docs`). The frontend will be at `http://localhost:5173`, with a Vite proxy forwarding `/api`, `/liveness`, and `/readiness` requests to the backend.
 
 ### Running with Docker
 
@@ -256,6 +280,11 @@ pre-commit run --all-files
 
 # Create a migration
 alembic revision -m "description"
+
+# Frontend
+cd frontend && npm run dev       # dev server with hot reload
+cd frontend && npm run build     # production build
+cd frontend && npx vitest run    # run frontend tests (93 tests)
 ```
 
 ### Code Conventions
@@ -318,3 +347,4 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 4b — REMME | Done | Memory stores, preference hubs, scan engine |
 | 4c — Sandbox | Done | Secure code execution (pydantic-monty) |
 | 5 — Deployment | Done | Docker, Cloud Run CI/CD, CORS hardening, health checks, v1→v2 migration, integration tests |
+| 6 — Frontend | Done | React 19 SPA with Vite, Tailwind CSS, ReactFlow DAG visualization, TanStack Query, Zustand |

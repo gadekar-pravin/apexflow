@@ -12,6 +12,7 @@
 - `config/` and `prompts/` store runtime settings and LLM prompt templates.
 - `alembic/` is the source of truth for schema migrations; `scripts/` has dev helpers.
 - `tests/unit/` contains mock-based pytest suites (no DB needed); `tests/integration/` contains DB-dependent tests.
+- `frontend/` is the React 19 + TypeScript + Vite SPA. Service layer in `frontend/src/services/` calls the v2 backend at `/api/*` via Vite proxy. Components use TanStack Query for server state, Zustand for client state, ReactFlow for DAG visualization, Tailwind CSS + Radix UI for styling.
 - `docs/` holds phase/architecture notes.
 
 ## Architecture
@@ -69,6 +70,13 @@ Registered via `ServiceRegistry` during app lifespan:
 - `./scripts/dev-start.sh` starts the GCE VM + SSH tunnel; `./scripts/dev-stop.sh` tears it down.
 - `alembic upgrade head` applies database migrations.
 - `pre-commit run --all-files` runs the full pre-commit suite.
+
+### Frontend commands
+- `cd frontend && npm install` installs frontend dependencies.
+- `cd frontend && npm run dev` starts the Vite dev server on port 5173 (proxies `/api`, `/liveness`, `/readiness` to `localhost:8000`).
+- `cd frontend && npm run build` creates a production build (runs `tsc -b && vite build`).
+- `cd frontend && npx vitest run` runs the frontend test suite (93 tests across 8 files).
+- Frontend + backend together: run the backend in one terminal, `cd frontend && npm run dev` in another, then open `http://localhost:5173`.
 
 ## Coding Style & Naming Conventions
 - Python 3.12+, 120-char line length, Ruff rules `E`, `F`, `I`, `UP`, `B`, `SIM`.
