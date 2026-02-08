@@ -85,6 +85,10 @@ def _has_toplevel_return(stmts: list[ast.stmt]) -> bool:
                 return True
             if _has_toplevel_return(node.finalbody):
                 return True
+        if isinstance(node, ast.Match):
+            for case in node.cases:
+                if _has_toplevel_return(case.body):
+                    return True
     return False
 
 
@@ -231,6 +235,7 @@ async def _ipc_loop(
     await proc.stdin.drain()
 
     # IPC loop
+    decode_errors = 0
     while True:
         line = await proc.stdout.readline()
         if not line:
@@ -240,7 +245,11 @@ async def _ipc_loop(
 
         try:
             msg = json.loads(line.decode())
+            decode_errors = 0
         except json.JSONDecodeError:
+            decode_errors += 1
+            if decode_errors > 10:
+                return {"status": "error", "error": "Too many malformed messages from worker"}
             continue
 
         msg_type = msg.get("type")
@@ -283,8 +292,12 @@ async def _ipc_loop(
                 tool_result = await service_registry.route_tool_call(func_name, named_args, ctx)
                 result_str = json.dumps(tool_result, default=str)
                 if len(result_str) > MAX_EXTERNAL_RESPONSE_SIZE:
-                    result_str = result_str[:MAX_EXTERNAL_RESPONSE_SIZE]
-                    tool_result = result_str
+                    tool_result = {
+                        "error": "response_too_large",
+                        "message": (
+                            f"Tool response ({len(result_str)} bytes)" f" exceeds limit ({MAX_EXTERNAL_RESPONSE_SIZE})"
+                        ),
+                    }
 
                 resp = json.dumps({"type": "result", "value": tool_result}, default=str) + "\n"
             except Exception as exc:

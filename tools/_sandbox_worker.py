@@ -56,9 +56,25 @@ def main() -> None:
         raw_ext = init_msg.get("external_names")
         external_names: list[str] = list(raw_ext) if isinstance(raw_ext, list) else []
         raw_steps = init_msg.get("max_steps")
-        max_steps = int(raw_steps) if isinstance(raw_steps, int | float | str) else 100_000
+        if isinstance(raw_steps, int | float):
+            max_steps = int(raw_steps)
+        elif isinstance(raw_steps, str):
+            try:
+                max_steps = int(raw_steps)
+            except ValueError:
+                max_steps = 100_000
+        else:
+            max_steps = 100_000
         raw_mem = init_msg.get("max_memory_mb")
-        max_memory_mb = int(raw_mem) if isinstance(raw_mem, int | float | str) else 256
+        if isinstance(raw_mem, int | float):
+            max_memory_mb = int(raw_mem)
+        elif isinstance(raw_mem, str):
+            try:
+                max_memory_mb = int(raw_mem)
+            except ValueError:
+                max_memory_mb = 256
+        else:
+            max_memory_mb = 256
 
         _set_memory_limit(max_memory_mb)
 

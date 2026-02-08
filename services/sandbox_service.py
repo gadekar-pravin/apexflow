@@ -33,7 +33,7 @@ async def _handler(name: str, args: dict[str, Any], ctx: ToolContext | None) -> 
     result = await run_user_code(code, registry, ctx)
 
     if result["status"] == "error":
-        raise ToolExecutionError(result["error"])
+        raise ToolExecutionError(result.get("error", "Unknown sandbox error"))
 
     return result.get("output")
 

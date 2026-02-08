@@ -195,7 +195,7 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 - `remme/` — Memory management system: `RemmeStore` facade (`store.py`), `RemmeEngine` scan orchestrator (`engine.py`), `BaseHub` adapter (`hubs/base_hub.py`), `StagingQueue` (`staging.py`), `EvidenceLog` (`engines/evidence_log.py`), `RemmeExtractor` (`extractor.py`), embedding utils (`utils.py`)
 - `shared/` — Global state container (`state.py`) — holds ServiceRegistry, RemmeStore, active loops
 - `core/rag/` — RAG pipeline: chunker (`chunker.py`), config (`config.py`, loads embedding settings from `settings.json`), ingestion pipeline (`ingestion.py`)
-- `services/` — Service layer (BrowserService, RagService, Sandbox stub) registered via ServiceRegistry
+- `services/` — Service layer (BrowserService, RagService, SandboxService) registered via ServiceRegistry
 - `routers/` — FastAPI route handlers: Phase 2 (`stream`, `settings`, `skills`, `prompts`, `news`) + Phase 3 (`runs`, `chat`, `rag`, `remme`, `inbox`, `cron`, `metrics`)
 - `tools/` — Agent tools (`web_tools_async.py`, `switch_search_method.py`), Monty sandbox (`monty_sandbox.py` executor, `_sandbox_worker.py` subprocess)
 - `config/` — Settings loader, `agent_config.yaml`, `models.json`, `profiles.yaml`, `settings.defaults.json`
