@@ -28,6 +28,7 @@ Comprehensive guide to provision all GCP infrastructure for the ApexFlow v2 back
 20. [Cost Management](#20-cost-management)
 21. [Architecture Diagram](#21-architecture-diagram)
 22. [Firebase Hosting (Frontend)](#22-firebase-hosting-frontend)
+23. [Firebase Authentication](#23-firebase-authentication)
 
 ---
 
@@ -83,6 +84,8 @@ gcloud services enable \
   secretmanager.googleapis.com \
   cloudbuild.googleapis.com \
   cloudscheduler.googleapis.com \
+  identitytoolkit.googleapis.com \
+  iap.googleapis.com \
   --project=$PROJECT_ID
 ```
 
@@ -980,7 +983,10 @@ Two files at the repo root configure Firebase Hosting:
       },
       {
         "source": "**/*.html",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" },
+          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" }
+        ]
       }
     ]
   }
@@ -1021,6 +1027,92 @@ The Cloud Run service's `CORS_ORIGINS` env var does **not** need to include the 
 
 ---
 
+## 23. Firebase Authentication
+
+Firebase Authentication provides Google sign-in for the frontend. The backend validates Firebase JWTs via the Admin SDK.
+
+### 23a. Initialize Identity Platform
+
+Identity Platform is the GCP service backing Firebase Auth. Initialize it via the REST API:
+
+```bash
+curl -s -X POST \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: $PROJECT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  "https://identitytoolkit.googleapis.com/v2/projects/$PROJECT_ID/identityPlatform:initializeAuth"
+```
+
+### 23b. Enable Google sign-in provider (Console)
+
+The Google sign-in provider requires an OAuth consent screen and Web OAuth client, which must be created through the Firebase Console for personal GCP projects (non-organization).
+
+1. Go to https://console.firebase.google.com/project/$PROJECT_ID/authentication/providers
+2. Click **"Get Started"** if prompted
+3. Click **Google** > Toggle **Enable** > Set **Project support email** > **Save**
+
+This auto-creates the OAuth consent screen and Web OAuth client.
+
+### 23c. Configure authorized domains
+
+1. Go to https://console.firebase.google.com/project/$PROJECT_ID/authentication/settings
+2. Under **Authorized domains**, verify these are listed:
+   - `localhost` (local dev)
+   - `apexflow-console.web.app` (Firebase Hosting)
+   - `apexflow-ai.firebaseapp.com` (authDomain)
+
+### 23d. Verify via CLI
+
+```bash
+# Check Google sign-in is enabled
+curl -s \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: $PROJECT_ID" \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/$PROJECT_ID/defaultSupportedIdpConfigs/google.com" \
+  | python3 -m json.tool
+# Expected: {"enabled": true, "clientId": "...", "clientSecret": "..."}
+
+# Check authorized domains
+curl -s \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: $PROJECT_ID" \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/$PROJECT_ID/config" \
+  | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('authorizedDomains',[]), indent=2))"
+# Expected: ["apexflow-ai.firebaseapp.com", "apexflow-ai.web.app", "apexflow-console.web.app", "localhost"]
+```
+
+### 23e. Frontend configuration
+
+Firebase config values are set in `frontend/.env.production`. These are public (embedded in the built JS bundle — security is in Firebase Security Rules and backend JWT verification):
+
+```env
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=apexflow-ai.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=apexflow-ai
+VITE_FIREBASE_STORAGE_BUCKET=apexflow-ai.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=807506425655
+VITE_FIREBASE_APP_ID=1:807506425655:web:...
+```
+
+When these are unset (local dev without `.env.production`), auth is bypassed entirely.
+
+### 23f. COOP headers
+
+`Cross-Origin-Opener-Policy: same-origin-allow-popups` must be set on HTML responses to allow Firebase's `signInWithPopup` to poll `window.closed`. Configured in:
+- `frontend/vite.config.ts` — `server.headers` (dev)
+- `firebase.json` — `headers` on `**/*.html` (production)
+
+### 23g. Backend auth middleware
+
+The backend (`core/auth.py`) verifies Firebase JWTs. Key behaviors:
+- Accepts tokens from `Authorization: Bearer <token>` header OR `?token=` query param (for SSE/EventSource)
+- Skip paths: `/liveness`, `/readiness`, `/docs`, `/openapi.json`
+- All other endpoints (including `/api/events` SSE) require auth
+- `AUTH_DISABLED=1` bypasses auth locally; fails startup if set on Cloud Run
+
+---
+
 ## Appendix: Complete Resource Inventory
 
 | Resource Type | Name | Key Config |
@@ -1041,4 +1133,5 @@ The Cloud Run service's `CORS_ORIGINS` env var does **not** need to include the 
 | Cloud Build Connection | `apexflow-github` | GitHub OAuth, linked to repo |
 | Cloud Build Trigger | `apexflow-ci` | Tag `^v.*$`, substitution: `_ALLOYDB_HOST` |
 | Firebase Hosting | `apexflow-console` | Site in `apexflow-ai`, serves `frontend/dist`, rewrites `/api/**` to Cloud Run |
-| APIs Enabled | 8 APIs | compute, run, vpcaccess, artifactregistry, secretmanager, cloudbuild, cloudscheduler, firebase |
+| Firebase Auth | Identity Platform | Google sign-in provider, authorized domains: localhost + `*.web.app` |
+| APIs Enabled | 10 APIs | compute, run, vpcaccess, artifactregistry, secretmanager, cloudbuild, cloudscheduler, firebase, identitytoolkit, iap |

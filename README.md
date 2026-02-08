@@ -11,7 +11,7 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 - **Tool routing** — ServiceRegistry dispatches tool calls in OpenAI-compatible format with circuit breaker resilience
 - **Real-time streaming** — Server-Sent Events for live client updates via EventBus pub-sub
 - **Scheduled workflows** — APScheduler with cron expressions and DB-backed job deduplication
-- **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally)
+- **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally). Frontend uses Google sign-in via `signInWithPopup`, token provider pattern, and auth guards on all data-fetching components
 
 ## Tech Stack
 
@@ -85,7 +85,7 @@ apexflow/
 ├── frontend/                  # React 19 + TypeScript + Vite SPA
 │   ├── src/
 │   │   ├── components/        # UI components (layout, runs, graph, documents)
-│   │   ├── contexts/          # SSEContext (shared EventSource)
+│   │   ├── contexts/          # AuthContext, SSEContext, ExecutionMetricsContext
 │   │   ├── hooks/             # useApiHealth, useSSE
 │   │   ├── services/          # API services (runs, rag, settings)
 │   │   ├── store/             # Zustand stores (useAppStore, useGraphStore)
@@ -151,6 +151,7 @@ Key variables:
 | `DB_PASSWORD` | Database password | — |
 | `DB_NAME` | Database name | `apexflow` |
 | `CORS_ORIGINS` | Comma-separated allowed origins for CORS | localhost defaults |
+| `ALLOYDB_HOST` | AlloyDB VM internal IP (Cloud Run mode) | — |
 | `DATABASE_URL` | Full connection string (overrides DB_* vars) | — |
 
 ### Database Setup
@@ -189,7 +190,7 @@ The API will be available at `http://localhost:8080`.
 
 ## Frontend
 
-The React SPA lives in `frontend/` and is hosted on Firebase Hosting.
+The React SPA lives in `frontend/` and is hosted on Firebase Hosting. Firebase Authentication (Google sign-in) is integrated via `AuthContext`.
 
 ### Local Development
 
@@ -216,7 +217,19 @@ The frontend deploys to Firebase Hosting in the `apexflow-ai` GCP project — th
 | Deploy target | `console` |
 | Public dir | `frontend/dist` |
 
-Firebase Hosting rewrites `/api/**`, `/liveness`, and `/readiness` to Cloud Run `apexflow-api` (us-central1). All other paths fall through to `/index.html` (SPA catch-all).
+Firebase Hosting rewrites `/api/**`, `/liveness`, and `/readiness` to Cloud Run `apexflow-api` (us-central1). All other paths fall through to `/index.html` (SPA catch-all). HTML responses include `Cross-Origin-Opener-Policy: same-origin-allow-popups` for Firebase `signInWithPopup` compatibility.
+
+### Authentication
+
+Firebase Authentication is configured for the `apexflow-ai` project with Google as the sign-in provider. When `VITE_FIREBASE_*` env vars are set (see `frontend/.env.production`), auth is required. When unset (local dev without Firebase), auth is bypassed and all queries run freely.
+
+| Variable | Purpose |
+|----------|---------|
+| `VITE_FIREBASE_API_KEY` | Firebase Web SDK API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `VITE_FIREBASE_APP_ID` | Firebase app ID |
+| `VITE_SSE_URL` | Direct Cloud Run URL for SSE (bypasses Firebase Hosting) |
 
 ### Deploy
 
@@ -385,3 +398,4 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 4c — Sandbox | Done | Secure code execution (pydantic-monty) |
 | 5 — Deployment | Done | Docker, Cloud Run CI/CD, CORS hardening, health checks, v1→v2 migration, integration tests |
 | 6 — Frontend | Done | React 19 SPA, Firebase Hosting with Cloud Run rewrites, DAG visualization, document management |
+| 6a — Auth | Done | Firebase Authentication (Google sign-in), AuthContext, token provider, SSE auth, COOP headers |
