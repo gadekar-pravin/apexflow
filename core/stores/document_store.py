@@ -71,15 +71,20 @@ class DocumentStore:
         doc_type: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Update mutable fields on an existing document row."""
+        """Update mutable fields on an existing document row.
+
+        Only overwrites ``doc_type`` / ``metadata`` when the caller
+        explicitly provides a value; ``None`` preserves the existing row
+        data (avoids silent data-loss on dedup re-index).
+        """
         pool = await get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
                 """
                 UPDATE documents
                 SET filename = $3,
-                    doc_type = $4,
-                    metadata = $5::jsonb,
+                    doc_type = COALESCE($4, doc_type),
+                    metadata = COALESCE($5::jsonb, metadata),
                     updated_at = NOW()
                 WHERE id = $1 AND user_id = $2
                 """,
@@ -87,7 +92,7 @@ class DocumentStore:
                 user_id,
                 filename,
                 doc_type,
-                json.dumps(metadata or {}),
+                json.dumps(metadata) if metadata is not None else None,
             )
 
     async def index_document(
@@ -125,9 +130,9 @@ class DocumentStore:
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
                 ON CONFLICT (user_id, file_hash) DO UPDATE
                     SET filename = EXCLUDED.filename,
-                        doc_type = EXCLUDED.doc_type,
+                        doc_type = COALESCE(EXCLUDED.doc_type, documents.doc_type),
                         content = EXCLUDED.content,
-                        metadata = EXCLUDED.metadata,
+                        metadata = COALESCE(EXCLUDED.metadata, documents.metadata),
                         updated_at = NOW()
                 RETURNING id, (xmax = 0) AS is_new,
                           ingestion_version, chunk_method,
@@ -144,7 +149,7 @@ class DocumentStore:
                 EMBEDDING_DIM,
                 INGESTION_VERSION,
                 chunk_method,
-                json.dumps(metadata or {}),
+                json.dumps(metadata) if metadata is not None else None,
             )
 
             actual_id: str = row["id"]  # type: ignore[index]

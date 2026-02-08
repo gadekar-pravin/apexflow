@@ -17,7 +17,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS chunk_method TEXT NOT NULL DEFAULT 'rule_based'")
+    op.execute(
+        "ALTER TABLE documents ADD COLUMN IF NOT EXISTS chunk_method TEXT NOT NULL DEFAULT 'rule_based'"
+        " CHECK (chunk_method IN ('rule_based', 'semantic'))"
+    )
 
 
 def downgrade() -> None:
