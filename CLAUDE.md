@@ -11,7 +11,12 @@ ApexFlow v2 is a web-first rewrite of the desktop-first ApexFlow v1. It's an int
 ## Common Commands
 
 ```bash
-# Install dependencies (use venv at .venv/)
+# Setup venv and install dependencies (uv preferred)
+uv venv .venv && source .venv/bin/activate
+uv sync --extra dev
+
+# Alternative: pip
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
 # Run tests

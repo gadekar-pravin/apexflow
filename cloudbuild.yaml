@@ -16,12 +16,12 @@ steps:
     id: 'start-db'
 
   # Step 2: Wait for PostgreSQL to be ready
-  - name: 'python:3.12-slim'
+  - name: 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        pip install --quiet psycopg2-binary
+        uv pip install --system psycopg2-binary
         for i in $(seq 1 30); do
           python -c "
         import psycopg2
@@ -36,51 +36,48 @@ steps:
     id: 'wait-for-db'
     waitFor: ['start-db']
 
-  # Step 3: Lint with ruff
-  - name: 'python:3.12-slim'
+  # Step 3: Lint with ruff (uvx runs ruff without installing into the project)
+  - name: 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        pip install --quiet ruff
-        ruff check .
+        uvx ruff check .
     id: 'lint'
     waitFor: ['-']
 
   # Step 4: Type check with mypy
-  - name: 'python:3.12-slim'
+  - name: 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        pip install --quiet -e ".[dev]"
-        pip install --quiet asyncpg-stubs
-        mypy core/
+        uv sync --extra dev
+        uv run mypy core/
     id: 'typecheck'
     waitFor: ['-']
 
   # Step 5: Run Alembic migrations
-  - name: 'python:3.12-slim'
+  - name: 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        pip install --quiet -e ".[dev]"
-        pip install --quiet psycopg2-binary
+        uv sync --extra dev
         export DB_HOST=postgres
-        alembic upgrade head
+        uv run alembic upgrade head
     id: 'migrate'
     waitFor: ['wait-for-db']
 
   # Step 6: Run tests
-  - name: 'python:3.12-slim'
+  - name: 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        pip install --quiet -e ".[dev]"
+        uv sync --extra dev
         export DB_HOST=postgres
-        pytest tests/ -v
+        uv run pytest tests/ -v
     id: 'test'
     waitFor: ['migrate']
 

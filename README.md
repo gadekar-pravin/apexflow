@@ -90,11 +90,12 @@ apexflow/
 git clone https://github.com/gadekar-pravin/apexflow.git
 cd apexflow
 
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate
+# Create and activate virtual environment (uv preferred)
+uv venv .venv && source .venv/bin/activate
+uv sync --extra dev
 
-# Install with dev dependencies
+# Alternative: pip
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
 # Set up pre-commit hooks
