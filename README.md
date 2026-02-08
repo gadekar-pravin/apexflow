@@ -18,9 +18,6 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 | Layer | Technology |
 |-------|------------|
 | Framework | FastAPI + Uvicorn |
-| Frontend | React 19 + TypeScript + Vite |
-| UI | Tailwind CSS, Radix UI, ReactFlow (DAG visualization) |
-| State | TanStack Query (server), Zustand (client) |
 | Database | AlloyDB Omni (PostgreSQL 15) with ScaNN vector indexes |
 | Async DB Driver | asyncpg |
 | LLM | Google Gemini (`google-genai` + Vertex AI) |
@@ -28,25 +25,17 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 | Vector Search | pgvector (`<=>` cosine distance) |
 | Auth | Firebase Admin SDK |
 | CI/CD | Google Cloud Build |
+| Frontend | React 19 + Vite + TypeScript |
+| UI | shadcn/ui + Tailwind CSS + Radix UI |
+| Graph Viz | ReactFlow |
+| Frontend State | TanStack Query (server) + Zustand (client) |
+| Frontend Hosting | Firebase Hosting |
 | Python | 3.12+ |
-| Node.js | 18+ (frontend) |
 
 ## Project Structure
 
 ```
 apexflow/
-├── frontend/                  # React 19 + TypeScript + Vite SPA
-│   ├── src/
-│   │   ├── components/        # UI components (graph, documents, runs, layout)
-│   │   ├── services/          # API client layer (runs, rag, settings)
-│   │   ├── contexts/          # SSE connection, execution metrics
-│   │   ├── hooks/             # API health, SSE subscription
-│   │   ├── pages/             # Dashboard, Documents, Settings
-│   │   ├── store/             # Zustand stores (app state, graph state)
-│   │   └── types/             # TypeScript type definitions
-│   ├── package.json
-│   ├── vite.config.ts         # Dev proxy → backend :8000
-│   └── tailwind.config.js
 ├── api.py                     # FastAPI app with lifespan manager
 ├── core/
 │   ├── database.py            # Async connection pool
@@ -93,6 +82,18 @@ apexflow/
 │   ├── conftest.py            # Shared fixture (test_user_id)
 │   ├── unit/                  # Mock-based tests (no DB needed)
 │   └── integration/           # DB-dependent tests (graceful skip if unavailable)
+├── frontend/                  # React 19 + TypeScript + Vite SPA
+│   ├── src/
+│   │   ├── components/        # UI components (layout, runs, graph, documents)
+│   │   ├── contexts/          # SSEContext (shared EventSource)
+│   │   ├── hooks/             # useApiHealth, useSSE
+│   │   ├── services/          # API services (runs, rag, settings)
+│   │   ├── store/             # Zustand stores (useAppStore, useGraphStore)
+│   │   ├── pages/             # Route pages (Dashboard, Documents, Settings)
+│   │   └── utils/             # Shared utilities
+│   └── package.json
+├── firebase.json              # Firebase Hosting config (rewrites + caching)
+├── .firebaserc                # Firebase project + deploy target mapping
 ├── docs/                      # Phase documentation
 ├── scripts/
 │   ├── init-db.sql            # Database schema (13 tables)
@@ -107,7 +108,6 @@ apexflow/
 ### Prerequisites
 
 - Python 3.12+
-- Node.js 18+ and npm (for the frontend)
 - PostgreSQL 15+ with pgvector extension (or AlloyDB Omni)
 - A Gemini API key (for local development)
 
@@ -128,9 +128,6 @@ pip install -e ".[dev]"
 
 # Set up pre-commit hooks
 pre-commit install
-
-# Install frontend dependencies
-cd frontend && npm install
 ```
 
 ### Configuration
@@ -169,14 +166,10 @@ alembic upgrade head
 ### Running Locally
 
 ```bash
-# Terminal 1: Start backend
 AUTH_DISABLED=1 uvicorn api:app --reload
-
-# Terminal 2: Start frontend
-cd frontend && npm run dev
 ```
 
-The API will be available at `http://localhost:8000` (docs at `/docs`). The frontend will be at `http://localhost:5173`, with a Vite proxy forwarding `/api`, `/liveness`, and `/readiness` requests to the backend.
+The API will be available at `http://localhost:8000`. Interactive docs at `/docs`.
 
 ### Running with Docker
 
@@ -192,6 +185,44 @@ The API will be available at `http://localhost:8080`.
 ```bash
 ./scripts/dev-start.sh    # Start VM + SSH tunnel to localhost:5432
 ./scripts/dev-stop.sh     # Close tunnel + stop VM
+```
+
+## Frontend
+
+The React SPA lives in `frontend/` and is hosted on Firebase Hosting.
+
+### Local Development
+
+```bash
+cd frontend && npm install    # install dependencies
+cd frontend && npm run dev    # start dev server on port 5173
+```
+
+Vite proxies `/api/*`, `/liveness`, and `/readiness` to the backend at `http://localhost:8000`. To override the proxy target:
+
+```bash
+VITE_BACKEND_URL=https://apexflow-api-j56xbd7o2a-uc.a.run.app npm run dev
+```
+
+### Firebase Hosting (Production)
+
+The frontend deploys to Firebase Hosting in the `apexflow-ai` GCP project — the same project as the Cloud Run backend. This enables Firebase Hosting rewrites to proxy API calls directly to Cloud Run (same-origin, no CORS needed).
+
+| Setting | Value |
+|---------|-------|
+| Project | `apexflow-ai` |
+| Site | `apexflow-console` |
+| URL | https://apexflow-console.web.app |
+| Deploy target | `console` |
+| Public dir | `frontend/dist` |
+
+Firebase Hosting rewrites `/api/**`, `/liveness`, and `/readiness` to Cloud Run `apexflow-api` (us-central1). All other paths fall through to `/index.html` (SPA catch-all).
+
+### Deploy
+
+```bash
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
 ```
 
 ## API Endpoints
@@ -282,9 +313,14 @@ pre-commit run --all-files
 alembic revision -m "description"
 
 # Frontend
-cd frontend && npm run dev       # dev server with hot reload
-cd frontend && npm run build     # production build
-cd frontend && npx vitest run    # run frontend tests (93 tests)
+cd frontend && npm install        # install dependencies
+cd frontend && npm run dev        # dev server (port 5173)
+cd frontend && npm run build      # production build
+cd frontend && npm run test       # run vitest tests
+
+# Deploy frontend to Firebase Hosting
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
 ```
 
 ### Code Conventions
@@ -301,8 +337,9 @@ cd frontend && npx vitest run    # run frontend tests (93 tests)
 ### Execution Flow
 
 ```
-Client Request
-    → FastAPI Router (auth middleware)
+Browser (React SPA on Firebase Hosting)
+    → Firebase Hosting Rewrite (/api/**)
+    → Cloud Run (FastAPI + auth middleware)
     → AgentLoop4 (DAG-based plan execution)
     → AgentRunner (prompt building, LLM calls)
     → ServiceRegistry (tool dispatch)
@@ -347,4 +384,4 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 4b — REMME | Done | Memory stores, preference hubs, scan engine |
 | 4c — Sandbox | Done | Secure code execution (pydantic-monty) |
 | 5 — Deployment | Done | Docker, Cloud Run CI/CD, CORS hardening, health checks, v1→v2 migration, integration tests |
-| 6 — Frontend | Done | React 19 SPA with Vite, Tailwind CSS, ReactFlow DAG visualization, TanStack Query, Zustand |
+| 6 — Frontend | Done | React 19 SPA, Firebase Hosting with Cloud Run rewrites, DAG visualization, document management |

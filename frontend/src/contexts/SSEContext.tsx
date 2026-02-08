@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react"
 import type { SSEEvent } from "@/types"
-import { getAPIUrl, getAuthToken } from "../services/api"
+import { getSSEUrl, getAuthToken } from "../services/api"
 
 export type SSEConnectionState = "connected" | "connecting" | "disconnected"
 
@@ -36,7 +36,7 @@ export function SSEProvider({ children }: { children: ReactNode }) {
     void getAuthToken().then((token) => {
       if (!mountedRef.current) return
 
-      let url = getAPIUrl("/api/events")
+      let url = getSSEUrl("/api/events")
       if (token) {
         url += `?token=${encodeURIComponent(token)}`
       }

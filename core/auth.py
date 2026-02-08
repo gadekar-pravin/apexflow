@@ -1,8 +1,9 @@
 """Firebase JWT authentication middleware for ApexFlow v2.
 
 - Verifies token from ``Authorization: Bearer <token>``
+- Falls back to ``?token=`` query param (for EventSource/SSE which can't send headers)
 - Extracts ``user_id`` → ``request.state.user_id``
-- Skips for ``/liveness``, ``/readiness``
+- Skips for ``/liveness``, ``/readiness``, ``/api/events`` (SSE)
 - ``AUTH_DISABLED=1`` bypasses auth (local dev)
 - **FAIL STARTUP** if ``K_SERVICE`` set AND ``AUTH_DISABLED=1``
 - Lazy Firebase Admin SDK init
@@ -26,7 +27,8 @@ _AUTH_DISABLED = os.environ.get("AUTH_DISABLED", "").lower() in ("1", "true", "y
 _K_SERVICE = os.environ.get("K_SERVICE", "")
 
 # Skip list – paths that never require auth
-SKIP_PATHS = {"/liveness", "/readiness", "/docs", "/openapi.json"}
+# /api/events is included because SSE has no auth UI yet (remove once login is implemented)
+SKIP_PATHS = {"/liveness", "/readiness", "/docs", "/openapi.json", "/api/events"}
 
 
 def check_startup_safety() -> None:
@@ -88,15 +90,17 @@ class FirebaseAuthMiddleware(BaseHTTPMiddleware):
             request.state.user_id = "dev-user"
             return await call_next(request)
 
-        # Extract token
+        # Extract token from header or query param (EventSource can't send headers)
         auth_header = request.headers.get("authorization", "")
-        if not auth_header.startswith("Bearer "):
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]  # Strip "Bearer "
+        elif request.query_params.get("token"):
+            token = request.query_params["token"]
+        else:
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Missing or invalid Authorization header"},
             )
-
-        token = auth_header[7:]  # Strip "Bearer "
         claims = _verify_token(token)
 
         if claims is None:

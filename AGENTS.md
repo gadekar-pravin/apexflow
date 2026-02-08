@@ -12,7 +12,9 @@
 - `config/` and `prompts/` store runtime settings and LLM prompt templates.
 - `alembic/` is the source of truth for schema migrations; `scripts/` has dev helpers.
 - `tests/unit/` contains mock-based pytest suites (no DB needed); `tests/integration/` contains DB-dependent tests.
-- `frontend/` is the React 19 + TypeScript + Vite SPA. Service layer in `frontend/src/services/` calls the v2 backend at `/api/*` via Vite proxy. Components use TanStack Query for server state, Zustand for client state, ReactFlow for DAG visualization, Tailwind CSS + Radix UI for styling.
+- `frontend/` is the React 19 + TypeScript + Vite SPA. Service layer in `frontend/src/services/` calls the v2 backend at `/api/*` via Vite proxy. Components use TanStack Query for server state, Zustand for client state, ReactFlow for DAG visualization, Tailwind CSS + Radix UI for styling. Production builds deploy to Firebase Hosting (site `apexflow-console` in project `apexflow-ai`).
+- `firebase.json` configures Firebase Hosting: rewrites `/api/**`, `/liveness`, `/readiness` to Cloud Run `apexflow-api`, SPA catch-all, and cache headers.
+- `.firebaserc` maps the deploy target `console` → site `apexflow-console` in project `apexflow-ai`.
 - `docs/` holds phase/architecture notes.
 
 ## Architecture
@@ -78,6 +80,12 @@ Registered via `ServiceRegistry` during app lifespan:
 - `cd frontend && npx vitest run` runs the frontend test suite (93 tests across 8 files).
 - Frontend + backend together: run the backend in one terminal, `cd frontend && npm run dev` in another, then open `http://localhost:5173`.
 
+### Firebase Hosting (frontend deployment)
+- `cd frontend && npm run build && cd .. && firebase deploy --only hosting:console` builds and deploys to `https://apexflow-console.web.app`.
+- Firebase Hosting rewrites route `/api/**`, `/liveness`, `/readiness` to Cloud Run `apexflow-api` (same project `apexflow-ai`, same-origin — no CORS needed).
+- Config: `firebase.json` (hosting rules), `.firebaserc` (project + deploy target mapping).
+- Cache policy: `/assets/**` gets 1-year immutable cache (Vite content-hashed filenames); `*.html` gets `no-cache`.
+
 ## Coding Style & Naming Conventions
 - Python 3.12+, 120-char line length, Ruff rules `E`, `F`, `I`, `UP`, `B`, `SIM`.
 - `mypy` is strict with the `pydantic.mypy` plugin enabled.
@@ -120,6 +128,8 @@ Steps (11 total): start pgvector container → wait for DB → lint + typecheck 
 | `DB_POOL_MAX` | Max async connection pool size | `5` |
 | `K_SERVICE` | Auto-set by Cloud Run; triggers production mode | — |
 | `ALLOW_LOCAL_WRITES` | Enable prompt/settings write endpoints | unset (writes disabled) |
+| `CORS_ORIGINS` | Comma-separated allowed origins for CORS | localhost defaults |
+| `VITE_BACKEND_URL` | Override Vite proxy target for frontend dev | `http://localhost:8000` |
 
 ## Configuration & Security Notes
 - Start from `.env.example` and keep secrets out of the repo.

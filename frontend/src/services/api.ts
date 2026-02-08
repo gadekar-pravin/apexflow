@@ -2,6 +2,10 @@
 
 const API_URL = import.meta.env.VITE_API_URL || ""
 
+// SSE connects directly to Cloud Run (Firebase Hosting rewrites don't support streaming).
+// Falls back to API_URL for local dev where Vite proxy handles it.
+const SSE_URL = import.meta.env.VITE_SSE_URL || API_URL
+
 // Auth token provider — set via setAuthTokenProvider() when Firebase is initialized
 let authTokenProvider: (() => Promise<string | null>) | null = null
 
@@ -46,6 +50,10 @@ export async function fetchAPI<T>(
 
 export function getAPIUrl(endpoint: string): string {
   return `${API_URL}${endpoint}`
+}
+
+export function getSSEUrl(endpoint: string): string {
+  return `${SSE_URL}${endpoint}`
 }
 
 export { API_URL }

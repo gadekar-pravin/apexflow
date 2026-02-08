@@ -53,6 +53,10 @@ AUTH_DISABLED=1 uvicorn api:app --reload
 docker build -t apexflow-api:local .
 docker run -p 8080:8080 -e AUTH_DISABLED=1 apexflow-api:local
 
+# Frontend deploy to Firebase Hosting
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
+
 # V1 → V2 migration
 python scripts/migrate.py --source-dir ../apexflow-v1 --dry-run
 python scripts/migrate.py --source-dir ../apexflow-v1 --db-url postgresql://... --user-id default
@@ -268,7 +272,9 @@ git push origin v2.0.0  # triggers CI
 
 - **Project:** `apexflow-ai`
 - **VM:** `alloydb-omni-dev` in `us-central1-a`
-- **Cloud Scheduler:** `vm-auto-stop` stops the VM nightly at 10 PM ET
+- **Cloud Run:** `apexflow-api` in `us-central1` — https://apexflow-api-j56xbd7o2a-uc.a.run.app
+- **Firebase Hosting:** site `apexflow-console` in project `apexflow-ai` — https://apexflow-console.web.app
+- **Cloud Scheduler:** `vm-auto-stop` stops the VM nightly at 11 PM IST; `cloudrun-auto-stop` sets Cloud Run ingress to internal-only at the same time
 - **Cloud Build SA:** `cloudbuild-ci@apexflow-ai.iam.gserviceaccount.com`
 
 ## Frontend
@@ -288,7 +294,17 @@ cd frontend && npm run test   # run vitest tests
 2. Start frontend: `cd frontend && npm run dev` (port 5173)
 3. Open `http://localhost:5173` — Vite proxy forwards `/api/*` to the backend
 
-**Proxy setup:** `vite.config.ts` proxies `/api`, `/liveness`, and `/readiness` to `http://localhost:8000`. The frontend uses relative URLs (no hardcoded backend host).
+**Proxy setup:** `vite.config.ts` proxies `/api`, `/liveness`, and `/readiness` to the backend. Defaults to `http://localhost:8000`; override with `VITE_BACKEND_URL` env var for remote backends.
+
+**Firebase Hosting:** Deployed to site `apexflow-console` in the `apexflow-ai` project (same project as Cloud Run). Firebase Hosting rewrites proxy `/api/**`, `/liveness`, and `/readiness` to the `apexflow-api` Cloud Run service — same-origin, no CORS needed. Config files: `firebase.json` and `.firebaserc` at repo root.
+
+```bash
+# Deploy frontend to production
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
+```
+
+**API integration:** All API calls go through `fetchAPI()` in `services/api.ts`. Auth tokens are attached automatically when a provider is set via `setAuthTokenProvider()`. `getAPIUrl()` is used for non-fetch requests (health checks, EventSource).
 
 **Known limitations (stubbed endpoints):**
 - Document chat (streaming `/rag/ask` endpoint not in v2)
@@ -296,7 +312,6 @@ cd frontend && npm run test   # run vitest tests
 - Keyword search, ripgrep search, document chunks view, indexing status
 - Agent test/save
 - Cron job update (PUT)
-- MCP tools list (replaced by skills with different shape)
 
 ## Environment Variables
 
