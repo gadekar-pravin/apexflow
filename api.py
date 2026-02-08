@@ -116,7 +116,8 @@ if not auth_disabled:
         app.add_middleware(FirebaseAuthMiddleware)
         logger.info("Firebase Auth middleware enabled")
     except Exception as e:
-        logger.warning("Firebase Auth middleware failed to load: %s", e)
+        logger.error("Firebase Auth middleware failed to load: %s", e)
+        raise
 else:
     logger.info("Auth disabled (AUTH_DISABLED=1)")
 

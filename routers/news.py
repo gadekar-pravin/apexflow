@@ -86,6 +86,23 @@ def _validate_url(url: str) -> None:
         raise HTTPException(status_code=400, detail="Could not resolve hostname") from None
 
 
+def _safe_request(method: str, url: str, *, max_redirects: int = 10, **kwargs: Any) -> requests.Response:
+    """SSRF-safe request that validates every redirect target."""
+    kwargs["allow_redirects"] = False
+    for _ in range(max_redirects):
+        resp = requests.request(method, url, **kwargs)
+        if resp.is_redirect or resp.is_permanent_redirect:
+            location = resp.headers.get("Location", "")
+            if not location:
+                break
+            url = urljoin(resp.url, location)
+            _validate_url(url)
+            method = "GET"  # redirects switch to GET
+        else:
+            return resp
+    raise HTTPException(status_code=400, detail="Too many redirects")
+
+
 def get_news_settings() -> dict[str, Any]:
     settings = load_settings()
     if "news" not in settings:
@@ -158,7 +175,7 @@ async def add_source(request: AddSourceTabsRequest) -> dict[str, Any]:
 
     feed_url: str | None = None
     try:
-        response = requests.get(request.url, timeout=5)
+        response = _safe_request("GET", request.url, timeout=5)
         soup = BeautifulSoup(response.text, "html.parser")
 
         rss_link = soup.find("link", type="application/rss+xml") or soup.find("link", type="application/atom+xml")
@@ -338,7 +355,7 @@ async def get_article_content(url: str) -> dict[str, Any]:
 
         if not is_pdf:
             try:
-                head = requests.head(url, allow_redirects=True, timeout=2)
+                head = _safe_request("HEAD", url, timeout=2)
                 if "application/pdf" in head.headers.get("Content-Type", "").lower():
                     is_pdf = True
             except Exception:
@@ -348,7 +365,7 @@ async def get_article_content(url: str) -> dict[str, Any]:
             try:
                 import pymupdf
 
-                response = requests.get(url, timeout=15)
+                response = _safe_request("GET", url, timeout=15)
                 doc = pymupdf.open(stream=response.content, filetype="pdf")
 
                 pdf_title = doc.metadata.get("title", "") if doc.metadata else ""
@@ -436,7 +453,7 @@ async def get_reader_content(url: str) -> dict[str, Any]:
         is_pdf = url.lower().endswith(".pdf") or "arxiv.org/pdf/" in url
         if not is_pdf:
             try:
-                head = requests.head(url, allow_redirects=True, timeout=2)
+                head = _safe_request("HEAD", url, timeout=2)
                 if "application/pdf" in head.headers.get("Content-Type", "").lower():
                     is_pdf = True
             except Exception:
@@ -447,7 +464,7 @@ async def get_reader_content(url: str) -> dict[str, Any]:
                 import pymupdf
                 import pymupdf4llm
 
-                response = requests.get(url, timeout=15)
+                response = _safe_request("GET", url, timeout=15)
                 doc = pymupdf.open(stream=response.content, filetype="pdf")
                 md_text = pymupdf4llm.to_markdown(doc)
                 return {"status": "success", "content": md_text, "url": url}
@@ -463,7 +480,7 @@ async def get_reader_content(url: str) -> dict[str, Any]:
             ),
         }
         try:
-            resp = requests.get(url, headers=headers, timeout=10)
+            resp = _safe_request("GET", url, headers=headers, timeout=10)
             resp.raise_for_status()
             downloaded = resp.text
         except Exception as e:
@@ -495,7 +512,11 @@ async def proxy_content(url: str) -> StreamingResponse:
         r = await asyncio.to_thread(requests.get, url, stream=True, timeout=30, allow_redirects=False)
 
         async def iterfile() -> Any:
-            for chunk in r.iter_content(chunk_size=8192):
+            it = r.iter_content(chunk_size=8192)
+            while True:
+                chunk = await asyncio.to_thread(next, it, b"")
+                if not chunk:
+                    break
                 yield chunk
 
         content_type = r.headers.get("Content-Type", "application/octet-stream")
