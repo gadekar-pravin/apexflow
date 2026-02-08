@@ -73,5 +73,17 @@ def get_remme_extractor() -> Any | None:
     return _remme_extractor
 
 
+def set_remme_store(store: Any) -> None:
+    """Set the RemmeStore singleton (called from api.py lifespan)."""
+    global _remme_store
+    _remme_store = store
+
+
+def set_remme_extractor(extractor: Any) -> None:
+    """Set the RemmeExtractor singleton (called from api.py lifespan)."""
+    global _remme_extractor
+    _remme_extractor = extractor
+
+
 # Global settings state
 settings: dict[str, Any] = {}

@@ -90,6 +90,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         logger.warning("Phase 3 service registration failed (non-fatal): %s", e)
 
+    # 3c. Initialize REMME store (Phase 4b)
+    try:
+        from remme.store import RemmeStore
+        from shared.state import set_remme_store
+
+        set_remme_store(RemmeStore())
+        logger.info("REMME store initialized (Phase 4b)")
+    except Exception as e:
+        logger.warning("REMME initialization failed (non-fatal): %s", e)
+
     # 4. Initialize skill manager
     try:
         from core.skills.manager import skill_manager

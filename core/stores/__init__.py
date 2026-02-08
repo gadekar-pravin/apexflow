@@ -5,7 +5,9 @@ from core.stores.document_search import DocumentSearch
 from core.stores.document_store import DocumentStore
 from core.stores.job_run_store import JobRunStore
 from core.stores.job_store import JobStore
+from core.stores.memory_store import MemoryStore
 from core.stores.notification_store import NotificationStore
+from core.stores.preferences_store import PreferencesStore
 from core.stores.session_store import SessionStore
 from core.stores.state_store import StateStore
 
@@ -15,7 +17,9 @@ __all__ = [
     "DocumentStore",
     "JobRunStore",
     "JobStore",
+    "MemoryStore",
     "NotificationStore",
+    "PreferencesStore",
     "SessionStore",
     "StateStore",
 ]
