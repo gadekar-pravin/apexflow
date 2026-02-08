@@ -177,8 +177,8 @@ class ServiceRegistry:
             return None
         service, _tool_def = entry
 
-        async def _wrapper(**kwargs: Any) -> Any:
-            return await self.route_tool_call(name, kwargs)
+        async def _wrapper(*, ctx: ToolContext | None = None, **kwargs: Any) -> Any:
+            return await self.route_tool_call(name, kwargs, ctx)
 
         return _wrapper
 

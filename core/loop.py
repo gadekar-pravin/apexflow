@@ -20,6 +20,7 @@ from typing import Any
 from agents.base_agent import AgentRunner
 from core.event_bus import event_bus
 from core.service_registry import ServiceRegistry, ToolExecutionError, ToolNotFoundError
+from core.tool_context import ToolContext
 from core.utils import log_error, log_step
 from memory.context import ExecutionContextManager
 
@@ -616,7 +617,11 @@ class AgentLoop4:
 
                 try:
                     # Execute tool via ServiceRegistry (returns raw Python object)
-                    tool_result = await self.service_registry.route_tool_call(tool_name, tool_args)
+                    ctx = ToolContext(
+                        user_id=context.plan_graph.graph.get("session_id", "unknown"),
+                        metadata={"step_id": step_id},
+                    )
+                    tool_result = await self.service_registry.route_tool_call(tool_name, tool_args, ctx)
 
                     # Serialize result to string for agent consumption
                     result_str = str(tool_result)
