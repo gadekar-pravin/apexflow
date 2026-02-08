@@ -221,7 +221,7 @@ git tag v2.0.0          # after merging to main
 git push origin v2.0.0  # triggers CI
 ```
 
-**Steps (9 total):** start pgvector container → wait for DB → lint (ruff) + typecheck (mypy) in parallel → migrate (alembic) → test (pytest) → Docker build (tagged `SHORT_SHA` + `latest`) → push to Artifact Registry → deploy to Cloud Run.
+**Steps (10 total):** start pgvector container → wait for DB → lint (ruff) + typecheck (mypy) in parallel → migrate (alembic) → test (pytest) → Docker build (tagged `SHORT_SHA` + `latest`) → push to Artifact Registry → deploy to Cloud Run → post-deploy smoke test (liveness + readiness + auth enforcement).
 
 **Cloud Run deploy config:** `--allow-unauthenticated` (in-app Firebase auth), `--vpc-connector` for AlloyDB access, `--set-secrets` for DB password/Firebase SA/Gemini key, `--memory=1Gi --cpu=1 --concurrency=80 --max-instances=10`.
 

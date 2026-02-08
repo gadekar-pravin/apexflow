@@ -715,7 +715,14 @@ git tag v2.1.0
 git push origin v2.1.0
 ```
 
-This triggers: lint → typecheck → test (322 tests) → Docker build → push to Artifact Registry → deploy to Cloud Run.
+This triggers: lint → typecheck → test (322 tests) → Docker build → push to Artifact Registry → deploy to Cloud Run → post-deploy smoke test.
+
+The **smoke test** (Step 10) automatically verifies the deployed service after each deploy:
+- `GET /liveness` → 200 (process alive)
+- `GET /readiness` → 200 (DB connected via VPC connector → AlloyDB)
+- `GET /api/runs` → 401 (Firebase auth enforced in production)
+
+It waits up to 60 seconds for the new revision to become ready before checking. If the GCE VM is stopped (e.g., nightly auto-stop), the readiness check will fail — catching real connectivity issues.
 
 Monitor builds:
 
