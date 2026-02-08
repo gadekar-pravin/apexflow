@@ -18,8 +18,10 @@ Health:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -144,16 +146,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 # Create app
 app = FastAPI(
     title="ApexFlow v2",
-    version="2.0.0-phase3",
+    version="2.0.0-phase5",
     lifespan=lifespan,
 )
 
 # --- Middleware ---
 
-# CORS
+# CORS — parse CORS_ORIGINS env var or use local dev defaults
+_cors_env = os.environ.get("CORS_ORIGINS", "")
+_cors_origins = (
+    [o.strip() for o in _cors_env.split(",") if o.strip()]
+    if _cors_env
+    else [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8000",
+    ]
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Tighten in production
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -183,22 +195,48 @@ async def liveness() -> dict[str, str]:
     return {"status": "alive"}
 
 
+_readiness_cache: dict[str, float | str | bool] = {}
+_READINESS_TTL = 5.0  # seconds
+
+
 @app.get("/readiness", response_model=None)
-async def readiness() -> dict[str, str] | JSONResponse:
-    """Returns 200 if DB is reachable, 503 otherwise."""
+async def readiness() -> dict[str, str | bool] | JSONResponse:
+    """Returns 200 if DB is reachable, 503 otherwise. Cached for 5s."""
+    now = time.monotonic()
+    last = float(_readiness_cache.get("ts", 0.0))
+    if now - last < _READINESS_TTL:
+        if _readiness_cache.get("ok"):
+            return {"status": "ready", "cached": True}
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "error": _readiness_cache.get("error", "unknown"), "cached": True},
+        )
+
     try:
         from core.database import get_pool
 
         pool = await get_pool()
         if pool is None:
-            return JSONResponse(status_code=503, content={"status": "not_ready", "reason": "no_pool"})
+            _readiness_cache["ts"] = now
+            _readiness_cache["ok"] = False
+            _readiness_cache["error"] = "no_pool"
+            return JSONResponse(status_code=503, content={"status": "not_ready", "error": "no_pool"})
 
-        async with pool.acquire() as conn:
-            await conn.fetchval("SELECT 1")
+        async with asyncio.timeout(2.0):
+            async with pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
 
-        return {"status": "ready"}
+        _readiness_cache["ts"] = now
+        _readiness_cache["ok"] = True
+        return {"status": "ready", "cached": False}
     except Exception as e:
-        return JSONResponse(status_code=503, content={"status": "not_ready", "reason": str(e)})
+        _readiness_cache["ts"] = now
+        _readiness_cache["ok"] = False
+        _readiness_cache["error"] = type(e).__name__
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "error": type(e).__name__},
+        )
 
 
 # --- Phase 2 Routers ---

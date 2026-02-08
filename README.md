@@ -74,8 +74,13 @@ apexflow/
 │   ├── hubs/base_hub.py       # Async hub adapter
 │   └── engines/evidence_log.py # Evidence event log
 ├── tests/                     # pytest + pytest-asyncio
+│   └── conftest.py            # Shared fixtures (mock_pool, db_pool, clean_tables)
 ├── docs/                      # Phase documentation
-├── scripts/                   # DB init, dev environment scripts
+├── scripts/
+│   ├── init-db.sql            # Database schema (13 tables)
+│   └── migrate.py             # V1 → V2 data migration CLI
+├── Dockerfile                 # Multi-stage production build
+├── .dockerignore
 └── alembic/                   # Database migrations
 ```
 
@@ -126,6 +131,7 @@ Key variables:
 | `DB_USER` | Database user | `apexflow` |
 | `DB_PASSWORD` | Database password | — |
 | `DB_NAME` | Database name | `apexflow` |
+| `CORS_ORIGINS` | Comma-separated allowed origins for CORS | localhost defaults |
 | `DATABASE_URL` | Full connection string (overrides DB_* vars) | — |
 
 ### Database Setup
@@ -145,6 +151,15 @@ AUTH_DISABLED=1 uvicorn api:app --reload
 ```
 
 The API will be available at `http://localhost:8000`. Interactive docs at `/docs`.
+
+### Running with Docker
+
+```bash
+docker build -t apexflow-api:local .
+docker run -p 8080:8080 -e AUTH_DISABLED=1 apexflow-api:local
+```
+
+The API will be available at `http://localhost:8080`.
 
 ### Dev Environment (GCE + AlloyDB Omni)
 
@@ -281,7 +296,7 @@ git tag v2.0.0
 git push origin v2.0.0   # triggers CI
 ```
 
-Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (alembic) → test (pytest).
+Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (alembic) → test (pytest) → Docker build → push to Artifact Registry → deploy to Cloud Run.
 
 ## Roadmap
 
@@ -293,4 +308,4 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 4a — RAG | Done | Document indexing, hybrid search |
 | 4b — REMME | Done | Memory stores, preference hubs, scan engine |
 | 4c — Sandbox | Done | Secure code execution (pydantic-monty) |
-| 5 — Deployment | Planned | Cloud Run, Terraform, monitoring |
+| 5 — Deployment | Done | Docker, Cloud Run CI/CD, CORS hardening, health checks, v1→v2 migration, integration tests |
