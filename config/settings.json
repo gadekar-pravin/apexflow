@@ -1,6 +1,7 @@
 {
   "models": {
     "embedding": "text-embedding-004",
+    "embedding_dim": 768,
     "semantic_chunking": "gemini-2.5-flash-lite",
     "image_captioning": "gemini-2.5-flash-lite",
     "memory_extraction": "gemini-2.5-flash-lite",

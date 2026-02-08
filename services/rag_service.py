@@ -38,11 +38,14 @@ async def _handler(name: str, args: dict[str, Any], ctx: ToolContext | None) -> 
             )
 
         if name == "search_documents":
-            query_emb = await embed_query(args["query"])
+            query = (args.get("query") or "").strip()
+            if not query:
+                raise ToolExecutionError(name, ValueError("Search query must not be blank"))
+            query_emb = await embed_query(query)
             limit = min(max(int(args.get("limit", 5)), 1), 50)
             return await _doc_search.hybrid_search(
                 user_id,
-                args["query"],
+                query,
                 query_emb,
                 limit=limit,
             )

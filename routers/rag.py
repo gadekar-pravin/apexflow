@@ -32,7 +32,7 @@ class IndexRequest(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    query: str
+    query: str = Field(min_length=1)
     limit: int = Field(default=5, ge=1, le=50)
 
 
@@ -60,10 +60,13 @@ async def search_documents(
     request: SearchRequest,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
-    query_emb = await embed_query(request.query)
+    query = request.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Search query must not be blank")
+    query_emb = await embed_query(query)
     results = await _doc_search.hybrid_search(
         user_id,
-        request.query,
+        query,
         query_emb,
         limit=request.limit,
     )
@@ -109,11 +112,13 @@ async def reindex_documents(
         doc = await _doc_store.get(user_id, request.doc_id)
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
-        content = doc.get("content", "")
+        content = (doc.get("content") or "").strip()
         if not content:
             raise HTTPException(status_code=400, detail="Document has no stored content")
         method = doc.get("chunk_method", "rule_based")
         chunks, embeddings = await prepare_chunks(content, method=method)
+        if not chunks:
+            raise HTTPException(status_code=400, detail="Document produced no chunks after processing")
         result = await _doc_store.reindex_document(
             user_id,
             request.doc_id,
@@ -127,11 +132,13 @@ async def reindex_documents(
     stale = await _doc_store.list_stale_documents(user_id, limit=request.limit)
     results = []
     for doc in stale:
-        content = doc.get("content", "")
+        content = (doc.get("content") or "").strip()
         if not content:
             continue
         method = doc.get("chunk_method", "rule_based")
         chunks, embeddings = await prepare_chunks(content, method=method)
+        if not chunks:
+            continue
         result = await _doc_store.reindex_document(
             user_id,
             doc["id"],
