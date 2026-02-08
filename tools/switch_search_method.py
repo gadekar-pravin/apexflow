@@ -135,7 +135,7 @@ async def use_playwright_search(query: str, engine: str) -> list[str]:
                 "mojeek_playwright": "https://www.mojeek.com/search",
             }
 
-            search_url = f"{engine_url_map[engine]}?q={query.replace(' ', '+')}"
+            search_url = f"{engine_url_map[engine]}?q={urllib.parse.quote_plus(query)}"
             logger.info("Navigating to %s", search_url)
             await page.goto(search_url)
             await asyncio.sleep(3)

@@ -132,14 +132,47 @@ def test_phase2_news_router(client: TestClient) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 3+ routers are absent
+# Phase 3 routers are present
 # ---------------------------------------------------------------------------
 
 
-def test_phase3_routers_absent(client: TestClient) -> None:
-    """Phase 3+ routers (/api/runs, /api/chat, /api/rag, /api/remme) should not exist yet."""
+def test_phase3_runs_router(client: TestClient) -> None:
+    """Runs routes are registered."""
     paths = _get_route_paths(client)
-    absent_prefixes = ["/api/runs", "/api/chat", "/api/rag", "/api/remme"]
-    for prefix in absent_prefixes:
-        matching = [p for p in paths if p.startswith(prefix)]
-        assert matching == [], f"Unexpected Phase 3+ route found: {matching}"
+    assert "/api/runs/execute" in paths
+
+
+def test_phase3_chat_router(client: TestClient) -> None:
+    """Chat routes are registered."""
+    paths = _get_route_paths(client)
+    assert "/api/chat/sessions" in paths
+
+
+def test_phase3_rag_router(client: TestClient) -> None:
+    """RAG routes are registered."""
+    paths = _get_route_paths(client)
+    assert "/api/rag/documents" in paths
+
+
+def test_phase3_remme_router(client: TestClient) -> None:
+    """REMME routes are registered."""
+    paths = _get_route_paths(client)
+    assert "/api/remme/memories" in paths
+
+
+def test_phase3_inbox_router(client: TestClient) -> None:
+    """Inbox routes are registered."""
+    paths = _get_route_paths(client)
+    assert "/api/inbox" in paths
+
+
+def test_phase3_cron_router(client: TestClient) -> None:
+    """Cron routes are registered."""
+    paths = _get_route_paths(client)
+    assert "/api/cron/jobs" in paths
+
+
+def test_phase3_metrics_router(client: TestClient) -> None:
+    """Metrics routes are registered."""
+    paths = _get_route_paths(client)
+    assert "/api/metrics/dashboard" in paths

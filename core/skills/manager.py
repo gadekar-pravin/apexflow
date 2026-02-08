@@ -21,6 +21,7 @@ class SkillManager:
     registry_file: Path
     skill_classes: dict[str, type[BaseSkill]]
     loaded_skills: dict[str, SkillMetadata]
+    _registry: dict[str, dict[str, Any]]
 
     def __new__(cls) -> SkillManager:
         if cls._instance is None:
@@ -29,17 +30,19 @@ class SkillManager:
             cls._instance.registry_file = Path(__file__).parent / "registry.json"
             cls._instance.skill_classes = {}
             cls._instance.loaded_skills = {}
+            cls._instance._registry = {}
         return cls._instance
 
     def initialize(self) -> None:
         """Startup: Scan library and rebuild registry automatically"""
-        self._ensure_paths()
         self.scan_and_register()
 
-    def _ensure_paths(self) -> None:
-        self.skills_dir.mkdir(parents=True, exist_ok=True)
-        if not self.registry_file.exists():
-            self.registry_file.write_text("{}")
+    def _save_registry(self) -> None:
+        """Persist registry to disk if writable (best-effort)."""
+        try:
+            self.registry_file.write_text(json.dumps(self._registry, indent=2))
+        except OSError:
+            logger.debug("Registry file not writable (read-only FS), using in-memory only")
 
     def scan_and_register(self) -> None:
         """
@@ -65,7 +68,7 @@ class SkillManager:
                             meta = temp_instance.get_metadata()
 
                             registry[meta.name] = {
-                                "path": str(item),
+                                "path": str(item.relative_to(self.skills_dir.parent.parent.parent)),
                                 "version": meta.version,
                                 "description": meta.description,
                                 "intent_triggers": meta.intent_triggers,
@@ -76,7 +79,8 @@ class SkillManager:
                     except Exception as e:
                         logger.error("Failed to load skill at %s: %s", item, e)
 
-        self.registry_file.write_text(json.dumps(registry, indent=2))
+        self._registry = registry
+        self._save_registry()
         logger.info("Skill Registry Updated. %d skills available.", len(registry))
 
     def _load_skill_class(self, file_path: Path) -> type[BaseSkill] | None:
@@ -97,12 +101,13 @@ class SkillManager:
         if skill_name in self.skill_classes:
             return self.skill_classes[skill_name]()
 
-        registry: dict[str, Any] = json.loads(self.registry_file.read_text())
-        if skill_name not in registry:
+        if skill_name not in self._registry:
             return None
 
-        info = registry[skill_name]
-        path = Path(info["path"]) / "skill.py"
+        info = self._registry[skill_name]
+        # Resolve relative path against project root
+        root = self.skills_dir.parent.parent.parent
+        path = root / info["path"] / "skill.py"
 
         klass = self._load_skill_class(path)
         if klass:
@@ -110,12 +115,15 @@ class SkillManager:
             return klass()
         return None
 
+    def get_registry(self) -> dict[str, dict[str, Any]]:
+        """Return the in-memory registry (no filesystem dependency)."""
+        return self._registry
+
     def match_intent(self, user_query: str) -> str | None:
         """Simple keyword matching with word boundaries"""
-        registry: dict[str, Any] = json.loads(self.registry_file.read_text())
         user_query = user_query.lower()
 
-        for name, info in registry.items():
+        for name, info in self._registry.items():
             for trigger in info.get("intent_triggers", []):
                 pattern = r"\b" + re.escape(trigger.lower()) + r"\b"
                 if re.search(pattern, user_query):

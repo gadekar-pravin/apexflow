@@ -100,37 +100,39 @@ async def web_tool_playwright(url: str, max_total_wait: int = 15) -> dict[str, s
     try:
         async with _async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-
-            await page.goto(url, wait_until="domcontentloaded", timeout=15000)
-
             try:
-                await page.wait_for_function(
-                    """() => {
-                        const body = document.querySelector('body');
-                        return body && (body.innerText || "").length > 1000;
-                    }""",
-                    timeout=15000,
-                )
-            except Exception as e:
-                logger.warning("Generic wait failed: %s", e)
+                page = await browser.new_page()
 
-            await asyncio.sleep(5)
+                await page.goto(url, wait_until="domcontentloaded", timeout=15000)
 
-            try:
-                await page.evaluate(
-                    """() => {
-                    window.stop();
-                    document.querySelectorAll('script').forEach(s => s.remove());
-                }"""
-                )
-            except Exception as e:
-                logger.warning("JS stop failed: %s", e)
+                try:
+                    await page.wait_for_function(
+                        """() => {
+                            const body = document.querySelector('body');
+                            return body && (body.innerText || "").length > 1000;
+                        }""",
+                        timeout=15000,
+                    )
+                except Exception as e:
+                    logger.warning("Generic wait failed: %s", e)
 
-            html = await page.content()
-            visible_text = await page.inner_text("body")
-            title = await page.title()
-            await browser.close()
+                await asyncio.sleep(5)
+
+                try:
+                    await page.evaluate(
+                        """() => {
+                        window.stop();
+                        document.querySelectorAll('script').forEach(s => s.remove());
+                    }"""
+                    )
+                except Exception as e:
+                    logger.warning("JS stop failed: %s", e)
+
+                html = await page.content()
+                visible_text = await page.inner_text("body")
+                title = await page.title()
+            finally:
+                await browser.close()
 
             try:
                 main_text: str = await asyncio.to_thread(
@@ -190,7 +192,39 @@ async def web_tool_playwright(url: str, max_total_wait: int = 15) -> dict[str, s
     return result
 
 
-async def smart_web_extract(url: str, timeout: int = 5) -> dict[str, str]:
+_MAX_REDIRECTS = 10
+
+
+async def _fetch_with_ssrf_check(
+    url: str,
+    headers: dict[str, str],
+    timeout: int,
+    ssrf_validator: Any,
+) -> httpx.Response:
+    """Follow redirects manually, re-validating each hop against SSRF rules."""
+    ssrf_validator(url)  # validate the initial URL too
+    response: httpx.Response | None = None
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+        for _ in range(_MAX_REDIRECTS):
+            response = await client.get(url, headers=headers)
+            if response.is_redirect:
+                location = response.headers.get("location", "")
+                if not location:
+                    break
+                url = str(response.url.join(location))
+                ssrf_validator(url)  # raises ValueError if blocked
+                continue
+            return response
+    if response is None:
+        raise ValueError("No response received")
+    raise ValueError(f"Too many redirects ({_MAX_REDIRECTS})")
+
+
+async def smart_web_extract(
+    url: str,
+    timeout: int = 5,
+    ssrf_validator: Any | None = None,
+) -> dict[str, str]:
     headers = get_random_headers()
 
     try:
@@ -198,9 +232,14 @@ async def smart_web_extract(url: str, timeout: int = 5) -> dict[str, str]:
             logger.info("Detected difficult site (%s) -> skipping fast scrape", url)
             return await web_tool_playwright(url)
 
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            response = await client.get(url, headers=headers)
-            html = response.content.decode("utf-8", errors="replace")
+        if ssrf_validator:
+            # Manual redirect following with SSRF re-validation
+            response = await _fetch_with_ssrf_check(url, headers, timeout, ssrf_validator)
+        else:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+                response = await client.get(url, headers=headers)
+
+        html = response.content.decode("utf-8", errors="replace")
 
         doc = Document(html)
         main_html = doc.summary()

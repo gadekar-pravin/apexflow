@@ -108,3 +108,8 @@ class FirebaseAuthMiddleware(BaseHTTPMiddleware):
         # Attach user_id to request state
         request.state.user_id = claims.get("uid", claims.get("sub", "unknown"))
         return await call_next(request)
+
+
+async def get_user_id(request: Request) -> str:
+    """FastAPI dependency: extract user_id set by auth middleware."""
+    return getattr(request.state, "user_id", "dev-user")

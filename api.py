@@ -2,13 +2,14 @@
 
 Lifespan:
 - Init DB pool
-- Create empty ServiceRegistry
+- Create ServiceRegistry + register services
 - Optionally init Firebase Admin
 - Shutdown: close DB pool
 
 Middleware: CORS + Firebase Auth
 
-Routers: ONLY stream, settings, skills, prompts, news (Phase 2)
+Routers: Phase 2 (stream, settings, skills, prompts, news)
+       + Phase 3 (runs, chat, rag, remme, inbox, cron, metrics)
 
 Health:
 - GET /liveness  → always 200
@@ -27,8 +28,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from core.logging_config import setup_logging
+
+# Phase 3 routers
+from routers.chat import router as chat_router
+from routers.cron import router as cron_router
+from routers.inbox import router as inbox_router
+from routers.metrics import router as metrics_router
 from routers.news import router as news_router
 from routers.prompts import router as prompts_router
+from routers.rag import router as rag_router
+from routers.remme import router as remme_router
+from routers.runs import router as runs_router
 from routers.settings import router as settings_router
 from routers.skills import router as skills_router
 from routers.stream import router as stream_router
@@ -58,14 +68,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         logger.warning("Database pool init failed (non-fatal for Phase 2): %s", e)
 
-    # 3. Create empty ServiceRegistry
+    # 3. Create ServiceRegistry and register Phase 3 services
     from core.service_registry import ServiceRegistry
     from shared.state import set_service_registry
 
     registry = ServiceRegistry()
     await registry.initialize()
     set_service_registry(registry)
-    logger.info("ServiceRegistry initialized (empty)")
+    logger.info("ServiceRegistry initialized")
+
+    # 3b. Register Phase 3 services
+    try:
+        from services.browser_service import create_browser_service
+        from services.rag_service import create_rag_service
+        from services.sandbox_service import create_sandbox_service
+
+        registry.register_service(create_browser_service())
+        registry.register_service(create_rag_service())
+        registry.register_service(create_sandbox_service())
+        logger.info("Phase 3 services registered (browser, rag, sandbox)")
+    except Exception as e:
+        logger.warning("Phase 3 service registration failed (non-fatal): %s", e)
 
     # 4. Initialize skill manager
     try:
@@ -76,10 +99,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         logger.warning("SkillManager init failed (non-fatal): %s", e)
 
+    # 5. Initialize scheduler (loads DB jobs + starts APScheduler)
+    try:
+        from core.scheduler import scheduler_service
+
+        await scheduler_service.initialize()
+        logger.info("Scheduler initialized")
+    except Exception as e:
+        logger.warning("Scheduler init failed (non-fatal): %s", e)
+
     yield
 
     # --- Shutdown ---
     logger.info("ApexFlow v2 shutting down...")
+
+    try:
+        from core.scheduler import scheduler_service
+
+        if scheduler_service.initialized:
+            scheduler_service.scheduler.shutdown(wait=False)
+            logger.info("Scheduler shut down")
+    except Exception as e:
+        logger.warning("Scheduler shutdown failed: %s", e)
+
     await registry.shutdown()
 
     try:
@@ -92,7 +134,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 # Create app
 app = FastAPI(
     title="ApexFlow v2",
-    version="2.0.0-phase2",
+    version="2.0.0-phase3",
     lifespan=lifespan,
 )
 
@@ -156,3 +198,13 @@ app.include_router(settings_router, prefix="/api")
 app.include_router(skills_router, prefix="/api")
 app.include_router(prompts_router, prefix="/api")
 app.include_router(news_router, prefix="/api")
+
+# --- Phase 3 Routers ---
+
+app.include_router(runs_router, prefix="/api")
+app.include_router(chat_router, prefix="/api")
+app.include_router(rag_router, prefix="/api")
+app.include_router(remme_router, prefix="/api")
+app.include_router(inbox_router, prefix="/api")
+app.include_router(cron_router, prefix="/api")
+app.include_router(metrics_router, prefix="/api")

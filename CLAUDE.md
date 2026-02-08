@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ApexFlow v2 is a web-first rewrite of the desktop-first ApexFlow v1. It's an intelligent workflow automation platform powered by Google Gemini. The backend is FastAPI + asyncpg + AlloyDB (Google's PostgreSQL variant with ScaNN vector indexes).
 
-**Current state:** Phases 1-2 are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phases 3-5 are documented in `docs/` but not yet implemented.
+**Current state:** Phases 1-3 are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phases 4-5 are documented in `docs/` but not yet implemented.
 
 ## Common Commands
 
@@ -78,6 +78,29 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **Resilience:** `CircuitBreaker` (`core/circuit_breaker.py`) with CLOSED/OPEN/HALF_OPEN states (threshold=5, recovery=60s). `ToolContext` (`core/tool_context.py`) carries user_id, trace_id, and monotonic deadline through tool invocations.
 
+### Data Access Layer (Phase 3)
+
+**Stores** (`core/stores/`): Stateless data-access objects — every method takes `user_id` first, uses `get_pool()` for asyncpg connections. No monolithic `save()` — uses targeted partial updates (`update_status`, `update_graph`, `update_cost`).
+
+- `SessionStore` — CRUD + SQL aggregation for dashboard metrics (`COUNT FILTER`, `SUM`, `GROUP BY`). `mark_scanned()` uses an atomic transaction across `sessions` + `scanned_runs`. Method `list_sessions()` (not `list()`, to avoid shadowing the builtin type).
+- `JobStore` / `JobRunStore` — Job CRUD and execution dedup via `INSERT ON CONFLICT DO NOTHING`.
+- `NotificationStore` — Notifications with UUID generation on create.
+- `ChatStore` — Append-only messages with transaction wrapping (insert message + update `session.updated_at`).
+- `StateStore` — User-scoped key-value pairs (`system_state` table) with JSONB UPSERT.
+
+**Services** (`services/`): Registered via `ServiceRegistry` during app lifespan.
+
+- `BrowserService` — `web_search` and `web_extract_text` tools with SSRF protection (DNS resolution against private IP ranges).
+- `RagService` / `SandboxService` — Stubs raising `ToolExecutionError` (Phase 4a/4c).
+
+**Core ports from v1:**
+
+- `core/scheduler.py` — APScheduler with DB-backed job dedup via `JobRunStore.try_claim()`. Sends notifications on completion/failure.
+- `core/persistence.py` — State snapshots via `StateStore` instead of filesystem.
+- `core/metrics_aggregator.py` — SQL aggregation (replaces filesystem session walk) with 5-min cache via `StateStore`.
+
+**Phase 3 routers:** `runs`, `chat`, `rag`, `remme`, `inbox`, `cron`, `metrics` — all use `Depends(get_user_id)` and are mounted at `/api` prefix.
+
 ### CI Pipeline
 
 Google Cloud Build (`cloudbuild.yaml`), not GitHub Actions. Trigger fires on **tag pushes** matching `v*` (e.g. `v2.0.0`, `v2.1.0-rc1`). This prevents untrusted fork PRs from executing CI on the GCP project.
@@ -92,13 +115,14 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 
 ### Project Layout
 
-- `core/` — Database pool, execution engine (`loop.py`), ServiceRegistry, Gemini client, skills framework, circuit breaker, event bus, auth middleware
+- `core/` — Database pool, execution engine (`loop.py`), ServiceRegistry, Gemini client, skills framework, circuit breaker, event bus, auth middleware, scheduler, persistence, metrics aggregator
+- `core/stores/` — Stateless async data-access objects (SessionStore, JobStore, JobRunStore, NotificationStore, ChatStore, StateStore)
 - `agents/` — Agent runner (`base_agent.py`) and agent implementations
-- `memory/` — Session memory context (`context.py`) and REMME indexing
+- `memory/` — Session memory context (`context.py`) with DB-backed persistence via SessionStore
 - `remme/` — Memory management system (hubs, engines, sources, extractors)
 - `shared/` — Global state container (`state.py`) — holds ServiceRegistry, RemmeStore, active loops
-- `services/` — Business logic layer
-- `routers/` — FastAPI route handlers (`stream`, `settings`, `skills`, `prompts`, `news`)
+- `services/` — Service layer (BrowserService, RAG stub, Sandbox stub) registered via ServiceRegistry
+- `routers/` — FastAPI route handlers: Phase 2 (`stream`, `settings`, `skills`, `prompts`, `news`) + Phase 3 (`runs`, `chat`, `rag`, `remme`, `inbox`, `cron`, `metrics`)
 - `tools/` — Agent tools (`web_tools_async.py`, `switch_search_method.py`) and code sandbox
 - `config/` — Settings loader, `agent_config.yaml`, `models.json`, `profiles.yaml`, `settings.defaults.json`
 - `prompts/` — Prompt templates (planner, coder, thinker, retriever, etc.)
@@ -111,6 +135,7 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 - **Primary keys:** TEXT type, generated in application layer
 - **Async:** asyncpg for all DB access in application code; psycopg2 only for Alembic migrations
 - **Schema:** CHECK constraints for status/role enums, JSONB for schemaless fields, NUMERIC(10,6) for monetary values
+- **Stores:** Stateless classes in `core/stores/` — every method takes `user_id` as first arg, uses `get_pool()`, no filesystem I/O. Prefer partial updates over monolithic saves.
 - **Tool routing:** All tool calls go through `ServiceRegistry.route_tool_call()` with a `ToolContext` carrying user/trace/deadline
 - **Event-driven:** `EventBus` singleton for internal pub-sub; SSE for client streaming
 
