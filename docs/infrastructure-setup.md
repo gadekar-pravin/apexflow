@@ -1112,6 +1112,55 @@ The backend (`core/auth.py`) verifies Firebase JWTs. Key behaviors:
 - `AUTH_DISABLED=1` bypasses auth locally; fails startup if set on Cloud Run
 - `ALLOWED_EMAILS` env var (comma-separated) restricts access to listed emails (returns 403 Forbidden); when unset, all authenticated users are allowed
 
+### 23h. Managing the email allowlist
+
+The `ALLOWED_EMAILS` env var controls which Google accounts can use the application. Comparison is case-insensitive. Changes take effect on the next Cloud Run cold start (or force a new revision with `gcloud run deploy`).
+
+**Add or update authorized users:**
+
+```bash
+gcloud run services update apexflow-api \
+  --region=$REGION \
+  --update-env-vars="ALLOWED_EMAILS=user1@gmail.com,user2@company.com" \
+  --project=$PROJECT_ID
+```
+
+**Add a user to the existing list** — include all current emails plus the new one:
+
+```bash
+gcloud run services update apexflow-api \
+  --region=$REGION \
+  --update-env-vars="ALLOWED_EMAILS=existing@gmail.com,newuser@gmail.com" \
+  --project=$PROJECT_ID
+```
+
+**Remove a user** — rewrite the list without their email:
+
+```bash
+gcloud run services update apexflow-api \
+  --region=$REGION \
+  --update-env-vars="ALLOWED_EMAILS=remaining@gmail.com" \
+  --project=$PROJECT_ID
+```
+
+**Remove the allowlist entirely (open access):**
+
+```bash
+gcloud run services update apexflow-api \
+  --region=$REGION \
+  --remove-env-vars=ALLOWED_EMAILS \
+  --project=$PROJECT_ID
+```
+
+**Verify current setting:**
+
+```bash
+gcloud run services describe apexflow-api \
+  --region=$REGION \
+  --format='value(spec.template.spec.containers[0].env)' \
+  --project=$PROJECT_ID | tr ',' '\n' | grep ALLOWED
+```
+
 ---
 
 ## Appendix: Complete Resource Inventory

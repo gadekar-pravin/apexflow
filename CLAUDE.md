@@ -57,6 +57,13 @@ docker run -p 8080:8080 -e AUTH_DISABLED=1 apexflow-api:local
 cd frontend && npm run build && cd ..
 firebase deploy --only hosting:console
 
+# Email allowlist — manage authorized users on Cloud Run
+gcloud run services update apexflow-api --region=us-central1 \
+  --update-env-vars="ALLOWED_EMAILS=user1@gmail.com,user2@gmail.com" --project=apexflow-ai
+# Remove allowlist (open access to any authenticated user)
+gcloud run services update apexflow-api --region=us-central1 \
+  --remove-env-vars=ALLOWED_EMAILS --project=apexflow-ai
+
 # V1 → V2 migration
 python scripts/migrate.py --source-dir ../apexflow-v1 --dry-run
 python scripts/migrate.py --source-dir ../apexflow-v1 --db-url postgresql://... --user-id default
