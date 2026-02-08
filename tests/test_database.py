@@ -31,7 +31,8 @@ def test_connection_string_cloud_run() -> None:
 def test_connection_string_local_defaults() -> None:
     """Local dev uses env vars with localhost fallback."""
     clean_env = {
-        k: v for k, v in os.environ.items()
+        k: v
+        for k, v in os.environ.items()
         if k not in ("DATABASE_URL", "K_SERVICE", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_PORT", "DB_NAME")
     }
     with patch.dict(os.environ, clean_env, clear=True):
@@ -43,10 +44,7 @@ def test_connection_string_local_defaults() -> None:
 def test_connection_string_custom_host() -> None:
     """DB_HOST overrides localhost."""
     env = {"DB_HOST": "10.128.0.5"}
-    clean = {
-        k: v for k, v in os.environ.items()
-        if k not in ("DATABASE_URL", "K_SERVICE")
-    }
+    clean = {k: v for k, v in os.environ.items() if k not in ("DATABASE_URL", "K_SERVICE")}
     clean.update(env)
     with patch.dict(os.environ, clean, clear=True):
         url = DatabaseConfig.get_connection_string()

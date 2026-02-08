@@ -44,6 +44,9 @@ htmlcov/
 # ruff
 .ruff_cache/
 
+# Generated artifacts
+core/skills/registry.json
+
 # Logs
 *.log
 logs/

@@ -1,0 +1,19 @@
+{
+  "defaults": {
+    "text_generation": "gemini",
+    "embedding": "gemini-embedding"
+  },
+  "models": {
+    "gemini": {
+      "type": "gemini",
+      "model": "gemini-2.5-flash-lite",
+      "api_key_env": "GEMINI_API_KEY"
+    },
+    "gemini-embedding": {
+      "type": "gemini",
+      "model": "text-embedding-004",
+      "embedding_dimension": 768,
+      "api_key_env": "GEMINI_API_KEY"
+    }
+  }
+}
