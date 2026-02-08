@@ -55,16 +55,16 @@ def main() -> None:
         inputs: dict[str, object] = dict(raw_inputs) if isinstance(raw_inputs, dict) else {}
         raw_ext = init_msg.get("external_names")
         external_names: list[str] = list(raw_ext) if isinstance(raw_ext, list) else []
-        raw_steps = init_msg.get("max_steps")
-        if isinstance(raw_steps, int | float):
-            max_steps = int(raw_steps)
-        elif isinstance(raw_steps, str):
+        raw_calls = init_msg.get("max_external_calls")
+        if isinstance(raw_calls, int | float):
+            max_external_calls = int(raw_calls)
+        elif isinstance(raw_calls, str):
             try:
-                max_steps = int(raw_steps)
+                max_external_calls = int(raw_calls)
             except ValueError:
-                max_steps = 100_000
+                max_external_calls = 100_000
         else:
-            max_steps = 100_000
+            max_external_calls = 100_000
         raw_mem = init_msg.get("max_memory_mb")
         if isinstance(raw_mem, int | float):
             max_memory_mb = int(raw_mem)
@@ -87,15 +87,15 @@ def main() -> None:
         )
 
         result = monty.start(inputs=inputs) if inputs else monty.start()
-        steps = 0
+        external_calls = 0
 
         while isinstance(result, pydantic_monty.MontySnapshot):
-            if steps >= max_steps:
+            if external_calls >= max_external_calls:
                 _send(
                     {
                         "type": "error",
-                        "error": f"Step limit exceeded ({max_steps})",
-                        "error_type": "StepLimitExceeded",
+                        "error": f"External call limit exceeded ({max_external_calls})",
+                        "error_type": "ExternalCallLimitExceeded",
                     }
                 )
                 return
@@ -120,7 +120,7 @@ def main() -> None:
                 _send({"type": "error", "error": err, "error_type": "ProtocolError"})
                 return
 
-            steps += 1
+            external_calls += 1
 
         # MontyComplete
         _send({"type": "done", "output": result.output})

@@ -105,7 +105,7 @@ async def test_dos_protection(code: str) -> None:
     ctx = ToolContext(user_id="test-user")
     with (
         patch("tools.monty_sandbox.log_security_event", new_callable=AsyncMock),
-        patch("config.sandbox_config.DEFAULT_TIMEOUT_SECONDS", 5),
+        patch("tools.monty_sandbox.DEFAULT_TIMEOUT_SECONDS", 5),
     ):
         result = await run_user_code(code, None, ctx)
     assert result["status"] == "error", f"Expected error for DoS: {code}"

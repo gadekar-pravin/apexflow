@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 # --- Resource limits ---
 DEFAULT_TIMEOUT_SECONDS: int = 30
-MAX_STEPS: int = 100_000
+MAX_EXTERNAL_CALLS: int = 100_000  # Bounds external tool invocations, not Python execution steps
 MAX_OUTPUT_SIZE: int = 1_048_576  # 1 MB
 MAX_MEMORY_MB: int = 256
 MAX_EXTERNAL_RESPONSE_SIZE: int = 102_400  # 100 KB

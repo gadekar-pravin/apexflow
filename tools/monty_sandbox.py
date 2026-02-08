@@ -17,10 +17,10 @@ from typing import Any
 
 from config.sandbox_config import (
     DEFAULT_TIMEOUT_SECONDS,
+    MAX_EXTERNAL_CALLS,
     MAX_EXTERNAL_RESPONSE_SIZE,
     MAX_MEMORY_MB,
     MAX_OUTPUT_SIZE,
-    MAX_STEPS,
     get_sandbox_tools,
 )
 from core.tool_context import ToolContext
@@ -193,16 +193,16 @@ async def run_user_code(
         return result
     except TimeoutError:
         proc.kill()
-        await proc.wait()
         await log_security_event(ctx.user_id, "sandbox_timeout", code, {"timeout": timeout}, ctx)
         return {"status": "error", "error": f"Execution timed out after {timeout}s"}
     except Exception as exc:
         proc.kill()
-        await proc.wait()
         await log_security_event(
             ctx.user_id, "sandbox_error", code, {"error": str(exc), "error_type": type(exc).__name__}, ctx
         )
         return {"status": "error", "error": f"Sandbox error: {exc}"}
+    finally:
+        await proc.wait()
 
 
 async def _ipc_loop(
@@ -225,7 +225,7 @@ async def _ipc_loop(
                 "code": code,
                 "inputs": {},
                 "external_names": external_names,
-                "max_steps": MAX_STEPS,
+                "max_external_calls": MAX_EXTERNAL_CALLS,
                 "max_memory_mb": MAX_MEMORY_MB,
             }
         )
