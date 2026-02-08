@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ApexFlow v2 is a web-first rewrite of the desktop-first ApexFlow v1. It's an intelligent workflow automation platform powered by Google Gemini. The backend is FastAPI + asyncpg + AlloyDB (Google's PostgreSQL variant with ScaNN vector indexes).
 
-**Current state:** Phases 1-3 and 4a are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phases 4b-5 are documented in `docs/` but not yet implemented.
+**Current state:** Phases 1-4b are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phases 4c-5 are documented in `docs/` but not yet implemented.
 
 ## Common Commands
 
@@ -89,6 +89,8 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 - `StateStore` — User-scoped key-value pairs (`system_state` table) with JSONB UPSERT.
 - `DocumentStore` — Document CRUD with SHA256 content-hash dedup (`INSERT ... ON CONFLICT DO UPDATE` with `xmax = 0` trick), version-aware ingestion skip/re-index, and batch chunk insertion via `executemany`. Cascading delete via `ON DELETE CASCADE`.
 - `DocumentSearch` — Hybrid search using Reciprocal Rank Fusion (RRF): vector cosine similarity CTE + full-text `ts_rank` CTE, `FULL OUTER JOIN`, per-document dedup via `DISTINCT ON`. Returns `rrf_score`, `vector_score`, `text_score`.
+- `MemoryStore` — CRUD + vector cosine search on `memories` table. `add()` stores text + embedding + category, `search()` returns top-k by `1 - (embedding <=> query)` with optional `min_similarity` threshold, `update_text()` re-embeds. Tracks `embedding_model` per row.
+- `PreferencesStore` — JSONB access on `user_preferences` table. Five hub columns (`preferences`, `operating_ctx`, `soft_identity`, `evidence_log`, `staging_queue`) mapped via a hardcoded allowlist (prevents SQL injection). `merge_hub_data()` uses atomic UPSERT with `COALESCE(col, '{}') || $2::jsonb`. `save_hub_data()` supports optional optimistic locking via `expected_updated_at`.
 
 **Services** (`services/`): Registered via `ServiceRegistry` during app lifespan.
 
@@ -125,6 +127,34 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 - `DELETE /api/rag/documents/{id}` — delete (cascades to chunks)
 - `POST /api/rag/reindex` — reindex specific doc or all stale docs (skips whitespace-only content and empty chunk results to prevent data-loss)
 
+### REMME Memory System (Phase 4b)
+
+**Stores:** `MemoryStore` (`core/stores/memory_store.py`) provides CRUD + vector cosine search on `memories` table. `PreferencesStore` (`core/stores/preferences_store.py`) provides JSONB access on `user_preferences` table with atomic merge via `COALESCE || $2::jsonb` UPSERT.
+
+**Hub adapter:** `BaseHub` (`remme/hubs/base_hub.py`) — async adapter pattern: `load(user_id)` reads JSONB from DB into `_data` dict, sync `update()`/`get()` for in-memory access, `commit(user_id)` writes back via `merge_hub_data`. `commit_partial(user_id, keys)` writes only specified keys.
+
+**Staging + Evidence:** `StagingQueue` (`remme/staging.py`) — in-memory queue with async `load()`/`save()` via `PreferencesStore.get_staging()`/`save_staging()`. `EvidenceLog` (`remme/engines/evidence_log.py`) — same pattern via `get_evidence()`/`save_evidence()`.
+
+**Facade:** `RemmeStore` (`remme/store.py`) — high-level facade wrapping `MemoryStore` + `PreferencesStore` + `SessionStore`. `add()` auto-generates embeddings via `remme.utils.get_embedding(text, "RETRIEVAL_DOCUMENT")`. `search()` embeds the query with `"RETRIEVAL_QUERY"` then delegates to `MemoryStore.search()`. Scan tracking delegates to `SessionStore.mark_scanned()`.
+
+**Engine:** `RemmeEngine` (`remme/engine.py`) — orchestrates the scan cycle: get unscanned sessions → load staging + evidence → for each session: extract via `RemmeExtractor.extract()`, add memories, stage preferences, log evidence, mark scanned → commit staging + evidence.
+
+**Initialization:** `api.py` lifespan step 3c creates `RemmeStore()` and registers it via `set_remme_store()` in `shared/state.py`.
+
+**Migration:** `alembic/versions/004_add_memory_embedding_model.py` — adds `embedding_model TEXT DEFAULT 'text-embedding-004'` to `memories` table.
+
+**REMME endpoints:**
+- `GET /api/remme/memories` — list all memories for the user
+- `POST /api/remme/memories` — add a memory (auto-embeds text)
+- `DELETE /api/remme/memories/{id}` — delete a memory
+- `POST /api/remme/memories/search` — semantic search (query + limit)
+- `POST /api/remme/scan/smart` — run full scan cycle via `RemmeEngine`
+- `GET /api/remme/scan/unscanned` — list unscanned sessions
+- `GET /api/remme/profile` — get cached user profile
+- `POST /api/remme/profile/refresh` — regenerate profile from memories
+- `GET /api/remme/preferences` — get user preferences hub data
+- `GET /api/remme/staging/status` — get staging queue status
+
 ### CI Pipeline
 
 Google Cloud Build (`cloudbuild.yaml`), not GitHub Actions. Trigger fires on **tag pushes** matching `v*` (e.g. `v2.0.0`, `v2.1.0-rc1`). This prevents untrusted fork PRs from executing CI on the GCP project.
@@ -140,10 +170,10 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 ### Project Layout
 
 - `core/` — Database pool, execution engine (`loop.py`), ServiceRegistry, Gemini client, skills framework, circuit breaker, event bus, auth middleware, scheduler, persistence, metrics aggregator
-- `core/stores/` — Stateless async data-access objects (SessionStore, JobStore, JobRunStore, NotificationStore, ChatStore, StateStore, DocumentStore, DocumentSearch)
+- `core/stores/` — Stateless async data-access objects (SessionStore, JobStore, JobRunStore, NotificationStore, ChatStore, StateStore, DocumentStore, DocumentSearch, MemoryStore, PreferencesStore)
 - `agents/` — Agent runner (`base_agent.py`) and agent implementations
 - `memory/` — Session memory context (`context.py`) with DB-backed persistence via SessionStore
-- `remme/` — Memory management system (hubs, engines, sources, extractors)
+- `remme/` — Memory management system: `RemmeStore` facade (`store.py`), `RemmeEngine` scan orchestrator (`engine.py`), `BaseHub` adapter (`hubs/base_hub.py`), `StagingQueue` (`staging.py`), `EvidenceLog` (`engines/evidence_log.py`), `RemmeExtractor` (`extractor.py`), embedding utils (`utils.py`)
 - `shared/` — Global state container (`state.py`) — holds ServiceRegistry, RemmeStore, active loops
 - `core/rag/` — RAG pipeline: chunker (`chunker.py`), config (`config.py`, loads embedding settings from `settings.json`), ingestion pipeline (`ingestion.py`)
 - `services/` — Service layer (BrowserService, RagService, Sandbox stub) registered via ServiceRegistry
