@@ -129,7 +129,7 @@ describe('settingsService', () => {
 
   describe('getMCPTools', () => {
     it('fetches skills list from v2 endpoint', async () => {
-      const tools = { tools: [{ name: 'tool1', description: 'desc' }] }
+      const tools = [{ name: 'tool1', description: 'desc' }]
       mockFetchAPI.mockResolvedValueOnce(tools)
 
       const result = await settingsService.getMCPTools()

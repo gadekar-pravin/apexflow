@@ -10,6 +10,16 @@ import type { Settings } from "@/types"
 import { useState, useEffect } from "react"
 import { cn } from "@/utils/utils"
 
+function safeInt(val: string, fallback: number): number {
+  const n = parseInt(val, 10)
+  return Number.isNaN(n) ? fallback : n
+}
+
+function safeFloat(val: string, fallback: number): number {
+  const n = parseFloat(val)
+  return Number.isNaN(n) ? fallback : n
+}
+
 const themeOptions = [
   { value: "system" as const, label: "System", icon: Monitor },
   { value: "light" as const, label: "Light", icon: Sun },
@@ -188,7 +198,7 @@ export function SettingsPage() {
                     type="number"
                     value={localSettings.agent.max_steps}
                     onChange={(e) =>
-                      updateLocalSetting("agent", "max_steps", parseInt(e.target.value))
+                      updateLocalSetting("agent", "max_steps", safeInt(e.target.value, localSettings.agent.max_steps))
                     }
                     className="h-9"
                   />
@@ -202,7 +212,7 @@ export function SettingsPage() {
                       updateLocalSetting(
                         "agent",
                         "max_lifelines_per_step",
-                        parseInt(e.target.value)
+                        safeInt(e.target.value, localSettings.agent.max_lifelines_per_step)
                       )
                     }
                     className="h-9"
@@ -218,7 +228,7 @@ export function SettingsPage() {
                       updateLocalSetting(
                         "agent",
                         "rate_limit_interval",
-                        parseFloat(e.target.value)
+                        safeFloat(e.target.value, localSettings.agent.rate_limit_interval)
                       )
                     }
                     className="h-9"
@@ -234,7 +244,7 @@ export function SettingsPage() {
                       updateLocalSetting(
                         "agent",
                         "max_cost_per_run",
-                        parseFloat(e.target.value)
+                        safeFloat(e.target.value, localSettings.agent.max_cost_per_run)
                       )
                     }
                     className="h-9"
@@ -260,7 +270,7 @@ export function SettingsPage() {
                     type="number"
                     value={localSettings.rag.chunk_size}
                     onChange={(e) =>
-                      updateLocalSetting("rag", "chunk_size", parseInt(e.target.value))
+                      updateLocalSetting("rag", "chunk_size", safeInt(e.target.value, localSettings.rag.chunk_size))
                     }
                     className="h-9"
                   />
@@ -271,7 +281,7 @@ export function SettingsPage() {
                     type="number"
                     value={localSettings.rag.chunk_overlap}
                     onChange={(e) =>
-                      updateLocalSetting("rag", "chunk_overlap", parseInt(e.target.value))
+                      updateLocalSetting("rag", "chunk_overlap", safeInt(e.target.value, localSettings.rag.chunk_overlap))
                     }
                     className="h-9"
                   />
@@ -285,7 +295,7 @@ export function SettingsPage() {
                       updateLocalSetting(
                         "rag",
                         "max_chunk_length",
-                        parseInt(e.target.value)
+                        safeInt(e.target.value, localSettings.rag.max_chunk_length)
                       )
                     }
                     className="h-9"
@@ -297,7 +307,7 @@ export function SettingsPage() {
                     type="number"
                     value={localSettings.rag.top_k}
                     onChange={(e) =>
-                      updateLocalSetting("rag", "top_k", parseInt(e.target.value))
+                      updateLocalSetting("rag", "top_k", safeInt(e.target.value, localSettings.rag.top_k))
                     }
                     className="h-9"
                   />

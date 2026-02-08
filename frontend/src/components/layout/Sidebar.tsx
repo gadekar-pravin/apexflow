@@ -18,6 +18,7 @@ const navItems = [
     href: "/",
     icon: Play,
     description: "Agent execution & graph view",
+    end: true,
   },
   {
     title: "Documents",
@@ -53,6 +54,7 @@ export function Sidebar() {
             <TooltipTrigger asChild>
               <NavLink
                 to={item.href}
+                end={"end" in item && !!item.end}
                 className={({ isActive }) =>
                   cn(
                     "group flex items-center justify-center rounded-md p-2.5 transition-all duration-150",

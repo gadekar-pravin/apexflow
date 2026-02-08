@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react"
 import type { SSEEvent } from "@/types"
+import { getAPIUrl, getAuthToken } from "../services/api"
 
 export type SSEConnectionState = "connected" | "connecting" | "disconnected"
 
@@ -31,37 +32,47 @@ export function SSEProvider({ children }: { children: ReactNode }) {
       eventSourceRef.current.close()
     }
 
-    const eventSource = new EventSource("/api/events")
-    eventSourceRef.current = eventSource
-
-    eventSource.onopen = () => {
+    // EventSource doesn't support custom headers, so pass token as query param
+    void getAuthToken().then((token) => {
       if (!mountedRef.current) return
-      setConnectionState("connected")
-    }
 
-    eventSource.onmessage = (event) => {
-      if (!mountedRef.current) return
-      try {
-        const data = JSON.parse(event.data) as SSEEvent
-        subscribersRef.current.forEach((callback) => callback(data))
-      } catch (error) {
-        console.error("Failed to parse SSE event:", error)
+      let url = getAPIUrl("/api/events")
+      if (token) {
+        url += `?token=${encodeURIComponent(token)}`
       }
-    }
 
-    eventSource.onerror = (error) => {
-      if (!mountedRef.current) return
-      console.error("SSE error:", error)
-      setConnectionState("disconnected")
-      setLastError(error)
+      const eventSource = new EventSource(url)
+      eventSourceRef.current = eventSource
 
-      eventSource.close()
-      reconnectTimeoutRef.current = setTimeout(() => {
-        if (mountedRef.current) {
-          connect()
+      eventSource.onopen = () => {
+        if (!mountedRef.current) return
+        setConnectionState("connected")
+      }
+
+      eventSource.onmessage = (event) => {
+        if (!mountedRef.current) return
+        try {
+          const data = JSON.parse(event.data) as SSEEvent
+          subscribersRef.current.forEach((callback) => callback(data))
+        } catch (error) {
+          console.error("Failed to parse SSE event:", error)
         }
-      }, 5000)
-    }
+      }
+
+      eventSource.onerror = (error) => {
+        if (!mountedRef.current) return
+        console.error("SSE error:", error)
+        setConnectionState("disconnected")
+        setLastError(error)
+
+        eventSource.close()
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (mountedRef.current) {
+            connect()
+          }
+        }, 5000)
+      }
+    })
   }, [])
 
   useEffect(() => {

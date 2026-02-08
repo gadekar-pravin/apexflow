@@ -29,8 +29,7 @@ export const settingsService = {
   // Skills list (v2 replaced MCP tools with skills — different shape)
   async getMCPTools(): Promise<{ name: string; description: string }[]> {
     try {
-      const response = await fetchAPI<{ tools: { name: string; description: string }[] }>("/api/skills")
-      return response.tools || []
+      return await fetchAPI<{ name: string; description: string }[]>("/api/skills")
     } catch {
       return []
     }

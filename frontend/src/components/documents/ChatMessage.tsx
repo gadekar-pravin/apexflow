@@ -90,7 +90,7 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
             {message.images.map((img, idx) => (
               <img
                 key={idx}
-                src={img.startsWith("data:") ? img : `data:image/png;base64,${img}`}
+                src={img.startsWith("data:") ? img : `data:image/;base64,${img}`}
                 alt={`Attachment ${idx + 1}`}
                 className="max-h-48 rounded-md border"
               />

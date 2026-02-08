@@ -7,7 +7,7 @@ import { ragService } from "@/services"
 import { useAppStore } from "@/store"
 
 export function DocumentsPage() {
-  const { selectedDocumentPath } = useAppStore()
+  const { selectedDocumentPath, selectedDocumentName } = useAppStore()
   const queryClient = useQueryClient()
 
   const reindex = useMutation({
@@ -54,7 +54,7 @@ export function DocumentsPage() {
         {selectedDocumentPath ? (
           <>
             <div className="border-b border-border/40 px-6 py-4 backdrop-blur-xs bg-card/30">
-              <h2 className="text-sm font-medium truncate">{selectedDocumentPath}</h2>
+              <h2 className="text-sm font-medium truncate">{selectedDocumentName || selectedDocumentPath}</h2>
             </div>
             <div className="flex-1 overflow-hidden">
               <DocumentChat documentPath={selectedDocumentPath} />

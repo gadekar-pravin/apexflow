@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react"
+import { getAPIUrl } from "../services/api"
 
 export type ConnectionState = "connected" | "connecting" | "disconnected"
 
@@ -27,7 +28,7 @@ export function useApiHealth(): UseApiHealthResult {
     abortControllerRef.current = new AbortController()
 
     try {
-      const response = await fetch("/liveness", {
+      const response = await fetch(getAPIUrl("/liveness"), {
         method: "GET",
         signal: abortControllerRef.current.signal,
       })

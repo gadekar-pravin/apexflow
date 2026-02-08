@@ -28,8 +28,15 @@ export function useSSE(options: UseSSEOptions = {}): UseSSEResult {
   const eventSourceRef = useRef<EventSource | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
+  const onEventRef = useRef(onEvent)
+  const onErrorRef = useRef(onError)
+  const onOpenRef = useRef(onOpen)
   const [connectionState, setConnectionState] = useState<SSEConnectionState>("disconnected")
   const [lastError, setLastError] = useState<Event | null>(null)
+
+  onEventRef.current = onEvent
+  onErrorRef.current = onError
+  onOpenRef.current = onOpen
 
   const connect = useCallback(() => {
     if (!enabled || !mountedRef.current) return
@@ -49,14 +56,14 @@ export function useSSE(options: UseSSEOptions = {}): UseSSEResult {
       if (!mountedRef.current) return
       console.log("SSE connected")
       setConnectionState("connected")
-      onOpen?.()
+      onOpenRef.current?.()
     }
 
     eventSource.onmessage = (event) => {
       if (!mountedRef.current) return
       try {
         const data = JSON.parse(event.data) as SSEEvent
-        onEvent?.(data)
+        onEventRef.current?.(data)
       } catch (error) {
         console.error("Failed to parse SSE event:", error)
       }
@@ -67,7 +74,7 @@ export function useSSE(options: UseSSEOptions = {}): UseSSEResult {
       console.error("SSE error:", error)
       setConnectionState("disconnected")
       setLastError(error)
-      onError?.(error)
+      onErrorRef.current?.(error)
 
       // Reconnect after 5 seconds
       eventSource.close()
@@ -77,7 +84,7 @@ export function useSSE(options: UseSSEOptions = {}): UseSSEResult {
         }
       }, 5000)
     }
-  }, [enabled, onEvent, onError, onOpen])
+  }, [enabled])
 
   useEffect(() => {
     mountedRef.current = true

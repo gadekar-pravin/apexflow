@@ -109,7 +109,6 @@ describe('runsService', () => {
       mockFetchAPI.mockResolvedValueOnce({
         id: 'run-123',
         status: 'input_received',
-        stored_as: 'user_response',
       })
 
       const result = await runsService.provideInput('run-123', input)
@@ -118,7 +117,7 @@ describe('runsService', () => {
         method: 'POST',
         body: JSON.stringify(input),
       })
-      expect(result.stored_as).toBe('user_response')
+      expect(result.status).toBe('input_received')
     })
   })
 

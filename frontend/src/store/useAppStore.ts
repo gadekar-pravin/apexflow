@@ -8,12 +8,13 @@ interface AppState {
   selectedRunId: string | null
   selectedNodeId: string | null
   selectedDocumentPath: string | null
+  selectedDocumentName: string | null
 
   // Actions
   setTheme: (theme: "light" | "dark" | "system") => void
   setSelectedRunId: (id: string | null) => void
   setSelectedNodeId: (id: string | null) => void
-  setSelectedDocumentPath: (path: string | null) => void
+  setSelectedDocumentPath: (path: string | null, name?: string | null) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -22,6 +23,7 @@ export const useAppStore = create<AppState>((set) => ({
   selectedRunId: null,
   selectedNodeId: null,
   selectedDocumentPath: null,
+  selectedDocumentName: null,
 
   // Actions
   setTheme: (theme) => {
@@ -37,5 +39,5 @@ export const useAppStore = create<AppState>((set) => ({
   },
   setSelectedRunId: (id) => set({ selectedRunId: id, selectedNodeId: null }),
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
-  setSelectedDocumentPath: (path) => set({ selectedDocumentPath: path }),
+  setSelectedDocumentPath: (path, name) => set({ selectedDocumentPath: path, selectedDocumentName: name ?? null }),
 }))

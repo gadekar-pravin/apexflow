@@ -44,8 +44,8 @@ export const runsService = {
   async provideInput(
     runId: string,
     input: UserInputRequest
-  ): Promise<{ id: string; status: string; stored_as: string }> {
-    return fetchAPI<{ id: string; status: string; stored_as: string }>(
+  ): Promise<{ id: string; status: string }> {
+    return fetchAPI<{ id: string; status: string }>(
       `/api/runs/${runId}/input`,
       {
         method: "POST",

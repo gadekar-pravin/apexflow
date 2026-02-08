@@ -3,19 +3,11 @@ import {
   FileText,
   Loader2,
 } from "lucide-react"
-import { cn } from "@/utils/utils"
+import { cn, formatShortDate } from "@/utils/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ragService } from "@/services"
 import { useAppStore } from "@/store"
 import type { V2Document } from "@/types"
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-}
 
 interface DocumentRowProps {
   doc: V2Document
@@ -32,7 +24,7 @@ function DocumentRow({ doc }: DocumentRowProps) {
         "hover:bg-accent/60 hover:backdrop-blur-xs text-left transition-all duration-150",
         isSelected && "bg-accent/70 backdrop-blur-xs shadow-sm"
       )}
-      onClick={() => setSelectedDocumentPath(doc.id)}
+      onClick={() => setSelectedDocumentPath(doc.id, doc.filename)}
     >
       <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
       <span className="truncate flex-1">{doc.filename}</span>
@@ -42,7 +34,7 @@ function DocumentRow({ doc }: DocumentRowProps) {
         </span>
       )}
       <span className="text-xs text-muted-foreground">
-        {formatDate(doc.created_at)}
+        {formatShortDate(doc.created_at)}
       </span>
     </button>
   )

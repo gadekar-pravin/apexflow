@@ -14,6 +14,14 @@ export function formatDate(date: string | number | Date): string {
   }).format(new Date(date))
 }
 
+export function formatShortDate(date: string | number | Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(date))
+}
+
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`

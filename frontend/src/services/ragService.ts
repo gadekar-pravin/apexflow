@@ -47,7 +47,7 @@ export const ragService = {
   async reindex(docId?: string, limit?: number): Promise<{ status: string; result: unknown }> {
     const params: Record<string, unknown> = {}
     if (docId) params.doc_id = docId
-    if (limit) params.limit = limit
+    if (limit != null) params.limit = limit
     return fetchAPI("/api/rag/reindex", {
       method: "POST",
       body: JSON.stringify(params),

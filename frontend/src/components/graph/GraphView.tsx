@@ -116,8 +116,12 @@ export function GraphView({ runId }: GraphViewProps) {
 
   if (!data?.graph) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        {data?.status === "running" ? (
+          <Loader2 className="h-8 w-8 animate-spin" />
+        ) : (
+          <span>No graph data available</span>
+        )}
       </div>
     )
   }

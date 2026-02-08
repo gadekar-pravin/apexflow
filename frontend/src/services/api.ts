@@ -2,16 +2,36 @@
 
 const API_URL = import.meta.env.VITE_API_URL || ""
 
+// Auth token provider — set via setAuthTokenProvider() when Firebase is initialized
+let authTokenProvider: (() => Promise<string | null>) | null = null
+
+export function setAuthTokenProvider(provider: () => Promise<string | null>) {
+  authTokenProvider = provider
+}
+
+export function getAuthToken(): Promise<string | null> {
+  return authTokenProvider ? authTokenProvider() : Promise.resolve(null)
+}
+
 export async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_URL}${endpoint}`
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  }
+
+  const token = await getAuthToken()
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...headers,
       ...options.headers,
     },
   })

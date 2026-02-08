@@ -9,6 +9,7 @@ describe('useAppStore', () => {
       selectedRunId: null,
       selectedNodeId: null,
       selectedDocumentPath: null,
+      selectedDocumentName: null,
     })
   })
 
@@ -91,21 +92,23 @@ describe('useAppStore', () => {
     })
 
     it('setSelectedDocumentPath updates document selection', () => {
-      useAppStore.getState().setSelectedDocumentPath('/docs/readme.md')
+      useAppStore.getState().setSelectedDocumentPath('/docs/readme.md', 'readme.md')
       expect(useAppStore.getState().selectedDocumentPath).toBe('/docs/readme.md')
+      expect(useAppStore.getState().selectedDocumentName).toBe('readme.md')
     })
 
     it('setSelectedDocumentPath can clear selection', () => {
-      useAppStore.getState().setSelectedDocumentPath('/docs/file.txt')
+      useAppStore.getState().setSelectedDocumentPath('/docs/file.txt', 'file.txt')
       useAppStore.getState().setSelectedDocumentPath(null)
       expect(useAppStore.getState().selectedDocumentPath).toBeNull()
+      expect(useAppStore.getState().selectedDocumentName).toBeNull()
     })
   })
 
   describe('state isolation', () => {
     it('actions only affect their specific state', () => {
       useAppStore.getState().setSelectedRunId('run-1')
-      useAppStore.getState().setSelectedDocumentPath('/doc.md')
+      useAppStore.getState().setSelectedDocumentPath('/doc.md', 'doc.md')
 
       // Verify all states are independent
       expect(useAppStore.getState().selectedRunId).toBe('run-1')
