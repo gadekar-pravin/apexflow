@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ApexFlow v2 is a web-first rewrite of the desktop-first ApexFlow v1. It's an intelligent workflow automation platform powered by Google Gemini. The backend is FastAPI + asyncpg + AlloyDB (Google's PostgreSQL variant with ScaNN vector indexes).
 
-**Current state:** Phases 1-3 are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phases 4-5 are documented in `docs/` but not yet implemented.
+**Current state:** Phases 1-3 and 4a are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phases 4b-5 are documented in `docs/` but not yet implemented.
 
 ## Common Commands
 
@@ -54,7 +54,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 2. `K_SERVICE` detected → Cloud Run mode using `ALLOYDB_*` vars
 3. Local dev → builds from `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_PORT`/`DB_NAME` (defaults to `localhost:5432`, user `apexflow`)
 
-**Connection pool:** asyncpg, min_size=1, max_size=5 (configurable via `DB_POOL_MAX`).
+**Connection pool:** asyncpg, min_size=1, max_size=5 (configurable via `DB_POOL_MAX`). Each new connection runs an `init` callback that registers the pgvector codec (if the `pgvector` package is installed).
 
 **Alembic** uses psycopg2 (sync driver), not asyncpg. The env.py mirrors the same 3-priority connection logic with a `postgresql+psycopg2://` prefix.
 
@@ -87,11 +87,14 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 - `NotificationStore` — Notifications with UUID generation on create.
 - `ChatStore` — Append-only messages with transaction wrapping (insert message + update `session.updated_at`).
 - `StateStore` — User-scoped key-value pairs (`system_state` table) with JSONB UPSERT.
+- `DocumentStore` — Document CRUD with SHA256 content-hash dedup (`INSERT ... ON CONFLICT DO UPDATE` with `xmax = 0` trick), version-aware ingestion skip/re-index, and batch chunk insertion via `executemany`. Cascading delete via `ON DELETE CASCADE`.
+- `DocumentSearch` — Hybrid search using Reciprocal Rank Fusion (RRF): vector cosine similarity CTE + full-text `ts_rank` CTE, `FULL OUTER JOIN`, per-document dedup via `DISTINCT ON`. Returns `rrf_score`, `vector_score`, `text_score`.
 
 **Services** (`services/`): Registered via `ServiceRegistry` during app lifespan.
 
 - `BrowserService` — `web_search` and `web_extract_text` tools with SSRF protection (DNS resolution against private IP ranges).
-- `RagService` / `SandboxService` — Stubs raising `ToolExecutionError` (Phase 4a/4c).
+- `RagService` — `index_document`, `search_documents`, `list_documents`, `delete_document` tools. Handler routes to ingestion pipeline and document stores.
+- `SandboxService` — Stub raising `ToolExecutionError` (Phase 4c).
 
 **Core ports from v1:**
 
@@ -100,6 +103,27 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 - `core/metrics_aggregator.py` — SQL aggregation (replaces filesystem session walk) with 5-min cache via `StateStore`.
 
 **Phase 3 routers:** `runs`, `chat`, `rag`, `remme`, `inbox`, `cron`, `metrics` — all use `Depends(get_user_id)` and are mounted at `/api` prefix.
+
+### RAG System (Phase 4a)
+
+**Config:** `core/rag/config.py` — constants: `EMBEDDING_MODEL` (`text-embedding-004`), `EMBEDDING_DIM` (768), `INGESTION_VERSION` (1), `RRF_K` (60), `SEARCH_EXPANSION_FACTOR` (3).
+
+**Chunker:** `core/rag/chunker.py` — Rule-based recursive splitting (default) or semantic LLM-driven chunking via Gemini. Configurable chunk size/overlap from settings.
+
+**Ingestion pipeline:** `core/rag/ingestion.py` — `ingest_document()` orchestrates: chunk via `chunk_document()` → batch embed via `get_embedding()` in thread pool (`asyncio.gather` for parallelism) → store via `DocumentStore.index_document()`. Reuses existing `remme/utils.py:get_embedding` (Gemini `text-embedding-004` with L2 normalization).
+
+**Document dedup:** SHA256 hash of content + `UNIQUE(user_id, file_hash)` constraint. Same hash + same `ingestion_version` = skip. Same hash + different version = re-chunk and re-embed.
+
+**Hybrid search:** `DocumentSearch.hybrid_search()` — two CTEs (vector cosine via `<=>` operator, full-text via `ts_rank` + `plainto_tsquery`), `FULL OUTER JOIN`, RRF score = `1/(K+rank_v) + 1/(K+rank_t)`, `DISTINCT ON (document_id)` for per-doc dedup.
+
+**Migration:** `alembic/versions/002_rag_versioning_columns.py` — adds `content`, `embedding_model`, `embedding_dim`, `ingestion_version`, `updated_at` to `documents` table.
+
+**RAG endpoints:**
+- `POST /api/rag/index` — index a document (filename + content)
+- `POST /api/rag/search` — hybrid search (query + limit 1-50)
+- `GET /api/rag/documents` — list indexed documents
+- `DELETE /api/rag/documents/{id}` — delete (cascades to chunks)
+- `POST /api/rag/reindex` — reindex specific doc or all stale docs
 
 ### CI Pipeline
 
@@ -116,12 +140,13 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 ### Project Layout
 
 - `core/` — Database pool, execution engine (`loop.py`), ServiceRegistry, Gemini client, skills framework, circuit breaker, event bus, auth middleware, scheduler, persistence, metrics aggregator
-- `core/stores/` — Stateless async data-access objects (SessionStore, JobStore, JobRunStore, NotificationStore, ChatStore, StateStore)
+- `core/stores/` — Stateless async data-access objects (SessionStore, JobStore, JobRunStore, NotificationStore, ChatStore, StateStore, DocumentStore, DocumentSearch)
 - `agents/` — Agent runner (`base_agent.py`) and agent implementations
 - `memory/` — Session memory context (`context.py`) with DB-backed persistence via SessionStore
 - `remme/` — Memory management system (hubs, engines, sources, extractors)
 - `shared/` — Global state container (`state.py`) — holds ServiceRegistry, RemmeStore, active loops
-- `services/` — Service layer (BrowserService, RAG stub, Sandbox stub) registered via ServiceRegistry
+- `core/rag/` — RAG pipeline: chunker (`chunker.py`), config constants (`config.py`), ingestion pipeline (`ingestion.py`)
+- `services/` — Service layer (BrowserService, RagService, Sandbox stub) registered via ServiceRegistry
 - `routers/` — FastAPI route handlers: Phase 2 (`stream`, `settings`, `skills`, `prompts`, `news`) + Phase 3 (`runs`, `chat`, `rag`, `remme`, `inbox`, `cron`, `metrics`)
 - `tools/` — Agent tools (`web_tools_async.py`, `switch_search_method.py`) and code sandbox
 - `config/` — Settings loader, `agent_config.yaml`, `models.json`, `profiles.yaml`, `settings.defaults.json`

@@ -1,41 +1,58 @@
-"""RAG router -- stub endpoints for Phase 3 (flat document list, option B).
-
-Delegates to rag_service which raises NotImplementedError for all ops.
-"""
+"""RAG router -- document indexing, search, and management endpoints."""
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from core.auth import get_user_id
+from core.rag.ingestion import embed_query, ingest_document, prepare_chunks
+from core.stores.document_search import DocumentSearch
+from core.stores.document_store import DocumentStore
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rag", tags=["RAG"])
 
+_doc_store = DocumentStore()
+_doc_search = DocumentSearch()
 
-class SearchRequest(BaseModel):
-    query: str
-    limit: int = 5
+
+# -- request / response models -----------------------------------------------
 
 
 class IndexRequest(BaseModel):
-    filepath: str
+    filename: str
+    content: str
     doc_type: str | None = None
+    chunk_method: Literal["rule_based", "semantic"] = "rule_based"
+    metadata: dict[str, Any] | None = None
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(min_length=1)
+    limit: int = Field(default=5, ge=1, le=50)
+
+
+_REINDEX_MAX_BATCH = 50
+
+
+class ReindexRequest(BaseModel):
+    doc_id: str | None = None
+    limit: int = Field(default=20, ge=1, le=_REINDEX_MAX_BATCH)
+
+
+# -- endpoints ----------------------------------------------------------------
 
 
 @router.get("/documents")
 async def list_documents(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
-    return {
-        "status": "stub",
-        "message": "RAG document listing not yet implemented (Phase 4a)",
-        "documents": [],
-    }
+    docs = await _doc_store.list_documents(user_id)
+    return {"documents": docs}
 
 
 @router.post("/search")
@@ -43,11 +60,17 @@ async def search_documents(
     request: SearchRequest,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
-    return {
-        "status": "stub",
-        "message": "RAG search not yet implemented (Phase 4a)",
-        "results": [],
-    }
+    query = request.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Search query must not be blank")
+    query_emb = await embed_query(query)
+    results = await _doc_search.hybrid_search(
+        user_id,
+        query,
+        query_emb,
+        limit=request.limit,
+    )
+    return {"results": results}
 
 
 @router.post("/index")
@@ -55,10 +78,17 @@ async def index_document(
     request: IndexRequest,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
-    return {
-        "status": "stub",
-        "message": "RAG indexing not yet implemented (Phase 4a)",
-    }
+    if not request.content.strip():
+        raise HTTPException(status_code=400, detail="Content must not be empty")
+    result = await ingest_document(
+        user_id,
+        request.filename,
+        request.content,
+        doc_type=request.doc_type,
+        chunk_method=request.chunk_method,
+        metadata=request.metadata,
+    )
+    return result
 
 
 @router.delete("/documents/{doc_id}")
@@ -66,7 +96,56 @@ async def delete_document(
     doc_id: str,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
-    return {
-        "status": "stub",
-        "message": "RAG deletion not yet implemented (Phase 4a)",
-    }
+    deleted = await _doc_store.delete(user_id, doc_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"deleted": True, "doc_id": doc_id}
+
+
+@router.post("/reindex")
+async def reindex_documents(
+    request: ReindexRequest,
+    user_id: str = Depends(get_user_id),
+) -> dict[str, Any]:
+    """Reindex a specific document or all stale documents."""
+    if request.doc_id:
+        doc = await _doc_store.get(user_id, request.doc_id)
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        content = (doc.get("content") or "").strip()
+        if not content:
+            raise HTTPException(status_code=400, detail="Document has no stored content")
+        method = doc.get("chunk_method", "rule_based")
+        chunks, embeddings = await prepare_chunks(content, method=method)
+        if not chunks:
+            raise HTTPException(status_code=400, detail="Document produced no chunks after processing")
+        result = await _doc_store.reindex_document(
+            user_id,
+            request.doc_id,
+            chunks,
+            embeddings,
+            chunk_method=method,
+        )
+        return {"reindexed": [result]}
+
+    # Reindex stale documents (content included, no extra query per doc)
+    stale = await _doc_store.list_stale_documents(user_id, limit=request.limit)
+    results = []
+    for doc in stale:
+        content = (doc.get("content") or "").strip()
+        if not content:
+            continue
+        method = doc.get("chunk_method", "rule_based")
+        chunks, embeddings = await prepare_chunks(content, method=method)
+        if not chunks:
+            continue
+        result = await _doc_store.reindex_document(
+            user_id,
+            doc["id"],
+            chunks,
+            embeddings,
+            chunk_method=method,
+        )
+        results.append(result)
+
+    return {"reindexed": results}

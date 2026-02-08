@@ -10,6 +10,20 @@ import asyncpg
 logger = logging.getLogger(__name__)
 
 _pool: asyncpg.Pool | None = None
+_pgvector_available = False
+
+try:
+    from pgvector.asyncpg import register_vector as _register_vector
+
+    _pgvector_available = True
+except ImportError:
+    logger.info("pgvector not installed — vector codec will not be registered")
+
+
+async def _init_connection(conn: asyncpg.Connection) -> None:
+    """Per-connection init: register pgvector codec if available."""
+    if _pgvector_available:
+        await _register_vector(conn)
 
 
 class DatabaseConfig:
@@ -51,6 +65,7 @@ async def get_pool() -> asyncpg.Pool:
             min_size=1,
             max_size=int(os.environ.get("DB_POOL_MAX", "5")),
             command_timeout=30,
+            init=_init_connection,
         )
     return _pool
 
