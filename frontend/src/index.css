@@ -1,0 +1,517 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   REFINED MINIMALISM DESIGN SYSTEM
+   ApexFlow UI - A considered, premium aesthetic
+   ============================================ */
+
+@layer base {
+  /* ----------------------------------------
+     LIGHT THEME
+     Warm paper whites with ink-black text
+     Muted sage accent for sophistication
+     ---------------------------------------- */
+  :root {
+    /* Core surfaces - warm, paper-like whites */
+    --background: 40 33% 99%;
+    --foreground: 240 10% 6%;
+
+    /* Cards - subtle elevation through warmth */
+    --card: 40 25% 98%;
+    --card-foreground: 240 10% 6%;
+
+    /* Popovers - slightly lifted */
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 6%;
+
+    /* Primary - deep forest green, understated elegance */
+    --primary: 158 30% 28%;
+    --primary-foreground: 40 33% 98%;
+
+    /* Secondary - whisper of warmth */
+    --secondary: 40 15% 94%;
+    --secondary-foreground: 240 10% 20%;
+
+    /* Muted - subtle differentiation */
+    --muted: 40 12% 92%;
+    --muted-foreground: 240 5% 46%;
+
+    /* Accent - golden warmth for highlights */
+    --accent: 38 55% 88%;
+    --accent-foreground: 38 60% 25%;
+
+    /* Semantic colors - refined, not garish */
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 45% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 75% 50%;
+    --warning-foreground: 38 80% 15%;
+    --neutral: 240 4% 60%;
+    --neutral-foreground: 240 10% 20%;
+
+    /* Sidebar - distinct but harmonious */
+    --sidebar: 40 20% 97%;
+    --sidebar-foreground: 240 10% 6%;
+
+    /* Borders - barely there */
+    --border: 40 10% 88%;
+    --input: 40 12% 90%;
+    --ring: 158 30% 28%;
+
+    /* System */
+    --radius: 0.375rem;
+
+    /* Glass surfaces - light theme */
+    --glass: 0 0% 100%;
+    --glass-alpha: 0.7;
+    --glass-muted: 40 20% 97%;
+    --glass-muted-alpha: 0.6;
+    --glass-border: 0 0% 100%;
+    --glass-border-alpha: 0.2;
+
+    /* Glow colors for status indicators */
+    --glow-primary: 158 30% 28%;
+    --glow-accent: 38 60% 50%;
+    --glow-success: 152 45% 38%;
+    --glow-warning: 38 75% 50%;
+    --glow-destructive: 0 60% 50%;
+
+    /* Gradient backgrounds */
+    --gradient-subtle: linear-gradient(135deg, hsl(40 20% 98%) 0%, hsl(40 25% 96%) 100%);
+    --gradient-radial: radial-gradient(ellipse at top, hsl(var(--primary) / 0.06) 0%, transparent 50%);
+  }
+
+  /* ----------------------------------------
+     DARK THEME
+     Deep charcoal with warm undertones
+     Luminous sage for visual anchors
+     ---------------------------------------- */
+  .dark {
+    /* Core surfaces - warm charcoal depths */
+    --background: 240 6% 7%;
+    --foreground: 40 15% 92%;
+
+    /* Cards - subtle lift from base */
+    --card: 240 5% 10%;
+    --card-foreground: 40 15% 92%;
+
+    /* Popovers - floating elements */
+    --popover: 240 5% 12%;
+    --popover-foreground: 40 15% 92%;
+
+    /* Primary - luminous sage, grounded but vibrant */
+    --primary: 158 35% 52%;
+    --primary-foreground: 240 6% 7%;
+
+    /* Secondary - subtle warmth in darkness */
+    --secondary: 240 4% 14%;
+    --secondary-foreground: 40 15% 85%;
+
+    /* Muted - gentle differentiation */
+    --muted: 240 4% 16%;
+    --muted-foreground: 40 8% 55%;
+
+    /* Accent - warm glow */
+    --accent: 38 25% 18%;
+    --accent-foreground: 38 60% 65%;
+
+    /* Semantic colors - visible but not harsh */
+    --destructive: 0 55% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 40% 48%;
+    --success-foreground: 152 50% 10%;
+    --warning: 38 70% 55%;
+    --warning-foreground: 38 80% 10%;
+    --neutral: 240 4% 45%;
+    --neutral-foreground: 40 15% 85%;
+
+    /* Sidebar - darker still for hierarchy */
+    --sidebar: 240 6% 5%;
+    --sidebar-foreground: 40 15% 90%;
+
+    /* Borders - subtle definition */
+    --border: 240 4% 18%;
+    --input: 240 4% 18%;
+    --ring: 158 35% 52%;
+
+    /* Glass surfaces - dark theme */
+    --glass: 240 5% 12%;
+    --glass-alpha: 0.7;
+    --glass-muted: 240 5% 10%;
+    --glass-muted-alpha: 0.6;
+    --glass-border: 0 0% 100%;
+    --glass-border-alpha: 0.12;
+
+    /* Glow colors for status indicators */
+    --glow-primary: 158 35% 52%;
+    --glow-accent: 38 60% 55%;
+    --glow-success: 152 40% 48%;
+    --glow-warning: 38 70% 55%;
+    --glow-destructive: 0 55% 55%;
+
+    /* Gradient backgrounds */
+    --gradient-subtle: linear-gradient(135deg, hsl(240 5% 8%) 0%, hsl(240 6% 6%) 100%);
+    --gradient-radial: radial-gradient(ellipse at top, hsl(var(--primary) / 0.08) 0%, transparent 50%);
+  }
+}
+
+/* ----------------------------------------
+   BASE STYLES
+   ---------------------------------------- */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    margin: 0;
+    min-height: 100vh;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  /* Refined code typography */
+  code, pre {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-feature-settings: "liga" 1, "calt" 1;
+  }
+
+  /* Smooth focus transitions */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    transition: box-shadow 0.15s ease;
+  }
+
+  /* Selection styling */
+  ::selection {
+    background: hsl(var(--primary) / 0.15);
+  }
+}
+
+/* ----------------------------------------
+   CUSTOM SCROLLBAR
+   Minimal, disappears when not in use
+   ---------------------------------------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--foreground) / 0.08);
+  border-radius: 3px;
+  transition: background 0.15s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground) / 0.15);
+}
+
+/* Hide scrollbar when not hovering (webkit only) */
+.scrollbar-fade::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+.scrollbar-fade:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--foreground) / 0.08);
+}
+
+/* ----------------------------------------
+   REACTFLOW CUSTOMIZATIONS
+   ---------------------------------------- */
+.react-flow__node {
+  cursor: pointer;
+}
+
+.react-flow__node.selected {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.5);
+}
+
+/* Controls panel styling */
+.react-flow__controls {
+  @apply shadow-glass-md rounded-md overflow-hidden border;
+  backdrop-filter: blur(12px);
+  background: hsl(var(--card) / 0.7) !important;
+  border-color: hsl(0 0% 100% / 0.1) !important;
+}
+
+.react-flow__controls-button {
+  @apply border-0 border-b;
+  border-color: hsl(var(--border) / 0.4) !important;
+  background: transparent !important;
+  fill: hsl(var(--muted-foreground)) !important;
+  transition: all 0.15s ease;
+}
+
+.react-flow__controls-button:hover {
+  background: hsl(var(--muted) / 0.5) !important;
+  fill: hsl(var(--foreground)) !important;
+}
+
+.react-flow__controls-button:last-child {
+  @apply border-b-0;
+}
+
+/* ----------------------------------------
+   NODE ANIMATIONS
+   Refined, purposeful motion with glow
+   ---------------------------------------- */
+.node-active-glow {
+  animation: node-glow-pulse 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes node-glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 12px -3px hsl(var(--glow-primary) / 0.35),
+      0 0 0 0 hsl(var(--primary) / 0.1),
+      0 2px 8px -2px rgb(0 0 0 / 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 24px -4px hsl(var(--glow-primary) / 0.5),
+      0 0 0 3px hsl(var(--primary) / 0.08),
+      0 4px 16px -4px rgb(0 0 0 / 0.12);
+  }
+}
+
+/* Status-specific glow animations */
+.node-success-glow {
+  box-shadow: 0 0 16px -4px hsl(var(--glow-success) / 0.3);
+}
+
+.node-warning-glow {
+  box-shadow: 0 0 16px -4px hsl(var(--glow-warning) / 0.3);
+}
+
+.node-error-glow {
+  box-shadow: 0 0 16px -4px hsl(var(--glow-destructive) / 0.3);
+}
+
+/* Stale node subtle pulse */
+.node-stale {
+  animation: stale-pulse 3s ease-in-out infinite;
+}
+
+@keyframes stale-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.4; }
+}
+
+/* ----------------------------------------
+   PROSE / MARKDOWN STYLES
+   ---------------------------------------- */
+.prose {
+  @apply text-foreground;
+}
+
+.prose pre {
+  @apply bg-muted/50 rounded-md p-4 overflow-x-auto border border-border/50;
+}
+
+.prose code {
+  @apply bg-muted/50 px-1.5 py-0.5 rounded text-sm font-mono text-foreground;
+  font-weight: 450;
+}
+
+.prose pre code {
+  @apply bg-transparent p-0 text-sm;
+}
+
+.prose a {
+  @apply text-primary underline-offset-2 decoration-primary/30 hover:decoration-primary/60;
+  transition: text-decoration-color 0.15s ease;
+}
+
+.prose strong {
+  @apply font-semibold text-foreground;
+}
+
+.prose h1, .prose h2, .prose h3 {
+  @apply font-display tracking-tight text-foreground;
+}
+
+/* ----------------------------------------
+   UTILITY CLASSES
+   ---------------------------------------- */
+@layer utilities {
+  /* Text balance for headings */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--foreground)) 0%,
+      hsl(var(--muted-foreground)) 100%
+    );
+  }
+
+  /* Subtle noise texture overlay */
+  .texture-grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Glass morphism - basic */
+  .glass {
+    @apply backdrop-blur-md bg-background/80 border border-border/50;
+  }
+
+  /* Glass surfaces - new glassmorphism system */
+  .glass-surface {
+    @apply backdrop-blur-glass border border-white/10;
+    background: hsl(var(--glass) / var(--glass-alpha));
+  }
+
+  .glass-card {
+    @apply backdrop-blur-glass border shadow-glass-md;
+    background: hsl(var(--glass) / var(--glass-alpha));
+    border-color: hsl(var(--glass-border) / var(--glass-border-alpha));
+  }
+
+  .glass-panel {
+    @apply backdrop-blur-glass-heavy border shadow-glass-lg;
+    background: hsl(var(--glass-muted) / var(--glass-muted-alpha));
+    border-color: hsl(var(--glass-border) / var(--glass-border-alpha));
+  }
+
+  /* Subtle gradient background */
+  .bg-gradient-subtle {
+    background: var(--gradient-subtle);
+  }
+
+  .bg-gradient-radial {
+    position: relative;
+  }
+  .bg-gradient-radial::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-radial);
+    pointer-events: none;
+  }
+
+  /* Glow effects on hover */
+  .glow-on-hover {
+    @apply transition-shadow duration-200;
+  }
+  .glow-on-hover:hover {
+    @apply shadow-glass-glow;
+  }
+
+  /* Status glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px -5px hsl(var(--glow-primary) / 0.4);
+  }
+  .glow-success {
+    box-shadow: 0 0 20px -5px hsl(var(--glow-success) / 0.4);
+  }
+  .glow-warning {
+    box-shadow: 0 0 20px -5px hsl(var(--glow-warning) / 0.4);
+  }
+  .glow-destructive {
+    box-shadow: 0 0 20px -5px hsl(var(--glow-destructive) / 0.4);
+  }
+
+  /* Shimmer loading effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Fade edges for scroll containers */
+  .fade-edges {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black 8px,
+      black calc(100% - 8px),
+      transparent
+    );
+  }
+}
+
+/* Backdrop-filter fallback for unsupported browsers */
+/* Check both standard and webkit-prefixed to avoid disabling blur on Safari/iOS */
+@supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  .glass-surface,
+  .glass-card,
+  .glass-panel {
+    background: hsl(var(--card));
+  }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .animate-glow-pulse,
+  .animate-float,
+  .node-active-glow {
+    animation: none;
+  }
+}
+
+/* ----------------------------------------
+   COMPONENT ENHANCEMENTS
+   ---------------------------------------- */
+
+/* Card hover states */
+.card-interactive {
+  @apply transition-all duration-200;
+}
+.card-interactive:hover {
+  @apply shadow-elevation-2 -translate-y-px;
+}
+
+/* Button press effect */
+.btn-press:active {
+  transform: scale(0.98);
+}
+
+/* Input focus glow */
+.input-glow:focus {
+  box-shadow:
+    0 0 0 3px hsl(var(--primary) / 0.1),
+    0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Divider with subtle fade */
+.divider-fade {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--border)) 15%,
+    hsl(var(--border)) 85%,
+    transparent
+  );
+  height: 1px;
+}

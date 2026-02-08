@@ -251,6 +251,7 @@ git push origin v2.0.0  # triggers CI
 - `scripts/migrate.py` — V1→V2 data migration CLI (sessions, jobs, notifications, memories, scanned runs, preferences)
 - `Dockerfile` — Multi-stage production build (uv builder + Python 3.12 slim runtime)
 - `docs/` — Phase documentation (7 phase docs + rewrite plan)
+- `frontend/` — React 19 + TypeScript + Vite SPA (Tailwind CSS, Radix UI, ReactFlow, TanStack Query, Zustand)
 
 ## Code Conventions
 
@@ -269,6 +270,33 @@ git push origin v2.0.0  # triggers CI
 - **VM:** `alloydb-omni-dev` in `us-central1-a`
 - **Cloud Scheduler:** `vm-auto-stop` stops the VM nightly at 10 PM ET
 - **Cloud Build SA:** `cloudbuild-ci@apexflow-ai.iam.gserviceaccount.com`
+
+## Frontend
+
+**Directory:** `frontend/` — React 19 + TypeScript + Vite SPA with Tailwind CSS, Radix UI, ReactFlow (DAG visualization), TanStack Query, and Zustand.
+
+**Dev commands:**
+```bash
+cd frontend && npm install    # install dependencies
+cd frontend && npm run dev    # start dev server on port 5173
+cd frontend && npm run build  # production build
+cd frontend && npm run test   # run vitest tests
+```
+
+**Running frontend + backend together:**
+1. Start backend: `AUTH_DISABLED=1 uvicorn api:app --reload` (port 8000)
+2. Start frontend: `cd frontend && npm run dev` (port 5173)
+3. Open `http://localhost:5173` — Vite proxy forwards `/api/*` to the backend
+
+**Proxy setup:** `vite.config.ts` proxies `/api`, `/liveness`, and `/readiness` to `http://localhost:8000`. The frontend uses relative URLs (no hardcoded backend host).
+
+**Known limitations (stubbed endpoints):**
+- Document chat (streaming `/rag/ask` endpoint not in v2)
+- Filesystem operations (createFolder, createFile, saveFile, rename, upload, delete by path)
+- Keyword search, ripgrep search, document chunks view, indexing status
+- Agent test/save
+- Cron job update (PUT)
+- MCP tools list (replaced by skills with different shape)
 
 ## Environment Variables
 
