@@ -20,9 +20,11 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
 # Run tests
-pytest tests/ -v
-pytest tests/test_database.py -v              # single file
-pytest tests/test_database.py::test_name -v   # single test
+pytest tests/ -v                                        # full suite
+pytest tests/unit/ -v                                   # unit tests only (no DB needed)
+pytest tests/integration/ -v                            # integration tests (requires AlloyDB)
+pytest tests/unit/test_database.py -v                   # single file
+pytest tests/unit/test_database.py::test_name -v        # single test
 
 # Lint and format
 ruff check .          # lint
@@ -193,21 +195,26 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **Migration script:** `scripts/migrate.py` — standalone CLI for one-time v1→v2 data migration. Supports `--dry-run` (parse-only), `--validate-only` (count comparison), and full migration with batched inserts (`BATCH_SIZE=100`). Re-embeds memories via `remme/utils.py:get_embedding()` with rate throttling. All inserts use `ON CONFLICT DO NOTHING` for idempotency.
 
-**Integration tests:** 12 test files (101 tests) requiring a real database (gracefully skip when DB is unavailable):
-- `tests/test_tenant_isolation.py` — 8 tests verifying user_id scoping across all stores
-- `tests/test_concurrency.py` — concurrent preference merge (both keys survive) + job dedup race (exactly one wins)
-- `tests/test_search_quality.py` — golden queries with synthetic embeddings against hybrid search
-- `tests/test_schema_constraints.py` — 12 tests for CHECK, UNIQUE, FK, NOT NULL constraint enforcement via raw SQL
-- `tests/test_document_dedup.py` — 12 tests for SHA256 dedup, `xmax=0` trick, cascading deletes, executemany, FTS generated column
-- `tests/test_session_lifecycle.py` — 14 tests for SQL aggregation (`COUNT FILTER`, `SUM`), `mark_scanned` atomic txn, COALESCE(completed_at)
-- `tests/test_preferences_optimistic_lock.py` — 10 tests for optimistic locking, JSONB merge vs overwrite, hub column allowlist
-- `tests/test_chat_lifecycle.py` — 9 tests for add_message + update session atomicity, CASCADE delete, role CHECK
-- `tests/test_memory_lifecycle.py` — 9 tests for vector cosine search, min_similarity threshold, update_text re-embedding
-- `tests/test_job_lifecycle.py` — 8 tests for dynamic SET clause, FK cascade to job_runs, try_claim dedup
-- `tests/test_state_store_lifecycle.py` — 7 tests for UPSERT semantics, composite PK, complex JSONB roundtrip
-- `tests/test_notification_lifecycle.py` — 7 tests for mark_read, unread_only filter, pagination, priority/metadata
+**Integration tests:** 12 test files (101 tests) in `tests/integration/`, requiring a real database (gracefully skip when DB is unavailable):
+- `test_tenant_isolation.py` — 8 tests verifying user_id scoping across all stores
+- `test_concurrency.py` — concurrent preference merge (both keys survive) + job dedup race (exactly one wins)
+- `test_search_quality.py` — golden queries with synthetic embeddings against hybrid search
+- `test_schema_constraints.py` — 12 tests for CHECK, UNIQUE, FK, NOT NULL constraint enforcement via raw SQL
+- `test_document_dedup.py` — 12 tests for SHA256 dedup, `xmax=0` trick, cascading deletes, executemany, FTS generated column
+- `test_session_lifecycle.py` — 14 tests for SQL aggregation (`COUNT FILTER`, `SUM`), `mark_scanned` atomic txn, COALESCE(completed_at)
+- `test_preferences_optimistic_lock.py` — 10 tests for optimistic locking, JSONB merge vs overwrite, hub column allowlist
+- `test_chat_lifecycle.py` — 9 tests for add_message + update session atomicity, CASCADE delete, role CHECK
+- `test_memory_lifecycle.py` — 9 tests for vector cosine search, min_similarity threshold, update_text re-embedding
+- `test_job_lifecycle.py` — 8 tests for dynamic SET clause, FK cascade to job_runs, try_claim dedup
+- `test_state_store_lifecycle.py` — 7 tests for UPSERT semantics, composite PK, complex JSONB roundtrip
+- `test_notification_lifecycle.py` — 7 tests for mark_read, unread_only filter, pagination, priority/metadata
 
-**Shared fixtures:** `tests/conftest.py` provides `mock_pool()` helper (canonical version with `executemany`), `db_pool` (session-scoped real asyncpg pool, graceful skip), `clean_tables` (truncates all 13 tables), and `test_user_id`.
+**Unit tests:** 15 test files (~220 tests) in `tests/unit/`, mock-based with no database dependency.
+
+**Shared fixtures (3 conftest files):**
+- `tests/conftest.py` — shared `test_user_id` fixture (used by both unit and integration tests)
+- `tests/integration/conftest.py` — `db_pool` (session-scoped real asyncpg pool, graceful skip), `clean_tables` (truncates all 13 tables)
+- `tests/unit/conftest.py` — empty placeholder (unit tests define local mock helpers)
 
 **pytest-asyncio config:** `pyproject.toml` sets `asyncio_default_fixture_loop_scope = "session"` and `asyncio_default_test_loop_scope = "session"` so that session-scoped fixtures (like `db_pool`) share an event loop with tests.
 
@@ -221,7 +228,7 @@ git tag v2.0.0          # after merging to main
 git push origin v2.0.0  # triggers CI
 ```
 
-**Steps (10 total):** start pgvector container → wait for DB → lint (ruff) + typecheck (mypy) in parallel → migrate (alembic) → test (pytest) → Docker build (tagged `SHORT_SHA` + `latest`) → push to Artifact Registry → deploy to Cloud Run → post-deploy smoke test (liveness + readiness + auth enforcement).
+**Steps (11 total):** start pgvector container → wait for DB → lint (ruff) + typecheck (mypy) in parallel → migrate (alembic) → unit tests + integration tests in parallel → Docker build (tagged `SHORT_SHA` + `latest`) → push to Artifact Registry → deploy to Cloud Run → post-deploy smoke test (liveness + readiness + auth enforcement).
 
 **Cloud Run deploy config:** `--allow-unauthenticated` (in-app Firebase auth), `--vpc-connector` for AlloyDB access, `--set-secrets` for DB password/Firebase SA/Gemini key, `--memory=1Gi --cpu=1 --concurrency=80 --max-instances=10`.
 

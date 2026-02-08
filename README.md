@@ -74,7 +74,9 @@ apexflow/
 │   ├── hubs/base_hub.py       # Async hub adapter
 │   └── engines/evidence_log.py # Evidence event log
 ├── tests/                     # pytest + pytest-asyncio
-│   └── conftest.py            # Shared fixtures (mock_pool, db_pool, clean_tables)
+│   ├── conftest.py            # Shared fixture (test_user_id)
+│   ├── unit/                  # Mock-based tests (no DB needed)
+│   └── integration/           # DB-dependent tests (graceful skip if unavailable)
 ├── docs/                      # Phase documentation
 ├── scripts/
 │   ├── init-db.sql            # Database schema (13 tables)
@@ -229,15 +231,17 @@ The API will be available at `http://localhost:8080`.
 ### Common Commands
 
 ```bash
-# Run tests (unit tests run instantly; integration tests skip if DB is unavailable)
-pytest tests/ -v
-pytest tests/test_rag.py -v              # single file
-pytest tests/test_rag.py::test_name -v   # single test
+# Run tests
+pytest tests/ -v                                  # full suite
+pytest tests/unit/ -v                             # unit tests only (no DB needed)
+pytest tests/integration/ -v                      # integration tests only
+pytest tests/unit/test_rag.py -v                  # single file
+pytest tests/unit/test_rag.py::test_name -v       # single test
 
 # Run integration tests against real AlloyDB
-./scripts/dev-start.sh                   # start VM + SSH tunnel
-pytest tests/ -v                         # 101 integration tests run against AlloyDB
-./scripts/dev-stop.sh                    # stop VM when done
+./scripts/dev-start.sh                            # start VM + SSH tunnel
+pytest tests/integration/ -v                      # 101 tests run against AlloyDB
+./scripts/dev-stop.sh                             # stop VM when done
 
 # Lint and format
 ruff check .            # lint
@@ -301,7 +305,7 @@ git tag v2.0.0
 git push origin v2.0.0   # triggers CI
 ```
 
-Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (alembic) → test (pytest) → Docker build → push to Artifact Registry → deploy to Cloud Run.
+Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (alembic) → unit tests + integration tests (parallel) → Docker build → push to Artifact Registry → deploy to Cloud Run → smoke test.
 
 ## Roadmap
 

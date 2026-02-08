@@ -11,7 +11,8 @@
 - `shared/state.py` is the global state container for ServiceRegistry, RemmeStore, and active loops.
 - `config/` and `prompts/` store runtime settings and LLM prompt templates.
 - `alembic/` is the source of truth for schema migrations; `scripts/` has dev helpers.
-- `tests/` contains pytest suites; `docs/` holds phase/architecture notes.
+- `tests/unit/` contains mock-based pytest suites (no DB needed); `tests/integration/` contains DB-dependent tests.
+- `docs/` holds phase/architecture notes.
 
 ## Architecture
 
@@ -54,7 +55,8 @@ Registered via `ServiceRegistry` during app lifespan:
 ### Using uv (preferred)
 - `uv venv .venv && source .venv/bin/activate` creates and activates the virtual environment.
 - `uv sync --extra dev` installs all dependencies including dev extras (uses `uv.lock` for reproducibility).
-- `uv run pytest tests/ -v` runs tests; `uv run pytest tests/test_database.py::test_name -v` runs a single test.
+- `uv run pytest tests/ -v` runs the full suite; `uv run pytest tests/unit/ -v` runs unit tests only; `uv run pytest tests/integration/ -v` runs integration tests only.
+- `uv run pytest tests/unit/test_database.py::test_name -v` runs a single test.
 - `uv run ruff check .` runs linting; `uv run ruff format .` formats code.
 - `uv run mypy core/` runs strict type checks.
 
@@ -76,17 +78,22 @@ Registered via `ServiceRegistry` during app lifespan:
 
 ## Testing Guidelines
 - Frameworks: `pytest` + `pytest-asyncio` with `asyncio_mode=auto`.
-- Keep tests in `tests/` and name them `test_*.py` with `test_*` functions.
+- **Unit tests** go in `tests/unit/`, **integration tests** go in `tests/integration/`. Name files `test_*.py` with `test_*` functions.
 - Add or update tests for new behavior, especially in stores/services and routers.
-- **Integration tests** (101 tests across 12 files) run against a real database and gracefully skip when DB is unavailable. To run: `./scripts/dev-start.sh && pytest tests/ -v`.
-- Integration tests use `db_pool`, `clean_tables`, and `test_user_id` fixtures from `tests/conftest.py`. Patch the store's `get_pool` with the `db_pool` fixture (e.g., `patch("core.stores.session_store.get_pool", AsyncMock(return_value=db_pool))`).
+- **Unit tests** (221 tests across 15 files) are mock-based and require no database. Run with `pytest tests/unit/ -v`.
+- **Integration tests** (101 tests across 12 files) run against a real database and gracefully skip when DB is unavailable. To run: `./scripts/dev-start.sh && pytest tests/integration/ -v`.
+- **Shared fixtures (3 conftest files):**
+  - `tests/conftest.py` — `test_user_id` (shared by both unit and integration tests)
+  - `tests/integration/conftest.py` — `db_pool` (session-scoped asyncpg pool), `clean_tables` (truncates all 13 tables)
+  - `tests/unit/conftest.py` — empty placeholder (unit tests define local mock helpers)
+- Integration tests use `db_pool` and `clean_tables` fixtures from `tests/integration/conftest.py`. Patch the store's `get_pool` with the `db_pool` fixture (e.g., `patch("core.stores.session_store.get_pool", AsyncMock(return_value=db_pool))`).
 - **pytest-asyncio loop scope:** `pyproject.toml` sets both `asyncio_default_fixture_loop_scope` and `asyncio_default_test_loop_scope` to `"session"` so session-scoped fixtures share an event loop with tests.
 - JSONB columns returned via `SELECT *` come back as strings from asyncpg — use `json.loads(val) if isinstance(val, str) else val` when asserting on metadata fields.
 
 ## CI Pipeline
 Google Cloud Build (`cloudbuild.yaml`), triggered on **tag pushes** matching `v*` (not on PRs). Workflow: merge PR → tag the merge commit → push tag → CI runs.
 
-Steps: start pgvector container → wait for DB → lint + typecheck (parallel) → migrate → test.
+Steps (11 total): start pgvector container → wait for DB → lint + typecheck (parallel) → migrate → unit tests + integration tests (parallel) → Docker build → push → deploy → smoke test.
 
 ## Commit & Pull Request Guidelines
 - Commit messages in history are short, imperative, sentence case: "Fix …", "Add …", "Update …", "Implement …".

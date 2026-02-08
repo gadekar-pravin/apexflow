@@ -91,7 +91,18 @@ steps:
     id: 'migrate'
     waitFor: ['wait-for-db']
 
-  # Step 6: Run tests
+  # Step 6a: Run unit tests (no DB needed)
+  - name: 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        uv sync --extra dev
+        uv run pytest tests/unit/ -v
+    id: 'test-unit'
+    waitFor: ['lint', 'typecheck']
+
+  # Step 6b: Run integration tests (requires DB)
   - name: 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
     entrypoint: 'bash'
     args:
@@ -100,8 +111,8 @@ steps:
         uv sync --extra dev
         export DB_HOST=postgres
         export DB_PASSWORD=${_CI_DB_PASSWORD}
-        uv run pytest tests/ -v
-    id: 'test'
+        uv run pytest tests/integration/ -v
+    id: 'test-integration'
     waitFor: ['migrate']
 
   # Step 7: Build Docker image
@@ -114,7 +125,7 @@ steps:
       - '${_IMAGE}:latest'
       - '.'
     id: 'docker-build'
-    waitFor: ['test']
+    waitFor: ['test-unit', 'test-integration']
 
   # Step 8: Push Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'

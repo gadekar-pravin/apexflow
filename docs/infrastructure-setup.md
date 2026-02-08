@@ -701,7 +701,9 @@ AUTH_DISABLED=1 uvicorn api:app --reload
 ### 17e. Run tests
 
 ```bash
-pytest tests/ -v
+pytest tests/ -v                  # full suite
+pytest tests/unit/ -v             # unit tests only (no DB needed)
+pytest tests/integration/ -v      # integration tests (requires AlloyDB)
 ```
 
 ---
@@ -715,7 +717,7 @@ git tag v2.1.0
 git push origin v2.1.0
 ```
 
-This triggers: lint → typecheck → test (322 tests) → Docker build → push to Artifact Registry → deploy to Cloud Run → post-deploy smoke test.
+This triggers: lint → typecheck → unit tests + integration tests (in parallel) → Docker build → push to Artifact Registry → deploy to Cloud Run → post-deploy smoke test.
 
 The **smoke test** (Step 10) automatically verifies the deployed service after each deploy:
 - `GET /liveness` → 200 (process alive)
