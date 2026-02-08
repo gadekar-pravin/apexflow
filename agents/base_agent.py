@@ -159,8 +159,8 @@ class AgentRunner:
             # 5. Generate response (with or without image)
             if image_path and os.path.exists(image_path) and Image is not None:
                 log_step(f"{agent_type} (with image)")
-                image = Image.open(image_path)
-                response = await model_manager.generate_content([full_prompt, image])
+                with Image.open(image_path) as image:
+                    response = await model_manager.generate_content([full_prompt, image])
             else:
                 response = await model_manager.generate_text(full_prompt)
 

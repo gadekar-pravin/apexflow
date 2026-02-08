@@ -344,10 +344,10 @@ class ExecutionContextManager:
         node_data["status"] = "completed"
         node_data["end_time"] = datetime.now(UTC).isoformat()
         node_data["output"] = output
-        node_data["cost"] = cost or 0.0
-        node_data["input_tokens"] = input_tokens or 0
-        node_data["output_tokens"] = output_tokens or 0
-        node_data["total_tokens"] = (input_tokens or 0) + (output_tokens or 0)
+        node_data["cost"] = cost if cost is not None else 0.0
+        node_data["input_tokens"] = input_tokens if input_tokens is not None else 0
+        node_data["output_tokens"] = output_tokens if output_tokens is not None else 0
+        node_data["total_tokens"] = node_data["input_tokens"] + node_data["output_tokens"]
 
         if "start_time" in node_data and node_data["start_time"]:
             start = datetime.fromisoformat(node_data["start_time"])

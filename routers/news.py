@@ -175,7 +175,7 @@ async def add_source(request: AddSourceTabsRequest) -> dict[str, Any]:
 
     feed_url: str | None = None
     try:
-        response = _safe_request("GET", request.url, timeout=5)
+        response = await asyncio.to_thread(_safe_request, "GET", request.url, timeout=5)
         soup = BeautifulSoup(response.text, "html.parser")
 
         rss_link = soup.find("link", type="application/rss+xml") or soup.find("link", type="application/atom+xml")
@@ -184,6 +184,11 @@ async def add_source(request: AddSourceTabsRequest) -> dict[str, Any]:
             feed_url = rss_link.get("href")
             if feed_url and not feed_url.startswith("http"):
                 feed_url = urljoin(request.url, feed_url)
+            if feed_url:
+                try:
+                    _validate_url(feed_url)
+                except HTTPException:
+                    feed_url = None  # discard unsafe feed URLs
     except Exception as e:
         logger.warning("Feed discovery failed for %s: %s", request.url, e)
 
@@ -355,7 +360,7 @@ async def get_article_content(url: str) -> dict[str, Any]:
 
         if not is_pdf:
             try:
-                head = _safe_request("HEAD", url, timeout=2)
+                head = await asyncio.to_thread(_safe_request, "HEAD", url, timeout=2)
                 if "application/pdf" in head.headers.get("Content-Type", "").lower():
                     is_pdf = True
             except Exception:
@@ -365,7 +370,7 @@ async def get_article_content(url: str) -> dict[str, Any]:
             try:
                 import pymupdf
 
-                response = _safe_request("GET", url, timeout=15)
+                response = await asyncio.to_thread(_safe_request, "GET", url, timeout=15)
                 doc = pymupdf.open(stream=response.content, filetype="pdf")
 
                 pdf_title = doc.metadata.get("title", "") if doc.metadata else ""
@@ -453,7 +458,7 @@ async def get_reader_content(url: str) -> dict[str, Any]:
         is_pdf = url.lower().endswith(".pdf") or "arxiv.org/pdf/" in url
         if not is_pdf:
             try:
-                head = _safe_request("HEAD", url, timeout=2)
+                head = await asyncio.to_thread(_safe_request, "HEAD", url, timeout=2)
                 if "application/pdf" in head.headers.get("Content-Type", "").lower():
                     is_pdf = True
             except Exception:
@@ -464,7 +469,7 @@ async def get_reader_content(url: str) -> dict[str, Any]:
                 import pymupdf
                 import pymupdf4llm
 
-                response = _safe_request("GET", url, timeout=15)
+                response = await asyncio.to_thread(_safe_request, "GET", url, timeout=15)
                 doc = pymupdf.open(stream=response.content, filetype="pdf")
                 md_text = pymupdf4llm.to_markdown(doc)
                 return {"status": "success", "content": md_text, "url": url}
@@ -480,7 +485,7 @@ async def get_reader_content(url: str) -> dict[str, Any]:
             ),
         }
         try:
-            resp = _safe_request("GET", url, headers=headers, timeout=10)
+            resp = await asyncio.to_thread(_safe_request, "GET", url, headers=headers, timeout=10)
             resp.raise_for_status()
             downloaded = resp.text
         except Exception as e:

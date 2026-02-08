@@ -183,10 +183,10 @@ def _split_text_recursive(
     separator = separators[0]
     next_separators = separators[1:]
 
-    # Hard character split (last resort)
+    # Hard character split (last resort) — no overlap here;
+    # _chunk_recursive applies inter-chunk overlap uniformly.
     if separator == "":
-        step = max(chunk_size - chunk_overlap, 1)
-        return [text[i : i + chunk_size] for i in range(0, len(text), step)]
+        return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
     if separator not in text:
         return _split_text_recursive(text, next_separators, chunk_size, chunk_overlap)
