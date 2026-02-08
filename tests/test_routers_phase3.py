@@ -136,10 +136,13 @@ def test_rag_delete(client: TestClient) -> None:
 
 
 def test_remme_preferences_stub(client: TestClient) -> None:
-    resp = client.get("/api/remme/preferences")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "success"
+    mock_store = AsyncMock()
+    mock_store.get_preferences = AsyncMock(return_value={})
+    with patch("routers.remme._get_store", return_value=mock_store):
+        resp = client.get("/api/remme/preferences")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
 
 
 def test_remme_normalize_stub(client: TestClient) -> None:
@@ -150,10 +153,11 @@ def test_remme_normalize_stub(client: TestClient) -> None:
 
 
 def test_remme_staging_stub(client: TestClient) -> None:
-    resp = client.get("/api/remme/staging/status")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["pending_count"] == 0
+    with patch("routers.remme._preferences_store.get_staging", AsyncMock(return_value={})):
+        resp = client.get("/api/remme/staging/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["pending_count"] == 0
 
 
 # ---------------------------------------------------------------------------

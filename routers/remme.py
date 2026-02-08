@@ -1,7 +1,6 @@
-"""REMME router -- v2 port from v1, DB-backed via SessionStore + StateStore.
+"""REMME router -- DB-backed via RemmeStore + RemmeEngine (Phase 4b).
 
-Replaces filesystem summaries_dir.rglob() with session_store.list_unscanned().
-Replaces profile cache file with state_store.get/set.
+Replaces Phase 3 stubs with real store/engine calls.
 """
 
 from __future__ import annotations
@@ -11,9 +10,10 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.auth import get_user_id
+from core.stores.preferences_store import PreferencesStore
 from core.stores.session_store import SessionStore
 from core.stores.state_store import StateStore
 
@@ -22,6 +22,7 @@ router = APIRouter(prefix="/remme", tags=["REMME"])
 
 _session_store = SessionStore()
 _state_store = StateStore()
+_preferences_store = PreferencesStore()
 
 
 # -- models -------------------------------------------------------------------
@@ -33,6 +34,23 @@ class MemoryItem(BaseModel):
     source: str | None = None
 
 
+class SearchQuery(BaseModel):
+    query: str
+    limit: int = Field(default=10, ge=1, le=100)
+
+
+# -- helpers ------------------------------------------------------------------
+
+
+def _get_store() -> Any:
+    from shared.state import get_remme_store
+
+    store = get_remme_store()
+    if store is None:
+        raise HTTPException(status_code=503, detail="RemmeStore not initialized")
+    return store
+
+
 # -- endpoints ----------------------------------------------------------------
 
 
@@ -41,16 +59,9 @@ async def list_memories(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
     """List user memories from the remme store."""
-    from shared.state import get_remme_store
-
-    store = get_remme_store()
-    if store is None:
-        raise HTTPException(status_code=503, detail="RemmeStore not initialized")
-    try:
-        memories = store.list_all()
-        return {"status": "success", "memories": memories, "count": len(memories)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    store = _get_store()
+    memories = await store.list_all(user_id)
+    return {"status": "success", "memories": memories, "count": len(memories)}
 
 
 @router.post("/memories")
@@ -59,38 +70,38 @@ async def add_memory(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
     """Add a new memory to the remme store."""
-    from shared.state import get_remme_store
-
-    store = get_remme_store()
-    if store is None:
-        raise HTTPException(status_code=503, detail="RemmeStore not initialized")
-    try:
-        memory_id = store.add(
-            item.text,
-            category=item.category,
-            source=item.source or "manual",
-        )
-        return {"status": "success", "id": memory_id}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    store = _get_store()
+    memory_id = await store.add(
+        user_id,
+        item.text,
+        category=item.category,
+        source=item.source or "manual",
+    )
+    return {"status": "success", "id": memory_id}
 
 
 @router.delete("/memories/{memory_id}")
 async def delete_memory(
     memory_id: str,
     user_id: str = Depends(get_user_id),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Delete a memory from the remme store."""
-    from shared.state import get_remme_store
+    store = _get_store()
+    deleted = await store.delete(user_id, memory_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    return {"status": "success"}
 
-    store = get_remme_store()
-    if store is None:
-        raise HTTPException(status_code=503, detail="RemmeStore not initialized")
-    try:
-        store.delete(memory_id)
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@router.post("/memories/search")
+async def search_memories(
+    body: SearchQuery,
+    user_id: str = Depends(get_user_id),
+) -> dict[str, Any]:
+    """Semantic search over memories."""
+    store = _get_store()
+    results = await store.search(user_id, body.query, limit=body.limit)
+    return {"status": "success", "results": results, "count": len(results)}
 
 
 @router.get("/scan/unscanned")
@@ -107,19 +118,13 @@ async def smart_scan(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
     """Scan unscanned sessions and extract memories."""
-    sessions = await _session_store.list_unscanned(user_id)
-    if not sessions:
-        return {"status": "success", "scanned": 0, "message": "No unscanned sessions"}
+    store = _get_store()
 
-    scanned = 0
-    for session in sessions:
-        try:
-            await _session_store.mark_scanned(user_id, session["id"])
-            scanned += 1
-        except Exception as e:
-            logger.error("Failed to mark session %s as scanned: %s", session["id"], e)
+    from remme.engine import RemmeEngine
 
-    return {"status": "success", "scanned": scanned}
+    engine = RemmeEngine(store)
+    result = await engine.run_scan(user_id)
+    return {"status": "success", **result}
 
 
 @router.get("/profile")
@@ -138,34 +143,21 @@ async def refresh_profile(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
     """Regenerate the user profile from memories."""
-    from shared.state import get_remme_store
-
-    store = get_remme_store()
-    if store is None:
-        raise HTTPException(status_code=503, detail="RemmeStore not initialized")
-
-    try:
-        memories = store.list_all()
-        profile: dict[str, Any] = {
-            "memory_count": len(memories),
-            "generated_at": datetime.now(UTC).isoformat(),
-        }
-        await _state_store.set(user_id, "remme_profile_cache", profile)
-        return {"status": "success", "profile": profile}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    store = _get_store()
+    profile = await store.get_profile(user_id)
+    profile["generated_at"] = datetime.now(UTC).isoformat()
+    await _state_store.set(user_id, "remme_profile_cache", profile)
+    return {"status": "success", "profile": profile}
 
 
 @router.get("/preferences")
 async def get_preferences(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
-    """Get user preferences (simplified v2 -- hub data moved to DB in Phase 5)."""
-    return {
-        "status": "success",
-        "preferences": {},
-        "message": "Full preference system available in Phase 5",
-    }
+    """Get user preferences from the preferences store."""
+    store = _get_store()
+    preferences = await store.get_preferences(user_id)
+    return {"status": "success", "preferences": preferences}
 
 
 @router.get("/staging/status")
@@ -173,11 +165,13 @@ async def get_staging_status(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
     """Get staging queue status."""
+    data = await _preferences_store.get_staging(user_id)
+    items = data.get("items", [])
     return {
         "status": "success",
-        "pending_count": 0,
-        "should_normalize": False,
-        "message": "Staging system available in Phase 5",
+        "pending_count": len(items),
+        "should_normalize": len(items) >= 5,
+        "items": items,
     }
 
 

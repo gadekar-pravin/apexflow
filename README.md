@@ -48,6 +48,8 @@ apexflow/
 │       ├── session_store.py
 │       ├── document_store.py
 │       ├── document_search.py # Hybrid search (vector + full-text RRF)
+│       ├── memory_store.py    # CRUD + vector cosine search on memories
+│       ├── preferences_store.py # JSONB hub access on user_preferences
 │       ├── chat_store.py
 │       └── ...
 ├── agents/
@@ -60,7 +62,13 @@ apexflow/
 ├── config/                    # Settings, agent config, model profiles
 ├── prompts/                   # LLM prompt templates
 ├── memory/                    # Session memory context
-├── remme/                     # Memory management system
+├── remme/                     # REMME memory system
+│   ├── store.py               # RemmeStore facade (auto-embeds)
+│   ├── engine.py              # Scan cycle orchestrator
+│   ├── staging.py             # Staging queue
+│   ├── extractor.py           # LLM-based memory extraction
+│   ├── hubs/base_hub.py       # Async hub adapter
+│   └── engines/evidence_log.py # Evidence event log
 ├── tests/                     # pytest + pytest-asyncio
 ├── docs/                      # Phase documentation
 ├── scripts/                   # DB init, dev environment scripts
@@ -82,11 +90,12 @@ apexflow/
 git clone https://github.com/gadekar-pravin/apexflow.git
 cd apexflow
 
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate
+# Create and activate virtual environment (uv preferred)
+uv venv .venv && source .venv/bin/activate
+uv sync --extra dev
 
-# Install with dev dependencies
+# Alternative: pip
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
 # Set up pre-commit hooks
@@ -177,8 +186,15 @@ The API will be available at `http://localhost:8000`. Interactive docs at `/docs
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/remme/memories` | List memories |
-| POST | `/api/remme/scan/smart` | Smart scan sessions |
-| GET | `/api/remme/profile` | Get user profile |
+| POST | `/api/remme/memories` | Add a memory (auto-embeds) |
+| DELETE | `/api/remme/memories/{id}` | Delete a memory |
+| POST | `/api/remme/memories/search` | Semantic search over memories |
+| POST | `/api/remme/scan/smart` | Smart scan sessions for memories |
+| GET | `/api/remme/scan/unscanned` | List unscanned sessions |
+| GET | `/api/remme/profile` | Get cached user profile |
+| POST | `/api/remme/profile/refresh` | Regenerate profile from memories |
+| GET | `/api/remme/preferences` | Get user preferences |
+| GET | `/api/remme/staging/status` | Get staging queue status |
 
 ### Other
 | Scope | Prefix | Endpoints |
@@ -271,6 +287,6 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 2 — Core Engine | Done | Execution engine, agent runner, auth, events |
 | 3 — Data Layer | Done | Stores, services, routers |
 | 4a — RAG | Done | Document indexing, hybrid search |
-| 4b — REMME | Planned | Memory extraction and profiling |
+| 4b — REMME | Done | Memory stores, preference hubs, scan engine |
 | 4c — Sandbox | Planned | Secure code execution |
 | 5 — Deployment | Planned | Cloud Run, Terraform, monitoring |
