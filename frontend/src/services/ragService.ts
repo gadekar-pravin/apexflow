@@ -2,8 +2,10 @@ import { fetchAPI } from "./api"
 import type {
   DocumentsResponse,
   SearchResponse,
+  ChatMessage,
   ChatSession,
   ChatSessionSummary,
+  ReindexResponse,
 } from "@/types"
 
 export const ragService = {
@@ -44,7 +46,7 @@ export const ragService = {
   },
 
   // Trigger reindex (v2: body is {doc_id?, limit?} instead of {path?, force?})
-  async reindex(docId?: string, limit?: number): Promise<{ status: string; result: unknown }> {
+  async reindex(docId?: string, limit?: number): Promise<ReindexResponse> {
     const params: Record<string, unknown> = {}
     if (docId) params.doc_id = docId
     if (limit != null) params.limit = limit
@@ -99,7 +101,15 @@ export const ragService = {
     _targetType: "rag" | "ide" | "notes",
     _targetId: string
   ): Promise<{ status: string; session: ChatSession }> {
-    return fetchAPI(`/api/chat/sessions/${sessionId}`)
+    const response = await fetchAPI<{
+      status: string
+      session: Omit<ChatSession, "messages">
+      messages: ChatMessage[]
+    }>(`/api/chat/sessions/${sessionId}`)
+    return {
+      status: response.status,
+      session: { ...response.session, messages: response.messages },
+    }
   },
 
   async saveChatSession(session: ChatSession): Promise<{ status: string; session: ChatSession }> {

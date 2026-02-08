@@ -28,13 +28,13 @@ function DocumentRow({ doc }: DocumentRowProps) {
     >
       <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
       <span className="truncate flex-1">{doc.filename}</span>
-      {doc.chunk_count != null && (
+      {doc.total_chunks != null && (
         <span className="text-xs text-muted-foreground">
-          {doc.chunk_count} chunks
+          {doc.total_chunks} chunks
         </span>
       )}
       <span className="text-xs text-muted-foreground">
-        {formatShortDate(doc.created_at)}
+        {formatShortDate(doc.indexed_at)}
       </span>
     </button>
   )

@@ -33,7 +33,7 @@ describe('ragService', () => {
 
   describe('search', () => {
     it('performs semantic search via POST', async () => {
-      const searchResult = { status: 'ok', results: [{ chunk_text: 'match', rrf_score: 0.9 }] }
+      const searchResult = { results: [{ chunk_id: 'c1', document_id: 'd1', content: 'match', chunk_index: 0, rrf_score: 0.9, vector_score: 0.8, text_score: 0.7 }] }
       mockFetchAPI.mockResolvedValueOnce(searchResult)
 
       await ragService.search('test query')
@@ -45,7 +45,7 @@ describe('ragService', () => {
     })
 
     it('accepts custom limit', async () => {
-      mockFetchAPI.mockResolvedValueOnce({ status: 'ok', results: [] })
+      mockFetchAPI.mockResolvedValueOnce({ results: [] })
 
       await ragService.search('query', 5)
 
@@ -105,7 +105,7 @@ describe('ragService', () => {
 
   describe('reindex', () => {
     it('triggers full reindex', async () => {
-      mockFetchAPI.mockResolvedValueOnce({ status: 'ok', result: {} })
+      mockFetchAPI.mockResolvedValueOnce({ reindexed: [] })
 
       await ragService.reindex()
 
@@ -116,7 +116,7 @@ describe('ragService', () => {
     })
 
     it('reindexes specific document by ID', async () => {
-      mockFetchAPI.mockResolvedValueOnce({ status: 'ok', result: {} })
+      mockFetchAPI.mockResolvedValueOnce({ reindexed: [] })
 
       await ragService.reindex('doc-123')
 
@@ -143,16 +143,19 @@ describe('ragService', () => {
     })
 
     describe('getChatSession', () => {
-      it('fetches specific session', async () => {
-        const session = {
+      it('fetches specific session and merges messages', async () => {
+        const messages = [{ id: 'm1', role: 'user', content: 'hello', timestamp: 1 }]
+        const apiResponse = {
           status: 'ok',
-          session: { id: 's1', messages: [] },
+          session: { id: 's1' },
+          messages,
         }
-        mockFetchAPI.mockResolvedValueOnce(session)
+        mockFetchAPI.mockResolvedValueOnce(apiResponse)
 
-        await ragService.getChatSession('s1', 'notes', 'note-1')
+        const result = await ragService.getChatSession('s1', 'notes', 'note-1')
 
         expect(mockFetchAPI).toHaveBeenCalledWith('/api/chat/sessions/s1')
+        expect(result.session.messages).toEqual(messages)
       })
     })
 

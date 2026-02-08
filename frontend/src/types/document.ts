@@ -19,10 +19,12 @@ export interface V2Document {
   id: string
   filename: string
   file_hash: string
-  chunk_count?: number
+  total_chunks: number
   ingestion_version?: number
-  created_at: string
+  indexed_at: string
   updated_at?: string
+  doc_type?: string
+  embedding_model?: string
 }
 
 export interface DocumentsResponse {
@@ -30,16 +32,16 @@ export interface DocumentsResponse {
 }
 
 export interface SearchResult {
-  chunk_text: string
+  chunk_id: string
   document_id: string
-  filename: string
+  content: string
+  chunk_index: number
   rrf_score: number
   vector_score: number
   text_score: number
 }
 
 export interface SearchResponse {
-  status: string
   results: SearchResult[]
 }
 
@@ -78,6 +80,16 @@ export interface ChatSessionSummary {
   updated_at: number
   model?: string
   preview: string
+}
+
+export interface ReindexResult {
+  doc_id: string
+  status: string
+  total_chunks: number
+}
+
+export interface ReindexResponse {
+  reindexed: ReindexResult[]
 }
 
 export interface IndexingStatus {
