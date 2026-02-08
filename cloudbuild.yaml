@@ -1,8 +1,7 @@
 substitutions:
   _REGION: us-central1
-  _REPO: apexflow-api
-  _IMAGE: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api
-  _SERVICE_ACCOUNT: apexflow-api@${PROJECT_ID}.iam.gserviceaccount.com
+  _IMAGE: us-central1-docker.pkg.dev/apexflow-ai/apexflow-api/api
+  _SERVICE_ACCOUNT: apexflow-api@apexflow-ai.iam.gserviceaccount.com
   _VPC_CONNECTOR: apexflow-vpc-connector
   _ALLOYDB_HOST: ''  # REQUIRED: set via trigger substitution or --substitutions
   _CI_DB_PASSWORD: 'ci-test-only'  # ephemeral CI container, not a real credential
@@ -140,7 +139,7 @@ steps:
       - '--service-account=${_SERVICE_ACCOUNT}'
       - '--vpc-connector=${_VPC_CONNECTOR}'
       - '--vpc-egress=private-ranges-only'
-      - '--set-secrets=ALLOYDB_PASSWORD=apexflow-db-password:latest,GEMINI_API_KEY=gemini-api-key:latest'
+      - '--set-secrets=ALLOYDB_PASSWORD=apexflow-db-password:latest'
       - '--set-env-vars=ALLOYDB_HOST=${_ALLOYDB_HOST},ALLOYDB_DB=apexflow,ALLOYDB_USER=apexflow,LOG_LEVEL=INFO,CORS_ORIGINS=https://apexflow.web.app'
       - '--memory=1Gi'
       - '--cpu=1'
@@ -149,10 +148,6 @@ steps:
       - '--timeout=300'
     id: 'deploy'
     waitFor: ['docker-push', 'validate-config']
-
-images:
-  - '${_IMAGE}:${SHORT_SHA}'
-  - '${_IMAGE}:latest'
 
 options:
   machineType: 'E2_HIGHCPU_8'
