@@ -6,6 +6,7 @@ docs/
 scripts/
 alembic/
 *.md
+!prompts/*.md
 .env*
 Dockerfile
 cloudbuild.yaml

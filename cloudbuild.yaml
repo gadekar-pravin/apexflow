@@ -4,10 +4,22 @@ substitutions:
   _IMAGE: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api
   _SERVICE_ACCOUNT: apexflow-api@${PROJECT_ID}.iam.gserviceaccount.com
   _VPC_CONNECTOR: apexflow-vpc-connector
-  _ALLOYDB_HOST: '10.x.x.x'  # TODO: replace with real AlloyDB private IP before first deploy
+  _ALLOYDB_HOST: ''  # REQUIRED: set via trigger substitution or --substitutions
   _CI_DB_PASSWORD: 'ci-test-only'  # ephemeral CI container, not a real credential
 
 steps:
+  # Step 0: Validate required substitutions
+  - name: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ -z "${_ALLOYDB_HOST}" ] || echo "${_ALLOYDB_HOST}" | grep -q '^10\.x'; then
+          echo "ERROR: _ALLOYDB_HOST must be set to a real AlloyDB private IP via trigger substitutions."
+          exit 1
+        fi
+    id: 'validate-config'
+    waitFor: ['-']
+
   # Step 1: Start pgvector container on the cloudbuild network
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -135,7 +147,7 @@ steps:
       - '--max-instances=10'
       - '--timeout=300'
     id: 'deploy'
-    waitFor: ['docker-push']
+    waitFor: ['docker-push', 'validate-config']
 
 images:
   - '${_IMAGE}:${SHORT_SHA}'

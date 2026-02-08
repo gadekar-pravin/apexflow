@@ -67,10 +67,14 @@ _ALL_TABLES = [
 @pytest.fixture(scope="session")
 async def db_pool():  # type: ignore[no-untyped-def]
     """Real asyncpg pool for integration tests. Skips if DB is unreachable."""
-    db_url = os.environ.get(
-        "DATABASE_TEST_URL",
-        "postgresql://apexflow:apexflow@localhost:5432/apexflow",
-    )
+    db_url = os.environ.get("DATABASE_TEST_URL")
+    if not db_url:
+        host = os.environ.get("DB_HOST", "localhost")
+        port = os.environ.get("DB_PORT", "5432")
+        user = os.environ.get("DB_USER", "apexflow")
+        password = os.environ.get("DB_PASSWORD", "apexflow")
+        db_name = os.environ.get("DB_NAME", "apexflow")
+        db_url = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
     try:
         import asyncpg
 

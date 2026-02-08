@@ -6,11 +6,14 @@ WORKDIR /app
 # Copy dependency files first for layer caching
 COPY pyproject.toml uv.lock* ./
 
-# Install production dependencies only
-RUN uv venv /app/.venv && uv sync --no-dev --frozen
+# Install production dependencies only (without the project itself)
+RUN uv venv /app/.venv && uv sync --no-dev --frozen --no-install-project
 
 # Copy application code
 COPY . .
+
+# Install the project now that sources are available
+RUN uv sync --no-dev --frozen
 
 # ---- Runtime stage ----
 FROM python:3.12-slim-bookworm
