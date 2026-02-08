@@ -114,9 +114,13 @@ def load_notifications(source_dir: Path) -> list[dict[str, Any]]:
         cursor = conn.execute("SELECT * FROM notifications")
         for row in cursor:
             d = dict(row)
+            notif_id = str(d.get("id", "")) if d.get("id") is not None else ""
+            if not notif_id:
+                notif_id = str(uuid.uuid4())
+                logger.warning("Notification missing ID, generated: %s", notif_id)
             notifications.append(
                 {
-                    "id": str(d.get("id", "")),
+                    "id": notif_id,
                     "source": d.get("source", "v1-migration"),
                     "title": d.get("title", ""),
                     "body": d.get("body", d.get("message", "")),
@@ -236,9 +240,13 @@ async def migrate_jobs(pool: Any, user_id: str, jobs: list[dict[str, Any]]) -> i
         batch = jobs[i : i + BATCH_SIZE]
         rows = []
         for j in batch:
+            job_id = j.get("id") or j.get("job_id") or ""
+            if not job_id:
+                job_id = str(uuid.uuid4())
+                logger.warning("Job missing ID, generated: %s", job_id)
             rows.append(
                 (
-                    j.get("id", j.get("job_id", "")),
+                    job_id,
                     user_id,
                     j.get("name", "unnamed"),
                     j.get("cron_expression", j.get("schedule", "0 * * * *")),
