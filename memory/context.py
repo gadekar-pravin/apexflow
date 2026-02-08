@@ -1,10 +1,9 @@
-"""ExecutionContextManager -- v2 stripped-down version.
+"""ExecutionContextManager -- v2 with DB-backed session persistence.
 
-100% NetworkX Graph-First.  Removes:
-- Rich imports / CLI-mode prompting
-- Filesystem session saves (emits event_bus events instead)
-- tools.sandbox import (code execution deferred to Phase 4c)
-- load_session classmethod
+100% NetworkX Graph-First.  Phase 3 additions:
+- _save_session() writes graph to session_store
+- load_session() reads from session_store
+- _auto_save() triggers _save_session as fire-and-forget task
 """
 
 from __future__ import annotations
@@ -22,6 +21,7 @@ import networkx as nx
 
 from core.event_bus import event_bus
 from core.service_registry import ServiceRegistry
+from core.stores.session_store import SessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -466,14 +466,58 @@ class ExecutionContextManager:
         self.plan_graph.graph["file_profiles"] = file_profiles
 
     def _auto_save(self) -> None:
-        """Emit event_bus event instead of filesystem write."""
+        """Persist graph to DB and emit event_bus event."""
         if self.debug_mode:
             return
         with contextlib.suppress(RuntimeError):
-            asyncio.get_running_loop().create_task(
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._save_session())
+            loop.create_task(
                 event_bus.publish(
                     "context_updated",
                     "ExecutionContextManager",
                     {"session_id": self.plan_graph.graph["session_id"]},
                 )
             )
+
+    async def _save_session(self, user_id: str = "dev-user") -> None:
+        """Persist graph data to session_store."""
+        try:
+            store = SessionStore()
+            session_id = self.plan_graph.graph.get("session_id", "")
+            if not session_id:
+                return
+            graph_data = nx.node_link_data(self.plan_graph, edges="edges")
+            node_outputs: dict[str, Any] = {}
+            for node_id in self.plan_graph.nodes:
+                nd = self.plan_graph.nodes[node_id]
+                if nd.get("output"):
+                    node_outputs[node_id] = nd["output"]
+            await store.update_graph(user_id, session_id, graph_data, node_outputs)
+        except Exception as e:
+            logger.debug("_save_session failed (non-fatal): %s", e)
+
+    @classmethod
+    async def load_session(cls, user_id: str, session_id: str) -> ExecutionContextManager | None:
+        """Load a session from the DB and reconstruct the context."""
+        store = SessionStore()
+        session = await store.get(user_id, session_id)
+        if not session:
+            return None
+        graph_data = session.get("graph_data", {})
+        if not graph_data or not isinstance(graph_data, dict):
+            return None
+        try:
+            g = nx.node_link_graph(graph_data, edges="edges")
+            ctx = cls.__new__(cls)
+            ctx.plan_graph = g
+            ctx.stop_requested = False
+            ctx.api_mode = True
+            ctx.user_input_event = asyncio.Event()
+            ctx.user_input_value = None
+            ctx.debug_mode = False
+            ctx.service_registry = None
+            return ctx
+        except Exception as e:
+            logger.error("Failed to load session %s: %s", session_id, e)
+            return None
