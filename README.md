@@ -7,6 +7,7 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 - **Multi-phase agent workflows** — DAG-based execution engine with cost tracking, stop requests, and exponential backoff retries
 - **RAG system** — Document indexing with hybrid search combining vector cosine similarity and full-text search via Reciprocal Rank Fusion (RRF)
 - **Memory management (REMME)** — Smart memory extraction, categorization, and adaptive user profiling from session history
+- **Secure code execution** — Monty sandbox (pydantic-monty) with language-level isolation, subprocess resource limits, and tool bridging via JSON-lines IPC
 - **Tool routing** — ServiceRegistry dispatches tool calls in OpenAI-compatible format with circuit breaker resilience
 - **Real-time streaming** — Server-Sent Events for live client updates via EventBus pub-sub
 - **Scheduled workflows** — APScheduler with cron expressions and DB-backed job deduplication
@@ -57,9 +58,12 @@ apexflow/
 ├── services/                  # Service layer (registered via ServiceRegistry)
 │   ├── browser_service.py     # Web search with SSRF protection
 │   ├── rag_service.py         # Document indexing & search
-│   └── sandbox_service.py     # Code execution (stub)
+│   └── sandbox_service.py     # Code execution (Monty sandbox)
 ├── routers/                   # API endpoint handlers
-├── config/                    # Settings, agent config, model profiles
+├── tools/
+│   ├── monty_sandbox.py       # AST preprocessing, security logging, executor
+│   └── _sandbox_worker.py     # Subprocess worker (Monty + IPC)
+├── config/                    # Settings, agent config, model profiles, sandbox config
 ├── prompts/                   # LLM prompt templates
 ├── memory/                    # Session memory context
 ├── remme/                     # REMME memory system
@@ -288,5 +292,5 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 3 — Data Layer | Done | Stores, services, routers |
 | 4a — RAG | Done | Document indexing, hybrid search |
 | 4b — REMME | Done | Memory stores, preference hubs, scan engine |
-| 4c — Sandbox | Planned | Secure code execution |
+| 4c — Sandbox | Done | Secure code execution (pydantic-monty) |
 | 5 — Deployment | Planned | Cloud Run, Terraform, monitoring |

@@ -36,18 +36,17 @@ ALWAYS ensure they are proper lists before iterating:
 
 ```python
 # SAFE PATTERN - Always use this when iterating over previous results
-import json
-import ast
 
 # The variable might be: a list, a JSON string, or a Python repr string
 if isinstance(my_urls, str):
     try:
-        my_urls = json.loads(my_urls)  # Try JSON first
-    except:
+        my_urls = json.loads(my_urls)
+    except Exception:
+        # Fallback: Python repr uses single quotes — convert to double quotes
         try:
-            my_urls = ast.literal_eval(my_urls)  # Try Python literal
-        except:
-            my_urls = []  # Fallback to empty list
+            my_urls = json.loads(my_urls.replace("'", '"'))
+        except Exception:
+            my_urls = []  # Final fallback to empty list
 
 # Now safe to iterate
 for url in my_urls[:5]:
@@ -207,8 +206,8 @@ return {'search_results_1A': urls}
   "blr_to_nyc_flight_options_T001": [],
   "call_self": false,
   "code_variants": {
-    "CODE_2A": "# SAFE: Robust handling of input list (Strings vs Dicts)\nimport json, ast\nitems = flight_urls_1A\n# 1. Parse string representation if needed\nif isinstance(items, str):\n    try: items = json.loads(items)\n    except: items = ast.literal_eval(items) if items.strip().startswith('[') else []\n\nresults = []\nfor item in items[:5]:\n    # 2. Determine if item is URL string or Result dict\n    if isinstance(item, str):\n        url = item\n    elif isinstance(item, dict) and 'url' in item:\n        url = item['url']\n    else: continue\n\n    # 3. Process URL\n    if url.startswith('http'):\n        content = webpage_url_to_raw_text(url)\n        results.append({'url': url, 'content': content})\nreturn {'blr_to_nyc_flight_options_T001': results}",
-    "CODE_2B": "# SAFE: Alternative Robust extraction\nimport json, ast\nitems = flight_urls_1A\nif isinstance(items, str):\n    try: items = json.loads(items)\n    except: items = ast.literal_eval(items) if items.strip().startswith('[') else []\n\ndetails = []\nfor item in items[:3]:\n    url = item if isinstance(item, str) else item.get('url')\n    if url and isinstance(url, str) and url.startswith('http'):\n        info = webpage_url_to_llm_summary(url, 'Extract flight prices')\n        details.append(info)\nreturn {'blr_to_nyc_flight_options_T001': details}"
+    "CODE_2A": "# SAFE: Robust handling of input list (Strings vs Dicts)\nimport json\nitems = flight_urls_1A\n# 1. Parse string representation if needed\nif isinstance(items, str):\n    try: items = json.loads(items)\n    except Exception:\n        try: items = json.loads(items.replace(\"'\", '\"'))\n        except Exception: items = []\n\nresults = []\nfor item in items[:5]:\n    # 2. Determine if item is URL string or Result dict\n    if isinstance(item, str):\n        url = item\n    elif isinstance(item, dict) and 'url' in item:\n        url = item['url']\n    else: continue\n\n    # 3. Process URL\n    if url.startswith('http'):\n        content = webpage_url_to_raw_text(url)\n        results.append({'url': url, 'content': content})\nreturn {'blr_to_nyc_flight_options_T001': results}",
+    "CODE_2B": "# SAFE: Alternative Robust extraction\nimport json\nitems = flight_urls_1A\nif isinstance(items, str):\n    try: items = json.loads(items)\n    except Exception:\n        try: items = json.loads(items.replace(\"'\", '\"'))\n        except Exception: items = []\n\ndetails = []\nfor item in items[:3]:\n    url = item if isinstance(item, str) else item.get('url')\n    if url and isinstance(url, str) and url.startswith('http'):\n        info = webpage_url_to_llm_summary(url, 'Extract flight prices')\n        details.append(info)\nreturn {'blr_to_nyc_flight_options_T001': details}"
   }
 }
 ```
@@ -504,8 +503,8 @@ Use only the following tools (in positional form):
   "hotel_research_T005": [],
   "call_self": false,
   "code_variants": {
-    "CODE_2A": "# SAFE: Robust handling of input list\nimport json, ast\nitems = hotel_urls_1A\nif isinstance(items, str):\n    try: items = json.loads(items)\n    except: items = ast.literal_eval(items) if items.strip().startswith('[') else []\n\nresults = []\nfor item in items[:5]:\n    # Determine if item is URL string or Result dict from search_web_with_text_content\n    if isinstance(item, str):\n        url = item\n    elif isinstance(item, dict) and 'url' in item:\n        url = item['url']\n    else: continue\n        \n    if url.startswith('http'):\n        content = webpage_url_to_raw_text(url)\n        results.append({'url': url, 'content': content})\nreturn {'hotel_research_T005': results}",
-    "CODE_2B": "# SAFE: Robust handling with alternative tool\nimport json, ast\nitems = hotel_urls_1A\nif isinstance(items, str):\n    try: items = json.loads(items)\n    except: items = ast.literal_eval(items) if items.strip().startswith('[') else []\n\ndetails = []\nfor item in items[:3]:\n    url = item if isinstance(item, str) else item.get('url')\n    if url and isinstance(url, str) and url.startswith('http'):\n        info = webpage_url_to_llm_summary(url, 'Extract hotel name, price, rating, amenities')\n        details.append(info)\nreturn {'hotel_research_T005': details}"
+    "CODE_2A": "# SAFE: Robust handling of input list\nimport json\nitems = hotel_urls_1A\nif isinstance(items, str):\n    try: items = json.loads(items)\n    except Exception:\n        try: items = json.loads(items.replace(\"'\", '\"'))\n        except Exception: items = []\n\nresults = []\nfor item in items[:5]:\n    # Determine if item is URL string or Result dict from search_web_with_text_content\n    if isinstance(item, str):\n        url = item\n    elif isinstance(item, dict) and 'url' in item:\n        url = item['url']\n    else: continue\n        \n    if url.startswith('http'):\n        content = webpage_url_to_raw_text(url)\n        results.append({'url': url, 'content': content})\nreturn {'hotel_research_T005': results}",
+    "CODE_2B": "# SAFE: Robust handling with alternative tool\nimport json\nitems = hotel_urls_1A\nif isinstance(items, str):\n    try: items = json.loads(items)\n    except Exception:\n        try: items = json.loads(items.replace(\"'\", '\"'))\n        except Exception: items = []\n\ndetails = []\nfor item in items[:3]:\n    url = item if isinstance(item, str) else item.get('url')\n    if url and isinstance(url, str) and url.startswith('http'):\n        info = webpage_url_to_llm_summary(url, 'Extract hotel name, price, rating, amenities')\n        details.append(info)\nreturn {'hotel_research_T005': details}"
   }
 }
 ```

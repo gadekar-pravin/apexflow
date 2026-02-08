@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ApexFlow v2 is a web-first rewrite of the desktop-first ApexFlow v1. It's an intelligent workflow automation platform powered by Google Gemini. The backend is FastAPI + asyncpg + AlloyDB (Google's PostgreSQL variant with ScaNN vector indexes).
 
-**Current state:** Phases 1-4b are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phases 4c-5 are documented in `docs/` but not yet implemented.
+**Current state:** Phases 1-4c are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phase 4c adds the Monty sandbox (secure code execution via pydantic-monty subprocess with tool bridging). Phase 5 is documented in `docs/` but not yet implemented.
 
 ## Common Commands
 
@@ -101,7 +101,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 - `BrowserService` — `web_search` and `web_extract_text` tools with SSRF protection (DNS resolution against private IP ranges).
 - `RagService` — `index_document`, `search_documents`, `list_documents`, `delete_document` tools. Handler routes to ingestion pipeline and document stores.
-- `SandboxService` — Stub raising `ToolExecutionError` (Phase 4c).
+- `SandboxService` — Executes Python code via pydantic-monty subprocess sandbox.
 
 **Core ports from v1:**
 
@@ -160,6 +160,20 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 - `GET /api/remme/preferences` — get user preferences hub data
 - `GET /api/remme/staging/status` — get staging queue status
 
+### Monty Sandbox (Phase 4c)
+
+**Runtime:** [Pydantic Monty](https://github.com/pydantic/monty) — a Rust-based Python interpreter with language-level isolation (no `open()`, `os`, `socket`, `eval`, `__import__`). Runs in a subprocess with resource limits (memory, timeout, step count) for DoS protection.
+
+**Config:** `config/sandbox_config.py` — constants (`DEFAULT_TIMEOUT_SECONDS=30`, `MAX_STEPS=100_000`, `MAX_MEMORY_MB=256`, `MAX_OUTPUT_SIZE=1MB`, `MAX_EXTERNAL_RESPONSE_SIZE=100KB`) and `SANDBOX_ALLOWED_TOOLS` allowlist (read-only tools: `web_search`, `web_extract_text`, `search_documents`). `get_sandbox_tools(registry)` filters registry to allowed tools.
+
+**Worker:** `tools/_sandbox_worker.py` — standalone subprocess script. Creates `pydantic_monty.Monty(code, inputs, external_functions)`, runs start/resume loop. Communicates via JSON-lines IPC over stdin/stdout. Sets `RLIMIT_AS` on Linux.
+
+**Executor:** `tools/monty_sandbox.py` — AST preprocessing (`preprocess_agent_code()` wraps top-level returns, rejects `await`), security logging (`log_security_event()` writes to `security_logs` with JSONB `details`), and main executor (`run_user_code()`) that spawns the worker subprocess. Tool calls from sandbox are bridged via IPC: positional args mapped to named params using `ToolDefinition.arg_order`, then routed through `ServiceRegistry.route_tool_call()`.
+
+**Service:** `services/sandbox_service.py` — `create_sandbox_service()` registers the `run_code` tool. Handler validates ToolContext, extracts code, calls `run_user_code()`.
+
+**Migration:** `alembic/versions/005_sandbox_security_logs.py` — adds `details JSONB` column to `security_logs`.
+
 ### CI Pipeline
 
 Google Cloud Build (`cloudbuild.yaml`), not GitHub Actions. Trigger fires on **tag pushes** matching `v*` (e.g. `v2.0.0`, `v2.1.0-rc1`). This prevents untrusted fork PRs from executing CI on the GCP project.
@@ -181,9 +195,9 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 - `remme/` — Memory management system: `RemmeStore` facade (`store.py`), `RemmeEngine` scan orchestrator (`engine.py`), `BaseHub` adapter (`hubs/base_hub.py`), `StagingQueue` (`staging.py`), `EvidenceLog` (`engines/evidence_log.py`), `RemmeExtractor` (`extractor.py`), embedding utils (`utils.py`)
 - `shared/` — Global state container (`state.py`) — holds ServiceRegistry, RemmeStore, active loops
 - `core/rag/` — RAG pipeline: chunker (`chunker.py`), config (`config.py`, loads embedding settings from `settings.json`), ingestion pipeline (`ingestion.py`)
-- `services/` — Service layer (BrowserService, RagService, Sandbox stub) registered via ServiceRegistry
+- `services/` — Service layer (BrowserService, RagService, SandboxService) registered via ServiceRegistry
 - `routers/` — FastAPI route handlers: Phase 2 (`stream`, `settings`, `skills`, `prompts`, `news`) + Phase 3 (`runs`, `chat`, `rag`, `remme`, `inbox`, `cron`, `metrics`)
-- `tools/` — Agent tools (`web_tools_async.py`, `switch_search_method.py`) and code sandbox
+- `tools/` — Agent tools (`web_tools_async.py`, `switch_search_method.py`), Monty sandbox (`monty_sandbox.py` executor, `_sandbox_worker.py` subprocess)
 - `config/` — Settings loader, `agent_config.yaml`, `models.json`, `profiles.yaml`, `settings.defaults.json`
 - `prompts/` — Prompt templates (planner, coder, thinker, retriever, etc.)
 - `docs/` — Phase documentation (7 phase docs + rewrite plan)
