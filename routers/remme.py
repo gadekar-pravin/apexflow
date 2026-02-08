@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.auth import get_user_id
 from core.stores.preferences_store import PreferencesStore
@@ -36,7 +36,7 @@ class MemoryItem(BaseModel):
 
 class SearchQuery(BaseModel):
     query: str
-    limit: int = 10
+    limit: int = Field(default=10, ge=1, le=100)
 
 
 # -- helpers ------------------------------------------------------------------

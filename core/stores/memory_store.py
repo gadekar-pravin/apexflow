@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from typing import Any
@@ -48,7 +49,7 @@ class MemoryStore:
                 vec,
                 confidence,
                 EMBEDDING_MODEL,
-                "{}" if metadata is None else __import__("json").dumps(metadata),
+                "{}" if metadata is None else json.dumps(metadata),
             )
         return memory_id
 

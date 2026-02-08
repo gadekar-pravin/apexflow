@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -35,7 +36,7 @@ class RemmeStore:
         metadata: dict[str, Any] | None = None,
     ) -> str:
         """Add a memory, auto-embedding the text."""
-        embedding = get_embedding(text, "RETRIEVAL_DOCUMENT")
+        embedding = await asyncio.to_thread(get_embedding, text, "RETRIEVAL_DOCUMENT")
         return await _memory_store.add(
             user_id,
             text,
@@ -55,7 +56,7 @@ class RemmeStore:
         min_similarity: float | None = None,
     ) -> list[dict[str, Any]]:
         """Semantic search over memories."""
-        query_embedding = get_embedding(query, "RETRIEVAL_QUERY")
+        query_embedding = await asyncio.to_thread(get_embedding, query, "RETRIEVAL_QUERY")
         return await _memory_store.search(
             user_id,
             query_embedding,
@@ -73,7 +74,7 @@ class RemmeStore:
 
     async def update_text(self, user_id: str, memory_id: str, new_text: str) -> bool:
         """Update a memory's text, auto-re-embedding."""
-        new_embedding = get_embedding(new_text, "RETRIEVAL_DOCUMENT")
+        new_embedding = await asyncio.to_thread(get_embedding, new_text, "RETRIEVAL_DOCUMENT")
         return await _memory_store.update_text(user_id, memory_id, new_text, new_embedding)
 
     async def get_profile(self, user_id: str) -> dict[str, Any]:

@@ -42,14 +42,19 @@ class RemmeEngine:
         memories_added = 0
         preferences_staged = 0
 
-        existing_memories = await self.store.list_all(user_id)
-
         for session in sessions:
             session_id = session["id"]
             try:
                 # Build conversation history from session data
                 history = self._build_history(session)
                 query = session.get("query", "")
+
+                # Mark scanned early so a failure during processing won't
+                # cause duplicate memories on the next scan cycle.
+                await self.store.mark_scanned(user_id, session_id)
+
+                # Refresh after each session so earlier inserts are visible
+                existing_memories = await self.store.list_all(user_id)
 
                 # Extract memories and preferences
                 memory_commands, preferences = await self.extractor.extract(query, history, existing_memories)
@@ -94,7 +99,6 @@ class RemmeEngine:
                     },
                 )
 
-                await self.store.mark_scanned(user_id, session_id)
                 scanned += 1
 
             except Exception:
