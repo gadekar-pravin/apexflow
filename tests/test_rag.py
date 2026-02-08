@@ -94,7 +94,15 @@ class TestDocumentStore:
         from core.rag.config import INGESTION_VERSION
         from core.stores.document_store import DocumentStore
 
-        row = {"id": "doc-existing", "is_new": False, "ingestion_version": INGESTION_VERSION}
+        row = {
+            "id": "doc-existing",
+            "is_new": False,
+            "ingestion_version": INGESTION_VERSION,
+            "chunk_method": "rule_based",
+            "embedding_model": "text-embedding-004",
+            "embedding_dim": 768,
+            "total_chunks": 2,
+        }
         pool = _mock_pool(fetchrow=row)
         with patch("core.stores.document_store.get_pool", AsyncMock(return_value=pool)):
             store = DocumentStore()
@@ -312,6 +320,7 @@ class TestIngestion:
         mock_embedding = np.random.rand(768).astype(np.float32)
 
         with (
+            patch("core.rag.ingestion._doc_store.is_duplicate", AsyncMock(return_value=None)),
             patch("core.rag.ingestion.chunk_document", AsyncMock(return_value=["chunk1", "chunk2"])),
             patch("core.rag.ingestion._batch_embed", AsyncMock(return_value=[mock_embedding, mock_embedding])),
             patch(
@@ -327,7 +336,10 @@ class TestIngestion:
 
     @pytest.mark.asyncio
     async def test_ingest_empty_content(self) -> None:
-        with patch("core.rag.ingestion.chunk_document", AsyncMock(return_value=[])):
+        with (
+            patch("core.rag.ingestion._doc_store.is_duplicate", AsyncMock(return_value=None)),
+            patch("core.rag.ingestion.chunk_document", AsyncMock(return_value=[])),
+        ):
             from core.rag.ingestion import ingest_document
 
             result = await ingest_document("u1", "empty.txt", "   ")

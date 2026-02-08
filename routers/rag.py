@@ -112,8 +112,15 @@ async def reindex_documents(
         content = doc.get("content", "")
         if not content:
             raise HTTPException(status_code=400, detail="Document has no stored content")
-        chunks, embeddings = await prepare_chunks(content)
-        result = await _doc_store.reindex_document(user_id, request.doc_id, chunks, embeddings)
+        method = doc.get("chunk_method", "rule_based")
+        chunks, embeddings = await prepare_chunks(content, method=method)
+        result = await _doc_store.reindex_document(
+            user_id,
+            request.doc_id,
+            chunks,
+            embeddings,
+            chunk_method=method,
+        )
         return {"reindexed": [result]}
 
     # Reindex stale documents (content included, no extra query per doc)
@@ -123,8 +130,15 @@ async def reindex_documents(
         content = doc.get("content", "")
         if not content:
             continue
-        chunks, embeddings = await prepare_chunks(content)
-        result = await _doc_store.reindex_document(user_id, doc["id"], chunks, embeddings)
+        method = doc.get("chunk_method", "rule_based")
+        chunks, embeddings = await prepare_chunks(content, method=method)
+        result = await _doc_store.reindex_document(
+            user_id,
+            doc["id"],
+            chunks,
+            embeddings,
+            chunk_method=method,
+        )
         results.append(result)
 
     return {"reindexed": results}

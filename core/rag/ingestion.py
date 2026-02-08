@@ -31,6 +31,14 @@ async def ingest_document(
     # same content with identical settings is already indexed.
     dup = await _doc_store.is_duplicate(user_id, content, chunk_method)
     if dup:
+        # Still persist any updated filename / doc_type / metadata.
+        await _doc_store.update_document_metadata(
+            user_id,
+            dup["doc_id"],
+            filename,
+            doc_type=doc_type,
+            metadata=metadata,
+        )
         return dup
 
     chunks = await chunk_document(content, method=chunk_method)

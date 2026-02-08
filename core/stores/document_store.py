@@ -62,6 +62,34 @@ class DocumentStore:
             }
         return None
 
+    async def update_document_metadata(
+        self,
+        user_id: str,
+        doc_id: str,
+        filename: str,
+        *,
+        doc_type: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Update mutable fields on an existing document row."""
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE documents
+                SET filename = $3,
+                    doc_type = $4,
+                    metadata = $5::jsonb,
+                    updated_at = NOW()
+                WHERE id = $1 AND user_id = $2
+                """,
+                doc_id,
+                user_id,
+                filename,
+                doc_type,
+                json.dumps(metadata or {}),
+            )
+
     async def index_document(
         self,
         user_id: str,
@@ -221,6 +249,8 @@ class DocumentStore:
         doc_id: str,
         chunks: list[str],
         embeddings: list[Any],
+        *,
+        chunk_method: str = "rule_based",
     ) -> dict[str, Any]:
         """Re-chunk and re-embed an existing document."""
         pool = await get_pool()
@@ -238,6 +268,7 @@ class DocumentStore:
                     embedding_model = $4,
                     embedding_dim = $5,
                     ingestion_version = $6,
+                    chunk_method = $7,
                     updated_at = NOW()
                 WHERE id = $1 AND user_id = $2
                 """,
@@ -247,21 +278,23 @@ class DocumentStore:
                 EMBEDDING_MODEL,
                 EMBEDDING_DIM,
                 INGESTION_VERSION,
+                chunk_method,
             )
         return {"doc_id": doc_id, "status": "reindexed", "total_chunks": len(chunks)}
 
     async def list_stale_documents(self, user_id: str, *, limit: int | None = None) -> list[dict[str, Any]]:
         """Find documents whose ingestion_version is behind current.
 
-        Returns ``id``, ``filename``, ``ingestion_version``, and ``content``
-        so callers can re-chunk without a follow-up query per document.
+        Returns ``id``, ``filename``, ``ingestion_version``, ``chunk_method``,
+        and ``content`` so callers can re-chunk without a follow-up query per
+        document.
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
             if limit is not None:
                 rows = await conn.fetch(
                     """
-                    SELECT id, filename, ingestion_version, content
+                    SELECT id, filename, ingestion_version, chunk_method, content
                     FROM documents
                     WHERE user_id = $1
                       AND (ingestion_version IS NULL OR ingestion_version < $2)
@@ -275,7 +308,7 @@ class DocumentStore:
             else:
                 rows = await conn.fetch(
                     """
-                    SELECT id, filename, ingestion_version, content
+                    SELECT id, filename, ingestion_version, chunk_method, content
                     FROM documents
                     WHERE user_id = $1
                       AND (ingestion_version IS NULL OR ingestion_version < $2)
