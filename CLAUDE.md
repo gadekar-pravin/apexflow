@@ -106,7 +106,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 ### RAG System (Phase 4a)
 
-**Config:** `core/rag/config.py` — constants: `EMBEDDING_MODEL` (`text-embedding-004`), `EMBEDDING_DIM` (768), `INGESTION_VERSION` (1), `RRF_K` (60), `SEARCH_EXPANSION_FACTOR` (3).
+**Config:** `core/rag/config.py` — `EMBEDDING_MODEL` and `EMBEDDING_DIM` derived from `settings.json` via `load_settings()["models"]` (defaults: `text-embedding-004`, 768). Hardcoded constants: `INGESTION_VERSION` (1), `RRF_K` (60), `SEARCH_EXPANSION_FACTOR` (3).
 
 **Chunker:** `core/rag/chunker.py` — Rule-based recursive splitting (default) or semantic LLM-driven chunking via Gemini. Configurable chunk size/overlap from settings.
 
@@ -119,11 +119,11 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 **Migration:** `alembic/versions/002_rag_versioning_columns.py` — adds `content`, `embedding_model`, `embedding_dim`, `ingestion_version`, `updated_at` to `documents` table.
 
 **RAG endpoints:**
-- `POST /api/rag/index` — index a document (filename + content)
-- `POST /api/rag/search` — hybrid search (query + limit 1-50)
+- `POST /api/rag/index` — index a document (filename + content, rejects blank content)
+- `POST /api/rag/search` — hybrid search (query + limit 1-50, rejects blank/whitespace queries)
 - `GET /api/rag/documents` — list indexed documents
 - `DELETE /api/rag/documents/{id}` — delete (cascades to chunks)
-- `POST /api/rag/reindex` — reindex specific doc or all stale docs
+- `POST /api/rag/reindex` — reindex specific doc or all stale docs (skips whitespace-only content and empty chunk results to prevent data-loss)
 
 ### CI Pipeline
 
@@ -145,7 +145,7 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 - `memory/` — Session memory context (`context.py`) with DB-backed persistence via SessionStore
 - `remme/` — Memory management system (hubs, engines, sources, extractors)
 - `shared/` — Global state container (`state.py`) — holds ServiceRegistry, RemmeStore, active loops
-- `core/rag/` — RAG pipeline: chunker (`chunker.py`), config constants (`config.py`), ingestion pipeline (`ingestion.py`)
+- `core/rag/` — RAG pipeline: chunker (`chunker.py`), config (`config.py`, loads embedding settings from `settings.json`), ingestion pipeline (`ingestion.py`)
 - `services/` — Service layer (BrowserService, RagService, Sandbox stub) registered via ServiceRegistry
 - `routers/` — FastAPI route handlers: Phase 2 (`stream`, `settings`, `skills`, `prompts`, `news`) + Phase 3 (`runs`, `chat`, `rag`, `remme`, `inbox`, `cron`, `metrics`)
 - `tools/` — Agent tools (`web_tools_async.py`, `switch_search_method.py`) and code sandbox

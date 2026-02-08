@@ -41,7 +41,7 @@ apexflow/
 │   ├── circuit_breaker.py     # Resilience (CLOSED/OPEN/HALF_OPEN)
 │   ├── scheduler.py           # APScheduler with DB-backed dedup
 │   ├── rag/                   # RAG pipeline
-│   │   ├── config.py          # Embedding model, RRF constants
+│   │   ├── config.py          # Embedding config (from settings), RRF constants
 │   │   ├── chunker.py         # Rule-based & semantic chunking
 │   │   └── ingestion.py       # Chunk → embed → store pipeline
 │   └── stores/                # Stateless async data-access objects
