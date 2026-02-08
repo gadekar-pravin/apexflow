@@ -53,6 +53,6 @@ gcloud compute ssh "$VM" --zone="$ZONE" --project="$PROJECT" \
 
 echo ""
 echo "=== Dev environment is ready ==="
-echo "  DB: localhost:5432 (user: apexflow, password: apexflow)"
+echo "  DB: localhost:5432 (user: apexflow, password: see Secret Manager 'apexflow-db-password')"
 echo "  To stop: ./scripts/dev-stop.sh"
 echo "================================"
