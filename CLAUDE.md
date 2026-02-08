@@ -80,7 +80,13 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 ### CI Pipeline
 
-Google Cloud Build (`cloudbuild.yaml`), not GitHub Actions. Trigger fires on PRs to `main` only, with path filters (skips docs, scripts, config-only changes).
+Google Cloud Build (`cloudbuild.yaml`), not GitHub Actions. Trigger fires on **tag pushes** matching `v*` (e.g. `v2.0.0`, `v2.1.0-rc1`). This prevents untrusted fork PRs from executing CI on the GCP project.
+
+**Workflow:** merge PR → tag the merge commit → push tag → CI runs automatically.
+```bash
+git tag v2.0.0          # after merging to main
+git push origin v2.0.0  # triggers CI
+```
 
 Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (mypy) in parallel → migrate (alembic) → test (pytest). All steps share the `cloudbuild` Docker network; the DB container is reachable by hostname `postgres`.
 
