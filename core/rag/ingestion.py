@@ -44,9 +44,22 @@ async def ingest_document(
     )
 
 
+async def prepare_chunks(content: str, *, method: str = "rule_based") -> tuple[list[str], list[Any]]:
+    """Chunk text and embed all chunks.  Returns ``(chunks, embeddings)``.
+
+    This is the public entry-point used by the reindex router so it does
+    not need to import private helpers.
+    """
+    chunks = await chunk_document(content, method=method)
+    if not chunks:
+        return [], []
+    embeddings = await _batch_embed(chunks)
+    return chunks, embeddings
+
+
 async def embed_query(query_text: str) -> Any:
     """Embed a search query (RETRIEVAL_QUERY task type)."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _sync_embed_query, query_text)
 
 
@@ -58,7 +71,7 @@ def _sync_embed_query(query_text: str) -> Any:
 
 async def _batch_embed(texts: list[str]) -> list[Any]:
     """Embed multiple texts concurrently via thread pool."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     tasks = [loop.run_in_executor(None, _sync_embed_doc, t) for t in texts]
     return list(await asyncio.gather(*tasks))
 

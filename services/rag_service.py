@@ -22,7 +22,9 @@ _doc_search = DocumentSearch()
 
 
 async def _handler(name: str, args: dict[str, Any], ctx: ToolContext | None) -> Any:
-    user_id = ctx.user_id if ctx else "anonymous"
+    if ctx is None:
+        raise ToolExecutionError(name, ValueError("ToolContext is required for RAG tools (user_id must be known)"))
+    user_id = ctx.user_id
 
     try:
         if name == "index_document":

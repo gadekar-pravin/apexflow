@@ -54,6 +54,7 @@ class DocumentSearch:
                     FROM document_chunks
                     WHERE user_id = $2
                       AND content_tsv @@ plainto_tsquery('english', $4)
+                    ORDER BY ts_rank(content_tsv, plainto_tsquery('english', $4)) DESC
                     LIMIT $3
                 ),
                 fused AS (

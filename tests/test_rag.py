@@ -94,8 +94,8 @@ class TestDocumentStore:
         from core.rag.config import INGESTION_VERSION
         from core.stores.document_store import DocumentStore
 
-        row = {"id": "doc-existing", "is_new": False}
-        pool = _mock_pool(fetchrow=row, fetchval=INGESTION_VERSION)
+        row = {"id": "doc-existing", "is_new": False, "ingestion_version": INGESTION_VERSION}
+        pool = _mock_pool(fetchrow=row)
         with patch("core.stores.document_store.get_pool", AsyncMock(return_value=pool)):
             store = DocumentStore()
             result = await store.index_document(
@@ -112,9 +112,8 @@ class TestDocumentStore:
     async def test_index_version_mismatch_reindexes(self) -> None:
         from core.stores.document_store import DocumentStore
 
-        row = {"id": "doc-existing", "is_new": False}
-        # fetchval returns old version (0), not current
-        pool = _mock_pool(fetchrow=row, fetchval=0)
+        row = {"id": "doc-existing", "is_new": False, "ingestion_version": 0}
+        pool = _mock_pool(fetchrow=row)
         with patch("core.stores.document_store.get_pool", AsyncMock(return_value=pool)):
             store = DocumentStore()
             result = await store.index_document(
@@ -455,3 +454,14 @@ class TestRagService:
         ):
             result = await svc.handler("delete_document", {"doc_id": "d1"}, ctx)
             assert result["deleted"] is True
+
+    @pytest.mark.asyncio
+    async def test_handler_rejects_missing_context(self) -> None:
+        from core.service_registry import ToolExecutionError
+        from services.rag_service import create_rag_service
+
+        svc = create_rag_service()
+        assert svc.handler is not None
+
+        with pytest.raises(ToolExecutionError):
+            await svc.handler("list_documents", {}, None)

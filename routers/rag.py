@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.auth import get_user_id
-from core.rag.ingestion import embed_query, ingest_document
+from core.rag.ingestion import embed_query, ingest_document, prepare_chunks
 from core.stores.document_search import DocumentSearch
 from core.stores.document_store import DocumentStore
 
@@ -36,8 +36,12 @@ class SearchRequest(BaseModel):
     limit: int = Field(default=5, ge=1, le=50)
 
 
+_REINDEX_MAX_BATCH = 50
+
+
 class ReindexRequest(BaseModel):
     doc_id: str | None = None
+    limit: int = Field(default=20, ge=1, le=_REINDEX_MAX_BATCH)
 
 
 # -- endpoints ----------------------------------------------------------------
@@ -101,9 +105,6 @@ async def reindex_documents(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
     """Reindex a specific document or all stale documents."""
-    from core.rag.chunker import chunk_document
-    from core.rag.ingestion import _batch_embed
-
     if request.doc_id:
         doc = await _doc_store.get(user_id, request.doc_id)
         if not doc:
@@ -111,20 +112,18 @@ async def reindex_documents(
         content = doc.get("content", "")
         if not content:
             raise HTTPException(status_code=400, detail="Document has no stored content")
-        chunks = await chunk_document(content)
-        embeddings = await _batch_embed(chunks)
+        chunks, embeddings = await prepare_chunks(content)
         result = await _doc_store.reindex_document(user_id, request.doc_id, chunks, embeddings)
         return {"reindexed": [result]}
 
-    # Reindex all stale
-    stale = await _doc_store.list_stale_documents(user_id)
+    # Reindex stale documents (content included, no extra query per doc)
+    stale = await _doc_store.list_stale_documents(user_id, limit=request.limit)
     results = []
     for doc in stale:
-        full_doc = await _doc_store.get(user_id, doc["id"])
-        if not full_doc or not full_doc.get("content"):
+        content = doc.get("content", "")
+        if not content:
             continue
-        chunks = await chunk_document(full_doc["content"])
-        embeddings = await _batch_embed(chunks)
+        chunks, embeddings = await prepare_chunks(content)
         result = await _doc_store.reindex_document(user_id, doc["id"], chunks, embeddings)
         results.append(result)
 
