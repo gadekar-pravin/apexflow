@@ -49,10 +49,6 @@ class RemmeEngine:
                 history = self._build_history(session)
                 query = session.get("query", "")
 
-                # Mark scanned early so a failure during processing won't
-                # cause duplicate memories on the next scan cycle.
-                await self.store.mark_scanned(user_id, session_id)
-
                 # Refresh after each session so earlier inserts are visible
                 existing_memories = await self.store.list_all(user_id)
 
@@ -99,6 +95,7 @@ class RemmeEngine:
                     },
                 )
 
+                await self.store.mark_scanned(user_id, session_id)
                 scanned += 1
 
             except Exception:
@@ -123,7 +120,4 @@ class RemmeEngine:
             for _node, output in node_outputs.items():
                 if isinstance(output, dict) and output.get("response"):
                     history.append({"role": "assistant", "content": str(output["response"])})
-        query = session.get("query", "")
-        if query:
-            history.insert(0, {"role": "user", "content": query})
         return history
