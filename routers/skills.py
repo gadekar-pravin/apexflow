@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -24,11 +22,8 @@ async def list_skills() -> list[SkillInfo]:
     if not skill_manager.loaded_skills:
         skill_manager.initialize()
 
-    registry = skill_manager.registry_file.read_text()
-    data = json.loads(registry)
-
     skills: list[SkillInfo] = []
-    for name, info in data.items():
+    for name, info in skill_manager.get_registry().items():
         skills.append(
             SkillInfo(
                 name=name,

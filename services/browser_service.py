@@ -46,9 +46,14 @@ def _validate_url_ssrf(url: str) -> None:
     try:
         for _family, _, _, _, sockaddr in socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP):
             ip = ipaddress.ip_address(sockaddr[0])
-            for net in _BLOCKED_NETWORKS:
-                if ip in net:
-                    raise ValueError("URLs pointing to internal/private networks are not allowed")
+            # Also check the IPv4-mapped address (e.g. ::ffff:127.0.0.1)
+            ips_to_check = [ip]
+            if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+                ips_to_check.append(ip.ipv4_mapped)
+            for check_ip in ips_to_check:
+                for net in _BLOCKED_NETWORKS:
+                    if check_ip in net:
+                        raise ValueError("URLs pointing to internal/private networks are not allowed")
     except socket.gaierror as exc:
         raise ValueError(f"Could not resolve hostname: {hostname}") from exc
 

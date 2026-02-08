@@ -115,6 +115,10 @@ class SkillManager:
             return klass()
         return None
 
+    def get_registry(self) -> dict[str, dict[str, Any]]:
+        """Return the in-memory registry (no filesystem dependency)."""
+        return self._registry
+
     def match_intent(self, user_query: str) -> str | None:
         """Simple keyword matching with word boundaries"""
         user_query = user_query.lower()
