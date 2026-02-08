@@ -57,9 +57,23 @@ class DocumentSearch:
                     ORDER BY ts_rank(content_tsv, plainto_tsquery('english', $4)) DESC
                     LIMIT $3
                 ),
+                vector_by_doc AS (
+                    SELECT DISTINCT ON (document_id)
+                        document_id, id AS chunk_id, content, chunk_index,
+                        vector_score, rank
+                    FROM vector_ranked
+                    ORDER BY document_id, rank
+                ),
+                text_by_doc AS (
+                    SELECT DISTINCT ON (document_id)
+                        document_id, id AS chunk_id, content, chunk_index,
+                        text_score, rank
+                    FROM text_ranked
+                    ORDER BY document_id, rank
+                ),
                 fused AS (
                     SELECT
-                        COALESCE(v.id, t.id) AS chunk_id,
+                        COALESCE(v.chunk_id, t.chunk_id) AS chunk_id,
                         COALESCE(v.document_id, t.document_id) AS document_id,
                         COALESCE(v.content, t.content) AS content,
                         COALESCE(v.chunk_index, t.chunk_index) AS chunk_index,
@@ -67,14 +81,13 @@ class DocumentSearch:
                         COALESCE(t.text_score, 0) AS text_score,
                         COALESCE(1.0 / ($5 + v.rank), 0) +
                             COALESCE(1.0 / ($5 + t.rank), 0) AS rrf_score
-                    FROM vector_ranked v
-                    FULL OUTER JOIN text_ranked t ON v.id = t.id
+                    FROM vector_by_doc v
+                    FULL OUTER JOIN text_by_doc t ON v.document_id = t.document_id
                 )
-                SELECT DISTINCT ON (document_id)
-                    chunk_id, document_id, content, chunk_index,
+                SELECT chunk_id, document_id, content, chunk_index,
                     rrf_score, vector_score, text_score
                 FROM fused
-                ORDER BY document_id, rrf_score DESC
+                ORDER BY rrf_score DESC
                 """,
                 vec,
                 user_id,
