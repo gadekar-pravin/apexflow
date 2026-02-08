@@ -1,11 +1,23 @@
 import { Outlet } from "react-router-dom"
+import { Loader2 } from "lucide-react"
 import { Sidebar } from "./Sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { StatusBar } from "@/components/StatusBar"
+import { AuthProvider, useAuth } from "@/contexts/AuthContext"
 import { SSEProvider } from "@/contexts/SSEContext"
 import { ExecutionMetricsProvider } from "@/contexts/ExecutionMetricsContext"
 
-export function AppShell() {
+function AppContent() {
+  const auth = useAuth()
+
+  if (auth.isInitializing) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background bg-gradient-radial">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
   return (
     <SSEProvider>
       <ExecutionMetricsProvider>
@@ -22,5 +34,13 @@ export function AppShell() {
         </TooltipProvider>
       </ExecutionMetricsProvider>
     </SSEProvider>
+  )
+}
+
+export function AppShell() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }

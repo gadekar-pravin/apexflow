@@ -9,6 +9,16 @@ const SSE_URL = import.meta.env.VITE_SSE_URL || API_URL
 // Auth token provider — set via setAuthTokenProvider() when Firebase is initialized
 let authTokenProvider: (() => Promise<string | null>) | null = null
 
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = "ApiError"
+    this.status = status
+  }
+}
+
 export function setAuthTokenProvider(provider: () => Promise<string | null>) {
   authTokenProvider = provider
 }
@@ -42,11 +52,15 @@ export async function fetchAPI<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: response.statusText }))
-    throw new Error(error.detail || `API Error: ${response.status}`)
+    throw new ApiError(error.detail || `API Error: ${response.status}`, response.status)
   }
 
   const text = await response.text()
   return text ? JSON.parse(text) as T : {} as T
+}
+
+export function isUnauthorizedError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401
 }
 
 export function getAPIUrl(endpoint: string): string {

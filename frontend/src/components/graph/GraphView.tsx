@@ -16,6 +16,7 @@ import { AgentNode } from "./AgentNode"
 import { CustomEdge } from "./CustomEdge"
 import { runsService } from "@/services"
 import { useAppStore } from "@/store"
+import { useAuth } from "@/contexts/AuthContext"
 import { useSSESubscription } from "@/contexts/SSEContext"
 import type { SSEEvent, GraphNode, GraphEdge } from "@/types"
 
@@ -58,10 +59,13 @@ export function GraphView({ runId }: GraphViewProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const setSelectedNodeId = useAppStore((s) => s.setSelectedNodeId)
   const queryClient = useQueryClient()
+  const auth = useAuth()
+  const canQueryRun = !auth.isConfigured || auth.isAuthenticated
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["run", runId],
     queryFn: () => runsService.get(runId),
+    enabled: canQueryRun,
     refetchInterval: (query) =>
       query.state.data?.status === "running" ? 2000 : false,
   })

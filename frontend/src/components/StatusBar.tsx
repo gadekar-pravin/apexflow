@@ -1,6 +1,8 @@
 import { useApiHealth, type ConnectionState } from "@/hooks/useApiHealth"
 import { useSSEContext, type SSEConnectionState } from "@/contexts/SSEContext"
 import { useExecutionMetrics } from "@/contexts/ExecutionMetricsContext"
+import { useAuth } from "@/contexts/AuthContext"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/utils/utils"
 
 interface ConnectionIndicatorProps {
@@ -51,6 +53,12 @@ export function StatusBar() {
   const apiHealth = useApiHealth()
   const { connectionState: sseState } = useSSEContext()
   const metrics = useExecutionMetrics()
+  const auth = useAuth()
+  const authState: ConnectionState = auth.isInitializing
+    ? "connecting"
+    : auth.isAuthenticated
+      ? "connected"
+      : "disconnected"
 
   return (
     <footer className="h-7 flex-shrink-0 border-t border-white/10 backdrop-blur-md bg-background/60">
@@ -58,9 +66,35 @@ export function StatusBar() {
         <div className="flex items-center gap-4">
           <ConnectionIndicator label="API" state={apiHealth.state} />
           <ConnectionIndicator label="SSE" state={sseState} />
+          <ConnectionIndicator label="Auth" state={authState} />
+          {auth.isConfigured && auth.isAuthenticated && (
+            <span className="text-muted-foreground/80 truncate max-w-40">
+              {auth.user?.email || "Signed in"}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-3 text-muted-foreground">
+          {auth.isConfigured && (
+            auth.isAuthenticated ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => void auth.signOut()}
+              >
+                Sign out
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => void auth.signIn()}
+              >
+                Sign in
+              </Button>
+            )
+          )}
           {metrics.runId ? (
             <>
               <span>
@@ -78,6 +112,9 @@ export function StatusBar() {
             </>
           ) : (
             <span className="text-muted-foreground/60">No run selected</span>
+          )}
+          {auth.lastError && (
+            <span className="text-destructive/80 truncate max-w-64">{auth.lastError}</span>
           )}
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fetchAPI, getAPIUrl, API_URL } from './api'
+import { fetchAPI, getAPIUrl, API_URL, ApiError, isUnauthorizedError } from './api'
 
 describe('api', () => {
   const mockFetch = vi.fn()
@@ -70,6 +70,23 @@ describe('api', () => {
       })
 
       await expect(fetchAPI('/missing')).rejects.toThrow('Not found')
+    })
+
+    it('throws ApiError with status code', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Invalid or expired token' }),
+      })
+
+      try {
+        await fetchAPI('/api/runs')
+        expect.fail('Expected fetchAPI to throw')
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError)
+        expect((error as ApiError).status).toBe(401)
+        expect(isUnauthorizedError(error)).toBe(true)
+      }
     })
 
     it('throws error with status code when no detail', async () => {

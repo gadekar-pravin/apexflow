@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { runsService } from "@/services"
 import { useAppStore } from "@/store"
+import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/utils/utils"
 import type { NodeData } from "@/types"
 
@@ -39,10 +40,13 @@ interface NodeDetailPanelProps {
 
 export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
   const setSelectedNodeId = useAppStore((s) => s.setSelectedNodeId)
+  const auth = useAuth()
+  const canQueryRun = !auth.isConfigured || auth.isAuthenticated
 
   const { data: runData } = useQuery({
     queryKey: ["run", runId],
     queryFn: () => runsService.get(runId),
+    enabled: canQueryRun,
   })
 
   const node = runData?.graph?.nodes.find((n) => n.id === nodeId)

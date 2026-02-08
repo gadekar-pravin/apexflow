@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react"
 import type { SSEEvent } from "@/types"
 import { getSSEUrl, getAuthToken } from "../services/api"
+import { useAuth } from "@/contexts/AuthContext"
 
 export type SSEConnectionState = "connected" | "connecting" | "disconnected"
 
@@ -15,6 +16,8 @@ interface SSEContextValue {
 const SSEContext = createContext<SSEContextValue | null>(null)
 
 export function SSEProvider({ children }: { children: ReactNode }) {
+  const auth = useAuth()
+  const canConnect = !auth.isConfigured || auth.isAuthenticated
   const [connectionState, setConnectionState] = useState<SSEConnectionState>("disconnected")
   const [lastError, setLastError] = useState<Event | null>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
@@ -89,7 +92,17 @@ export function SSEProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     mountedRef.current = true
-    connect()
+
+    if (canConnect) {
+      connect()
+    } else {
+      // Not authenticated — close any existing connection
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+      setConnectionState("disconnected")
+    }
 
     return () => {
       mountedRef.current = false
@@ -102,7 +115,7 @@ export function SSEProvider({ children }: { children: ReactNode }) {
         reconnectTimeoutRef.current = null
       }
     }
-  }, [connect])
+  }, [connect, canConnect])
 
   const subscribe = useCallback((callback: (event: SSEEvent) => void) => {
     subscribersRef.current.add(callback)

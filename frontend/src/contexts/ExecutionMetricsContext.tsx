@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useAppStore } from "@/store"
 import { runsService } from "@/services"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface ExecutionMetrics {
   currentRunCost: number
@@ -14,11 +15,13 @@ const ExecutionMetricsContext = createContext<ExecutionMetrics | null>(null)
 
 export function ExecutionMetricsProvider({ children }: { children: ReactNode }) {
   const selectedRunId = useAppStore((s) => s.selectedRunId)
+  const auth = useAuth()
+  const canQueryRun = (!auth.isConfigured || auth.isAuthenticated) && !!selectedRunId
 
   const { data: runDetail } = useQuery({
     queryKey: ["run", selectedRunId],
     queryFn: () => runsService.get(selectedRunId!),
-    enabled: !!selectedRunId,
+    enabled: canQueryRun,
     refetchInterval: (query) =>
       query.state.data?.status === "running" ? 2000 : false,
   })

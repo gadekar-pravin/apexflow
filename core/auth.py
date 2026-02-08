@@ -3,7 +3,7 @@
 - Verifies token from ``Authorization: Bearer <token>``
 - Falls back to ``?token=`` query param (for EventSource/SSE which can't send headers)
 - Extracts ``user_id`` → ``request.state.user_id``
-- Skips for ``/liveness``, ``/readiness``, ``/api/events`` (SSE)
+- Skips for ``/liveness``, ``/readiness``
 - ``AUTH_DISABLED=1`` bypasses auth (local dev)
 - **FAIL STARTUP** if ``K_SERVICE`` set AND ``AUTH_DISABLED=1``
 - Lazy Firebase Admin SDK init
@@ -27,8 +27,7 @@ _AUTH_DISABLED = os.environ.get("AUTH_DISABLED", "").lower() in ("1", "true", "y
 _K_SERVICE = os.environ.get("K_SERVICE", "")
 
 # Skip list – paths that never require auth
-# /api/events is included because SSE has no auth UI yet (remove once login is implemented)
-SKIP_PATHS = {"/liveness", "/readiness", "/docs", "/openapi.json", "/api/events"}
+SKIP_PATHS = {"/liveness", "/readiness", "/docs", "/openapi.json"}
 
 
 def check_startup_safety() -> None:

@@ -4,12 +4,15 @@ import { Send, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { runsService } from "@/services"
+import { useAuth } from "@/contexts/AuthContext"
 import { useAppStore } from "@/store"
 
 export function RunCreator() {
   const [query, setQuery] = useState("")
   const queryClient = useQueryClient()
   const setSelectedRunId = useAppStore((s) => s.setSelectedRunId)
+  const auth = useAuth()
+  const canCreateRun = !auth.isConfigured || auth.isAuthenticated
 
   const createRun = useMutation({
     mutationFn: (q: string) => runsService.create({ query: q }),
@@ -22,7 +25,7 @@ export function RunCreator() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (query.trim()) {
+    if (canCreateRun && query.trim()) {
       createRun.mutate(query.trim())
     }
   }
@@ -49,7 +52,7 @@ export function RunCreator() {
         </span>
         <Button
           type="submit"
-          disabled={!query.trim() || createRun.isPending}
+          disabled={!canCreateRun || !query.trim() || createRun.isPending}
           size="sm"
         >
           {createRun.isPending ? (

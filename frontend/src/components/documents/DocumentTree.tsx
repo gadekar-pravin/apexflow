@@ -6,6 +6,7 @@ import {
 import { cn, formatShortDate } from "@/utils/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ragService } from "@/services"
+import { useAuth } from "@/contexts/AuthContext"
 import { useAppStore } from "@/store"
 import type { V2Document } from "@/types"
 
@@ -41,10 +42,22 @@ function DocumentRow({ doc }: DocumentRowProps) {
 }
 
 export function DocumentTree() {
+  const auth = useAuth()
+  const canQueryDocuments = !auth.isConfigured || auth.isAuthenticated
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["documents"],
     queryFn: () => ragService.getDocuments(),
+    enabled: canQueryDocuments,
   })
+
+  if (auth.isConfigured && !auth.isAuthenticated) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground text-center">
+        Sign in to load documents.
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (

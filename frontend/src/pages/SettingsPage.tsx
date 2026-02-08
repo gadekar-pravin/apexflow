@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { settingsService } from "@/services"
+import { useAuth } from "@/contexts/AuthContext"
 import { useAppStore } from "@/store"
 import type { Settings } from "@/types"
 import { useState, useEffect } from "react"
@@ -30,10 +31,13 @@ export function SettingsPage() {
   const queryClient = useQueryClient()
   const [localSettings, setLocalSettings] = useState<Settings | null>(null)
   const { theme, setTheme } = useAppStore()
+  const auth = useAuth()
+  const canQuerySettings = !auth.isConfigured || auth.isAuthenticated
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["settings"],
     queryFn: () => settingsService.get(),
+    enabled: canQuerySettings,
   })
 
   useEffect(() => {
@@ -76,6 +80,14 @@ export function SettingsPage() {
         [key]: value,
       },
     })
+  }
+
+  if (auth.isConfigured && !auth.isAuthenticated) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        Sign in to view and edit settings.
+      </div>
+    )
   }
 
   if (isLoading || !localSettings) {

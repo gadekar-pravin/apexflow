@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button"
 import { ResizablePanel } from "@/components/ui/resizable-panel"
 import { DocumentTree, DocumentChat } from "@/components/documents"
 import { ragService } from "@/services"
+import { useAuth } from "@/contexts/AuthContext"
 import { useAppStore } from "@/store"
 
 export function DocumentsPage() {
   const { selectedDocumentPath, selectedDocumentName } = useAppStore()
   const queryClient = useQueryClient()
+  const auth = useAuth()
+  const canMutateDocuments = !auth.isConfigured || auth.isAuthenticated
 
   const reindex = useMutation({
     mutationFn: () => ragService.reindex(),
@@ -34,7 +37,7 @@ export function DocumentsPage() {
             size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-foreground"
             onClick={() => reindex.mutate()}
-            disabled={reindex.isPending}
+            disabled={!canMutateDocuments || reindex.isPending}
           >
             {reindex.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

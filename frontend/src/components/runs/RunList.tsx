@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { runsService } from "@/services"
+import { isUnauthorizedError } from "@/services/api"
+import { useAuth } from "@/contexts/AuthContext"
 import { useAppStore } from "@/store"
 import { formatDate } from "@/utils/utils"
 import type { RunSummary } from "@/types"
@@ -45,11 +47,15 @@ const statusConfig = {
 export function RunList() {
   const queryClient = useQueryClient()
   const { selectedRunId, setSelectedRunId } = useAppStore()
+  const auth = useAuth()
+  const canQueryRuns = !auth.isConfigured || auth.isAuthenticated
 
-  const { data: runs, isLoading } = useQuery({
+  const { data: runs, isLoading, error } = useQuery({
     queryKey: ["runs"],
     queryFn: () => runsService.list(),
-    refetchInterval: 5000, // Refresh every 5 seconds
+    enabled: canQueryRuns,
+    refetchInterval: (query) =>
+      isUnauthorizedError(query.state.error) ? false : 5000,
   })
 
   const deleteRun = useMutation({
@@ -71,6 +77,14 @@ export function RunList() {
   }
 
   if (!runs?.length) {
+    if ((auth.isConfigured && !auth.isAuthenticated) || isUnauthorizedError(error)) {
+      return (
+        <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+          Sign in to load your runs.
+        </div>
+      )
+    }
+
     return (
       <div className="px-4 py-8 text-center text-sm text-muted-foreground">
         No runs yet. Create one above to get started.
