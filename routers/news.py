@@ -517,12 +517,15 @@ async def proxy_content(url: str) -> StreamingResponse:
         r = await asyncio.to_thread(requests.get, url, stream=True, timeout=30, allow_redirects=False)
 
         async def iterfile() -> Any:
-            it = r.iter_content(chunk_size=8192)
-            while True:
-                chunk = await asyncio.to_thread(next, it, b"")
-                if not chunk:
-                    break
-                yield chunk
+            try:
+                it = r.iter_content(chunk_size=8192)
+                while True:
+                    chunk = await asyncio.to_thread(next, it, b"")
+                    if not chunk:
+                        break
+                    yield chunk
+            finally:
+                r.close()
 
         content_type = r.headers.get("Content-Type", "application/octet-stream")
 
