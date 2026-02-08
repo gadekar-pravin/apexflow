@@ -16,7 +16,7 @@ describe('api', () => {
     it('makes GET request to correct URL', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ data: 'test' }),
+        text: () => Promise.resolve(JSON.stringify({ data: 'test' })),
       })
 
       await fetchAPI('/test-endpoint')
@@ -32,7 +32,7 @@ describe('api', () => {
     it('makes POST request with body', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'ok' }),
+        text: () => Promise.resolve(JSON.stringify({ status: 'ok' })),
       })
 
       await fetchAPI('/create', {
@@ -54,7 +54,7 @@ describe('api', () => {
       const mockData = { id: 1, name: 'test' }
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockData),
+        text: () => Promise.resolve(JSON.stringify(mockData)),
       })
 
       const result = await fetchAPI('/data')
@@ -86,7 +86,7 @@ describe('api', () => {
     it('merges custom headers with default', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({}),
+        text: () => Promise.resolve(JSON.stringify({})),
       })
 
       await fetchAPI('/auth', {

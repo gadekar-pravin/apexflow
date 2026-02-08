@@ -45,7 +45,8 @@ export async function fetchAPI<T>(
     throw new Error(error.detail || `API Error: ${response.status}`)
   }
 
-  return response.json()
+  const text = await response.text()
+  return text ? JSON.parse(text) as T : {} as T
 }
 
 export function getAPIUrl(endpoint: string): string {

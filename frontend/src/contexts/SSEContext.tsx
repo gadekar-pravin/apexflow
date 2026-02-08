@@ -28,12 +28,17 @@ export function SSEProvider({ children }: { children: ReactNode }) {
     setConnectionState("connecting")
     setLastError(null)
 
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
+
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
     }
 
     // EventSource doesn't support custom headers, so pass token as query param
-    void getAuthToken().then((token) => {
+    getAuthToken().then((token) => {
       if (!mountedRef.current) return
 
       let url = getSSEUrl("/api/events")
@@ -72,6 +77,13 @@ export function SSEProvider({ children }: { children: ReactNode }) {
           }
         }, 5000)
       }
+    }).catch((err) => {
+      if (!mountedRef.current) return
+      console.error("SSE auth token error:", err)
+      setConnectionState("disconnected")
+      reconnectTimeoutRef.current = setTimeout(() => {
+        if (mountedRef.current) connect()
+      }, 5000)
     })
   }, [])
 
