@@ -100,37 +100,39 @@ async def web_tool_playwright(url: str, max_total_wait: int = 15) -> dict[str, s
     try:
         async with _async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-
-            await page.goto(url, wait_until="domcontentloaded", timeout=15000)
-
             try:
-                await page.wait_for_function(
-                    """() => {
-                        const body = document.querySelector('body');
-                        return body && (body.innerText || "").length > 1000;
-                    }""",
-                    timeout=15000,
-                )
-            except Exception as e:
-                logger.warning("Generic wait failed: %s", e)
+                page = await browser.new_page()
 
-            await asyncio.sleep(5)
+                await page.goto(url, wait_until="domcontentloaded", timeout=15000)
 
-            try:
-                await page.evaluate(
-                    """() => {
-                    window.stop();
-                    document.querySelectorAll('script').forEach(s => s.remove());
-                }"""
-                )
-            except Exception as e:
-                logger.warning("JS stop failed: %s", e)
+                try:
+                    await page.wait_for_function(
+                        """() => {
+                            const body = document.querySelector('body');
+                            return body && (body.innerText || "").length > 1000;
+                        }""",
+                        timeout=15000,
+                    )
+                except Exception as e:
+                    logger.warning("Generic wait failed: %s", e)
 
-            html = await page.content()
-            visible_text = await page.inner_text("body")
-            title = await page.title()
-            await browser.close()
+                await asyncio.sleep(5)
+
+                try:
+                    await page.evaluate(
+                        """() => {
+                        window.stop();
+                        document.querySelectorAll('script').forEach(s => s.remove());
+                    }"""
+                    )
+                except Exception as e:
+                    logger.warning("JS stop failed: %s", e)
+
+                html = await page.content()
+                visible_text = await page.inner_text("body")
+                title = await page.title()
+            finally:
+                await browser.close()
 
             try:
                 main_text: str = await asyncio.to_thread(
@@ -200,6 +202,7 @@ async def _fetch_with_ssrf_check(
     ssrf_validator: Any,
 ) -> httpx.Response:
     """Follow redirects manually, re-validating each hop against SSRF rules."""
+    ssrf_validator(url)  # validate the initial URL too
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
         for _ in range(_MAX_REDIRECTS):
             response = await client.get(url, headers=headers)
