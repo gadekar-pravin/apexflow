@@ -55,6 +55,7 @@ class ExecutionContextManager:
         self.plan_graph.graph["created_at"] = datetime.now(UTC).isoformat()
         self.plan_graph.graph["status"] = "running"
         self.plan_graph.graph["globals_schema"] = {}
+        self._background_tasks: set[asyncio.Task[Any]] = set()
 
         # Add ROOT node
         self.plan_graph.add_node(
@@ -473,14 +474,17 @@ class ExecutionContextManager:
             return
         with contextlib.suppress(RuntimeError):
             loop = asyncio.get_running_loop()
-            loop.create_task(self._save_session(self.user_id))
-            loop.create_task(
+            for coro in (
+                self._save_session(self.user_id),
                 event_bus.publish(
                     "context_updated",
                     "ExecutionContextManager",
                     {"session_id": self.plan_graph.graph["session_id"]},
-                )
-            )
+                ),
+            ):
+                task = loop.create_task(coro)
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
 
     async def _save_session(self, user_id: str = "dev-user") -> None:
         """Persist graph data to session_store."""
@@ -520,6 +524,7 @@ class ExecutionContextManager:
             ctx.user_input_value = None
             ctx.debug_mode = False
             ctx.service_registry = None
+            ctx._background_tasks = set()
             return ctx
         except Exception as e:
             logger.error("Failed to load session %s: %s", session_id, e)

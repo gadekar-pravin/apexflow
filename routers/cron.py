@@ -64,5 +64,7 @@ async def delete_job(
     job_id: str,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, str]:
-    await scheduler_service.delete_job(user_id, job_id)
+    deleted = await scheduler_service.delete_job(user_id, job_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Job not found")
     return {"status": "deleted", "id": job_id}

@@ -136,8 +136,9 @@ class SchedulerService:
             )
 
             # Update last run
-            job.last_run = datetime.now(UTC).isoformat()
-            await self.job_store.update(owner_id, job.id, last_run=datetime.now(UTC))
+            now = datetime.now(UTC)
+            job.last_run = now.isoformat()
+            await self.job_store.update(owner_id, job.id, last_run=now)
 
             try:
                 # Skill lifecycle
@@ -283,13 +284,16 @@ class SchedulerService:
             self._schedule_job(self.jobs[job_id])
             self.scheduler.modify_job(job_id, next_run_time=datetime.now(UTC))
 
-    async def delete_job(self, user_id: str, job_id: str) -> None:
-        """Remove a job."""
-        if job_id in self.jobs and self.jobs[job_id].user_id == user_id:
-            if self.scheduler.get_job(job_id):
-                self.scheduler.remove_job(job_id)
-            del self.jobs[job_id]
-            await self.job_store.delete(user_id, job_id)
+    async def delete_job(self, user_id: str, job_id: str) -> bool:
+        """Remove a job. Returns True if deleted, False if not found."""
+        if job_id not in self.jobs or self.jobs[job_id].user_id != user_id:
+            return False
+        # DB first — if this fails, in-memory state remains consistent
+        await self.job_store.delete(user_id, job_id)
+        if self.scheduler.get_job(job_id):
+            self.scheduler.remove_job(job_id)
+        del self.jobs[job_id]
+        return True
 
     async def list_jobs(self, user_id: str) -> list[JobDefinition]:
         """List jobs for a specific user with updated next-run times."""
