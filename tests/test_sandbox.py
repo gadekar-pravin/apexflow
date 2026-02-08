@@ -18,7 +18,7 @@ class TestPreprocessAgentCode:
         from tools.monty_sandbox import preprocess_agent_code
 
         code = "x = 2 + 2\nreturn {'result': x}"
-        result = preprocess_agent_code(code, [])
+        result = preprocess_agent_code(code)
         assert "def __agent_main__():" in result
         assert "__agent_main__()" in result
         assert "    x = 2 + 2" in result
@@ -27,7 +27,7 @@ class TestPreprocessAgentCode:
         from tools.monty_sandbox import preprocess_agent_code
 
         code = "x = 2 + 2\ny = x * 3"
-        result = preprocess_agent_code(code, [])
+        result = preprocess_agent_code(code)
         assert result == code
 
     def test_await_rejected(self) -> None:
@@ -35,20 +35,20 @@ class TestPreprocessAgentCode:
 
         code = "result = await some_func()"
         with pytest.raises(ValueError, match="await"):
-            preprocess_agent_code(code, [])
+            preprocess_agent_code(code)
 
     def test_return_in_if_wraps(self) -> None:
         from tools.monty_sandbox import preprocess_agent_code
 
         code = "if True:\n    return 42"
-        result = preprocess_agent_code(code, [])
+        result = preprocess_agent_code(code)
         assert "def __agent_main__():" in result
 
     def test_return_inside_def_not_wrapped(self) -> None:
         from tools.monty_sandbox import preprocess_agent_code
 
         code = "def foo():\n    return 42\nresult = foo()"
-        result = preprocess_agent_code(code, [])
+        result = preprocess_agent_code(code)
         # Should NOT wrap — the return is inside a def, not top-level
         assert "def __agent_main__():" not in result
 
@@ -222,16 +222,18 @@ class TestSecurityLogging:
         result = _redact_for_logging(code)
         assert "code_hash" in result
         assert len(result["code_hash"]) == 64  # SHA256 hex
-        assert result["code_preview"] == "x = 1"
+        assert "code_preview" not in result  # no plaintext stored
         assert result["code_length"] == 5
 
-    def test_redact_truncates(self) -> None:
+    def test_redact_no_plaintext(self) -> None:
         from tools.monty_sandbox import _redact_for_logging
 
-        code = "a" * 600
-        result = _redact_for_logging(code, max_length=100)
-        assert result["code_preview"].endswith("...")
-        assert len(result["code_preview"]) == 103  # 100 + "..."
+        code = "API_KEY = 'sk-secret-12345'"
+        result = _redact_for_logging(code)
+        # Ensure no plaintext code leaks into the redacted output
+        assert "code_preview" not in result
+        assert "sk-secret" not in str(result)
+        assert "code_hash" in result
 
     @pytest.mark.asyncio
     async def test_log_security_event_sql(self) -> None:

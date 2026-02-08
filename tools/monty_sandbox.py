@@ -35,7 +35,7 @@ _WORKER_PATH = str(Path(__file__).parent / "_sandbox_worker.py")
 # ---------------------------------------------------------------------------
 
 
-def preprocess_agent_code(code: str, external_func_names: list[str]) -> str:
+def preprocess_agent_code(code: str) -> str:
     """Preprocess agent code for Monty execution.
 
     Two transforms:
@@ -70,7 +70,7 @@ def _has_toplevel_return(stmts: list[ast.stmt]) -> bool:
             return True
         # Recurse into control flow blocks (if/for/while/try/with)
         # but NOT into def/class
-        if isinstance(node, ast.If | ast.For | ast.While | ast.With):
+        if isinstance(node, ast.If | ast.For | ast.While | ast.With | ast.AsyncFor | ast.AsyncWith):
             if _has_toplevel_return(node.body):
                 return True
             if hasattr(node, "orelse") and _has_toplevel_return(node.orelse):
@@ -97,11 +97,14 @@ def _has_toplevel_return(stmts: list[ast.stmt]) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _redact_for_logging(code: str, max_length: int = 500) -> dict[str, Any]:
-    """Produce a redacted summary of code for security logging."""
+def _redact_for_logging(code: str) -> dict[str, Any]:
+    """Produce a redacted summary of code for security logging.
+
+    Only stores a non-reversible hash — no plaintext snippets, to avoid
+    persisting secrets or PII that may appear in user code.
+    """
     return {
         "code_hash": hashlib.sha256(code.encode()).hexdigest(),
-        "code_preview": code[:max_length] + ("..." if len(code) > max_length else ""),
         "code_length": len(code),
     }
 
@@ -163,7 +166,7 @@ async def run_user_code(
 
     # Preprocess code
     try:
-        processed_code = preprocess_agent_code(code, external_names)
+        processed_code = preprocess_agent_code(code)
     except ValueError as exc:
         return {"status": "error", "error": str(exc)}
     except SyntaxError as exc:
@@ -305,6 +308,10 @@ async def _ipc_loop(
 
             proc.stdin.write(resp.encode())
             await proc.stdin.drain()
+
+        else:
+            logger.warning("Unknown message type from worker: %s", msg_type)
+            return {"status": "error", "error": f"Unknown worker message type: {msg_type}"}
 
 
 def _map_positional_args(tool_def: Any, args: list[Any]) -> dict[str, Any]:

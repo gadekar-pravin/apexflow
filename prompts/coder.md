@@ -20,7 +20,7 @@ The system will EXECUTE your code automatically in a **Monty Sandbox**.
 5.  **NO async/await:** External tool functions are called synchronously.
 
 ## Available Modules
-*   `sys`, `json`, `typing` (basic type annotations only)
+*   `sys`, `typing`, `asyncio` (pydantic-monty supported stdlib modules)
 
 ## Data Access
 *   **No filesystem access** — use tool functions for all data operations.
