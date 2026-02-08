@@ -63,6 +63,22 @@ python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+module = [
+    "networkx",
+    "networkx.*",
+    "pgvector",
+    "pgvector.*",
+    "firebase_admin",
+    "firebase_admin.*",
+    "langchain_google_vertexai",
+    "langchain_google_genai",
+    "yaml",
+    "apscheduler",
+    "apscheduler.*",
+]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
