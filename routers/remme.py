@@ -143,7 +143,7 @@ async def refresh_profile(
 
     store = get_remme_store()
     if store is None:
-        return {"status": "unavailable", "message": "RemmeStore not initialized"}
+        raise HTTPException(status_code=503, detail="RemmeStore not initialized")
 
     try:
         memories = store.list_all()

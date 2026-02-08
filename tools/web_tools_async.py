@@ -190,7 +190,35 @@ async def web_tool_playwright(url: str, max_total_wait: int = 15) -> dict[str, s
     return result
 
 
-async def smart_web_extract(url: str, timeout: int = 5) -> dict[str, str]:
+_MAX_REDIRECTS = 10
+
+
+async def _fetch_with_ssrf_check(
+    url: str,
+    headers: dict[str, str],
+    timeout: int,
+    ssrf_validator: Any,
+) -> httpx.Response:
+    """Follow redirects manually, re-validating each hop against SSRF rules."""
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+        for _ in range(_MAX_REDIRECTS):
+            response = await client.get(url, headers=headers)
+            if response.is_redirect:
+                location = response.headers.get("location", "")
+                if not location:
+                    break
+                url = str(response.url.join(location))
+                ssrf_validator(url)  # raises ValueError if blocked
+                continue
+            return response
+    return response
+
+
+async def smart_web_extract(
+    url: str,
+    timeout: int = 5,
+    ssrf_validator: Any | None = None,
+) -> dict[str, str]:
     headers = get_random_headers()
 
     try:
@@ -198,9 +226,14 @@ async def smart_web_extract(url: str, timeout: int = 5) -> dict[str, str]:
             logger.info("Detected difficult site (%s) -> skipping fast scrape", url)
             return await web_tool_playwright(url)
 
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            response = await client.get(url, headers=headers)
-            html = response.content.decode("utf-8", errors="replace")
+        if ssrf_validator:
+            # Manual redirect following with SSRF re-validation
+            response = await _fetch_with_ssrf_check(url, headers, timeout, ssrf_validator)
+        else:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+                response = await client.get(url, headers=headers)
+
+        html = response.content.decode("utf-8", errors="replace")
 
         doc = Document(html)
         main_html = doc.summary()

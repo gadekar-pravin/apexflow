@@ -67,11 +67,29 @@ class JobStore:
             )
         return dict(row) if row else {}
 
+    _UPDATABLE_COLUMNS = frozenset(
+        {
+            "name",
+            "cron_expression",
+            "query",
+            "agent_type",
+            "skill_id",
+            "enabled",
+            "last_run",
+            "next_run",
+            "last_output",
+            "metadata",
+        }
+    )
+
     async def update(self, user_id: str, job_id: str, **fields: Any) -> None:
         if not fields:
             return
+        invalid = set(fields) - self._UPDATABLE_COLUMNS
+        if invalid:
+            raise ValueError(f"Invalid columns for update: {invalid}")
         pool = await get_pool()
-        # Build SET clause dynamically
+        # Build SET clause dynamically (column names validated against allowlist)
         set_parts: list[str] = []
         values: list[Any] = []
         idx = 3  # $1=job_id, $2=user_id

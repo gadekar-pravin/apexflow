@@ -99,10 +99,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         logger.warning("SkillManager init failed (non-fatal): %s", e)
 
+    # 5. Initialize scheduler (loads DB jobs + starts APScheduler)
+    try:
+        from core.scheduler import scheduler_service
+
+        await scheduler_service.initialize()
+        logger.info("Scheduler initialized")
+    except Exception as e:
+        logger.warning("Scheduler init failed (non-fatal): %s", e)
+
     yield
 
     # --- Shutdown ---
     logger.info("ApexFlow v2 shutting down...")
+
+    try:
+        from core.scheduler import scheduler_service
+
+        if scheduler_service.initialized:
+            scheduler_service.scheduler.shutdown(wait=False)
+            logger.info("Scheduler shut down")
+    except Exception as e:
+        logger.warning("Scheduler shutdown failed: %s", e)
+
     await registry.shutdown()
 
     try:

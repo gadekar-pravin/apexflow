@@ -25,7 +25,7 @@ class CreateJobRequest(BaseModel):
 async def list_jobs(
     user_id: str = Depends(get_user_id),
 ) -> list[JobDefinition]:
-    return await scheduler_service.list_jobs()
+    return await scheduler_service.list_jobs(user_id)
 
 
 @router.post("/jobs")
@@ -35,6 +35,7 @@ async def create_job(
 ) -> JobDefinition:
     try:
         return await scheduler_service.add_job(
+            user_id=user_id,
             name=request.name,
             cron_expression=request.cron,
             agent_type=request.agent_type,
@@ -50,7 +51,7 @@ async def trigger_job(
     user_id: str = Depends(get_user_id),
 ) -> dict[str, str]:
     try:
-        await scheduler_service.trigger_job(job_id)
+        await scheduler_service.trigger_job(user_id, job_id)
         return {"status": "triggered", "id": job_id}
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Job not found") from exc
@@ -63,5 +64,5 @@ async def delete_job(
     job_id: str,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, str]:
-    await scheduler_service.delete_job(job_id)
+    await scheduler_service.delete_job(user_id, job_id)
     return {"status": "deleted", "id": job_id}

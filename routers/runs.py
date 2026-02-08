@@ -6,6 +6,7 @@ Replaces filesystem session I/O with session_store partial updates.
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -57,6 +58,7 @@ async def process_run(
 ) -> dict[str, Any]:
     """Background task to execute the agent loop."""
     context = None
+    run_status = "completed"
     try:
         from core.loop import AgentLoop4
 
@@ -87,7 +89,7 @@ async def process_run(
             has_failed = any(
                 context.plan_graph.nodes[n].get("status") == "failed" for n in context.plan_graph.nodes if n != "ROOT"
             )
-            final_status = "failed" if has_failed else "completed"
+            run_status = "failed" if has_failed else "completed"
             error_msg = None
             if has_failed:
                 for n in context.plan_graph.nodes:
@@ -95,18 +97,19 @@ async def process_run(
                     if nd.get("status") == "failed" and nd.get("error"):
                         error_msg = str(nd["error"])
                         break
-            await _session_store.update_status(user_id, run_id, final_status, error=error_msg)
+            await _session_store.update_status(user_id, run_id, run_status, error=error_msg)
         else:
             await _session_store.update_status(user_id, run_id, "completed")
 
     except Exception as e:
         logger.error("Run %s failed: %s", run_id, e)
+        run_status = "failed"
         await _session_store.update_status(user_id, run_id, "failed", error=str(e))
     finally:
         active_loops.pop(run_id, None)
 
     # Build return result
-    final_result: dict[str, Any] = {"status": "completed", "run_id": run_id}
+    final_result: dict[str, Any] = {"status": run_status, "run_id": run_id}
     if context and context.plan_graph:
         summary = context.get_execution_summary()
         final_result["summary"] = summary.get("final_outputs", {})
@@ -122,7 +125,7 @@ async def create_run(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
-    run_id = str(int(datetime.now(UTC).timestamp()))
+    run_id = uuid.uuid4().hex[:12]
     now = datetime.now(UTC).isoformat()
 
     await _session_store.create(
@@ -152,8 +155,11 @@ async def get_run(
     run_id: str,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, Any]:
-    # Check active loops first
+    # Check active loops first (verify ownership via session store)
     if run_id in active_loops:
+        session = await _session_store.get(user_id, run_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Run not found")
         loop = active_loops[run_id]
         if loop.context and loop.context.plan_graph:
             live_flow = nx_to_reactflow(loop.context.plan_graph)
@@ -220,10 +226,9 @@ async def delete_run(
     run_id: str,
     user_id: str = Depends(get_user_id),
 ) -> dict[str, str]:
-    if run_id in active_loops:
-        loop = active_loops[run_id]
+    loop = active_loops.pop(run_id, None)
+    if loop:
         loop.stop()
-        del active_loops[run_id]
 
     await _session_store.delete(user_id, run_id)
     return {"id": run_id, "status": "deleted"}

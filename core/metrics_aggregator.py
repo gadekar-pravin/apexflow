@@ -32,7 +32,7 @@ class MetricsAggregator:
         days: int = 30,
     ) -> dict[str, Any]:
         """Get comprehensive fleet telemetry (cached for 5 min)."""
-        cache_key = "metrics_cache"
+        cache_key = f"metrics_cache_{days}"
 
         # Check cache
         if not force_refresh:
@@ -57,7 +57,7 @@ class MetricsAggregator:
         completed = dashboard.get("completed", 0)
         failed = dashboard.get("failed", 0)
 
-        success_rate = round(completed / max(total_runs, 1) * 100, 1)
+        success_rate = round(completed / max(completed + failed, 1) * 100, 1)
 
         metrics: dict[str, Any] = {
             "last_updated": datetime.now(UTC).isoformat(),

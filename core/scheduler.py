@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class JobDefinition(BaseModel):
     id: str
+    user_id: str = "dev-user"
     name: str
     cron_expression: str
     agent_type: str = "PlannerAgent"
@@ -77,46 +78,51 @@ class SchedulerService:
         if self.initialized:
             return
         self._user_id = user_id
-        await self.load_jobs()
+        try:
+            await self.load_jobs()
+        except Exception as e:
+            logger.error("Failed to load jobs during init: %s", e)
+            # Start scheduler anyway (empty) but allow re-init
         self.scheduler.start()
         logger.info("Scheduler Service started")
         self.initialized = True
 
     async def load_jobs(self) -> None:
         """Load jobs from DB and schedule enabled ones."""
-        try:
-            rows = await self.job_store.load_all(self._user_id)
-            for row in rows:
-                job_def = JobDefinition(
-                    id=row["id"],
-                    name=row["name"],
-                    cron_expression=row["cron_expression"],
-                    agent_type=row.get("agent_type", "PlannerAgent"),
-                    query=row["query"],
-                    skill_id=row.get("skill_id"),
-                    enabled=row.get("enabled", True),
-                    last_run=row["last_run"].isoformat() if row.get("last_run") else None,
-                    next_run=row["next_run"].isoformat() if row.get("next_run") else None,
-                    last_output=row.get("last_output"),
-                )
-                self.jobs[job_def.id] = job_def
-                if job_def.enabled:
-                    self._schedule_job(job_def)
-            logger.info("Loaded %d jobs from DB", len(self.jobs))
-        except Exception as e:
-            logger.error("Failed to load jobs: %s", e)
+        rows = await self.job_store.load_all(self._user_id)
+        for row in rows:
+            job_def = JobDefinition(
+                id=row["id"],
+                user_id=row.get("user_id", self._user_id),
+                name=row["name"],
+                cron_expression=row["cron_expression"],
+                agent_type=row.get("agent_type", "PlannerAgent"),
+                query=row["query"],
+                skill_id=row.get("skill_id"),
+                enabled=row.get("enabled", True),
+                last_run=row["last_run"].isoformat() if row.get("last_run") else None,
+                next_run=row["next_run"].isoformat() if row.get("next_run") else None,
+                last_output=row.get("last_output"),
+            )
+            self.jobs[job_def.id] = job_def
+            if job_def.enabled:
+                self._schedule_job(job_def)
+        logger.info("Loaded %d jobs from DB", len(self.jobs))
 
     def _schedule_job(self, job: JobDefinition) -> None:
         """Add job to APScheduler."""
+        owner_id = job.user_id
 
         async def job_wrapper() -> None:
             from routers.runs import process_run
 
             run_id = f"auto_{job.id}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
-            scheduled_for = datetime.now(UTC)
+            # Truncate to minute for dedup (all workers firing the same cron
+            # tick produce the same key regardless of sub-second differences).
+            scheduled_for = datetime.now(UTC).replace(second=0, microsecond=0)
 
             # Dedup: try_claim before execution
-            claimed = await self.job_run_store.try_claim(self._user_id, job.id, scheduled_for)
+            claimed = await self.job_run_store.try_claim(owner_id, job.id, scheduled_for)
             if not claimed:
                 logger.info("Job %s already claimed for %s, skipping", job.id, scheduled_for)
                 return
@@ -131,7 +137,7 @@ class SchedulerService:
 
             # Update last run
             job.last_run = datetime.now(UTC).isoformat()
-            await self.job_store.update(self._user_id, job.id, last_run=datetime.now(UTC))
+            await self.job_store.update(owner_id, job.id, last_run=datetime.now(UTC))
 
             try:
                 # Skill lifecycle
@@ -150,7 +156,7 @@ class SchedulerService:
                     except Exception as e:
                         logger.warning("Skill loading failed: %s", e)
 
-                result = await process_run(run_id, effective_query, user_id=self._user_id)
+                result = await process_run(run_id, effective_query, user_id=owner_id)
 
                 # Skill post-processing
                 skill_result = None
@@ -169,12 +175,10 @@ class SchedulerService:
                     skill_result.get("summary") if skill_result else (result.get("summary") if result else "Success")
                 )
                 job.last_output = output_summary
-                await self.job_store.update(self._user_id, job.id, last_output=output_summary)
+                await self.job_store.update(owner_id, job.id, last_output=output_summary)
 
                 # Mark job run complete
-                await self.job_run_store.complete(
-                    self._user_id, job.id, scheduled_for, "completed", output=output_summary
-                )
+                await self.job_run_store.complete(owner_id, job.id, scheduled_for, "completed", output=output_summary)
 
                 # Send notification
                 notif_body = f"Job '{job.name}' finished.\n\n"
@@ -183,7 +187,7 @@ class SchedulerService:
                 notif_body += f"*Run ID: {run_id}*"
 
                 await self.notification_store.create(
-                    self._user_id,
+                    owner_id,
                     source="Scheduler",
                     title=f"Completed: {job.name}",
                     body=notif_body,
@@ -196,10 +200,10 @@ class SchedulerService:
                 logger.error(error_msg)
                 await event_bus.publish("error", "scheduler", {"message": error_msg})
 
-                await self.job_run_store.complete(self._user_id, job.id, scheduled_for, "failed", error=str(e))
+                await self.job_run_store.complete(owner_id, job.id, scheduled_for, "failed", error=str(e))
 
                 await self.notification_store.create(
-                    self._user_id,
+                    owner_id,
                     source="Scheduler",
                     title=f"Job Failed: {job.name}",
                     body=f"Error: {e!s}",
@@ -225,6 +229,7 @@ class SchedulerService:
 
     async def add_job(
         self,
+        user_id: str,
         name: str,
         cron_expression: str,
         agent_type: str,
@@ -240,12 +245,13 @@ class SchedulerService:
             skill_id = skill_manager.match_intent(query)
             if skill_id:
                 logger.info("Smart Scheduler: Matched '%s' to Skill '%s'", query, skill_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Skill intent matching skipped: %s", e)
 
-        job_id = str(uuid.uuid4())[:8]
+        job_id = uuid.uuid4().hex[:16]
         job = JobDefinition(
             id=job_id,
+            user_id=user_id,
             name=name,
             cron_expression=cron_expression,
             agent_type=agent_type,
@@ -254,7 +260,7 @@ class SchedulerService:
         )
 
         await self.job_store.create(
-            self._user_id,
+            user_id,
             job_id,
             name=name,
             cron_expression=cron_expression,
@@ -267,32 +273,35 @@ class SchedulerService:
         self._schedule_job(job)
         return job
 
-    async def trigger_job(self, job_id: str) -> None:
+    async def trigger_job(self, user_id: str, job_id: str) -> None:
         """Force a job to run immediately."""
-        if job_id not in self.jobs:
-            logger.warning("Trigger failed: Job %s not found", job_id)
-            return
+        if job_id not in self.jobs or self.jobs[job_id].user_id != user_id:
+            raise KeyError(f"Job {job_id} not found for user {user_id}")
         if self.scheduler.get_job(job_id):
             self.scheduler.modify_job(job_id, next_run_time=datetime.now(UTC))
         else:
             self._schedule_job(self.jobs[job_id])
             self.scheduler.modify_job(job_id, next_run_time=datetime.now(UTC))
 
-    async def delete_job(self, job_id: str) -> None:
+    async def delete_job(self, user_id: str, job_id: str) -> None:
         """Remove a job."""
-        if job_id in self.jobs:
+        if job_id in self.jobs and self.jobs[job_id].user_id == user_id:
             if self.scheduler.get_job(job_id):
                 self.scheduler.remove_job(job_id)
             del self.jobs[job_id]
-            await self.job_store.delete(self._user_id, job_id)
+            await self.job_store.delete(user_id, job_id)
 
-    async def list_jobs(self) -> list[JobDefinition]:
-        """List all jobs with updated next-run times."""
+    async def list_jobs(self, user_id: str) -> list[JobDefinition]:
+        """List jobs for a specific user with updated next-run times."""
+        result: list[JobDefinition] = []
         for job_id, job in self.jobs.items():
+            if job.user_id != user_id:
+                continue
             aps_job = self.scheduler.get_job(job_id)
             if aps_job and aps_job.next_run_time:
                 job.next_run = aps_job.next_run_time.isoformat()
-        return list(self.jobs.values())
+            result.append(job)
+        return result
 
 
 # Global singleton

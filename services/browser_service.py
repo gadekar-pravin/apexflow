@@ -21,11 +21,17 @@ MAX_CONTENT_LENGTH = 500_000
 
 # Private/internal IP ranges to block (SSRF protection)
 _BLOCKED_NETWORKS = [
+    # IPv4
+    ipaddress.ip_network("0.0.0.0/8"),
     ipaddress.ip_network("10.0.0.0/8"),
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
     ipaddress.ip_network("169.254.0.0/16"),
     ipaddress.ip_network("127.0.0.0/8"),
+    # IPv6
+    ipaddress.ip_network("::1/128"),  # loopback
+    ipaddress.ip_network("fc00::/7"),  # unique local (private)
+    ipaddress.ip_network("fe80::/10"),  # link-local
 ]
 
 
@@ -74,7 +80,7 @@ async def _web_extract_text(args: dict[str, Any], ctx: ToolContext | None) -> An
     if not url:
         raise ToolExecutionError("web_extract_text", ValueError("url is required"))
     _validate_url_ssrf(url)
-    result = await smart_web_extract(url)
+    result = await smart_web_extract(url, ssrf_validator=_validate_url_ssrf)
     text = result.get("best_text", "")
     if len(text) > MAX_CONTENT_LENGTH:
         text = text[:MAX_CONTENT_LENGTH]

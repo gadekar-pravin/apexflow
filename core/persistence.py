@@ -44,7 +44,7 @@ class PersistenceManager:
             logger.error("Failed to save snapshot: %s", e)
 
     async def load_snapshot(self, user_id: str = "dev-user") -> None:
-        """Restore state on startup."""
+        """Log previous state on startup (actual run restoration deferred to Phase 5)."""
         try:
             data = await self._state_store.get(user_id, "snapshot")
             if not data:

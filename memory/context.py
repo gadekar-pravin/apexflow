@@ -35,6 +35,7 @@ class ExecutionContextManager:
         file_manifest: list[str] | None = None,
         debug_mode: bool = False,
         api_mode: bool = True,
+        user_id: str = "dev-user",
     ) -> None:
         # Build NetworkX graph with ALL data
         self.plan_graph: nx.DiGraph[str] = nx.DiGraph()
@@ -44,6 +45,7 @@ class ExecutionContextManager:
         self.plan_graph.graph["original_query"] = original_query
         self.plan_graph.graph["file_manifest"] = file_manifest or []
         self.stop_requested = False
+        self.user_id = user_id
 
         # Async User Input Support
         self.api_mode = api_mode
@@ -471,7 +473,7 @@ class ExecutionContextManager:
             return
         with contextlib.suppress(RuntimeError):
             loop = asyncio.get_running_loop()
-            loop.create_task(self._save_session())
+            loop.create_task(self._save_session(self.user_id))
             loop.create_task(
                 event_bus.publish(
                     "context_updated",
@@ -512,6 +514,7 @@ class ExecutionContextManager:
             ctx = cls.__new__(cls)
             ctx.plan_graph = g
             ctx.stop_requested = False
+            ctx.user_id = user_id
             ctx.api_mode = True
             ctx.user_input_event = asyncio.Event()
             ctx.user_input_value = None
