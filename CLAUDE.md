@@ -92,7 +92,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **LLM client:** `core/gemini_client.py` provides a cached Gemini client singleton. Auto-detects environment: Vertex AI with ADC on GCP (`K_SERVICE` or `GOOGLE_APPLICATION_CREDENTIALS`), or `GEMINI_API_KEY` for local dev. `ModelManager` (`core/model_manager.py`) loads model configs from `config/models.json` + `config/profiles.yaml` and enforces rate limiting (~15 RPM).
 
-**Auth:** Firebase JWT middleware (`core/auth.py`). Verifies tokens from `Authorization: Bearer <token>` header or `?token=` query param (for SSE/EventSource which can't send headers). Skips `/liveness`, `/readiness`, `/docs`, `/openapi.json`. All other endpoints (including `/api/events` SSE) require auth. Disabled locally via `AUTH_DISABLED=1`. Fails startup if disabled on Cloud Run (production safety).
+**Auth:** Firebase JWT middleware (`core/auth.py`). Verifies tokens from `Authorization: Bearer <token>` header or `?token=` query param (for SSE/EventSource which can't send headers). Skips `/liveness`, `/readiness`, `/docs`, `/openapi.json`. All other endpoints (including `/api/events` SSE) require auth. Disabled locally via `AUTH_DISABLED=1`. Fails startup if disabled on Cloud Run (production safety). **Email allowlist:** `ALLOWED_EMAILS` env var (comma-separated) restricts access to listed emails (403 Forbidden if not in list). When unset, all authenticated users are allowed.
 
 **Event system:** `EventBus` singleton (`core/event_bus.py`) with pub-sub pattern. Keeps last 100 events in a deque. Clients subscribe via SSE at `GET /events` (`routers/stream.py`).
 
@@ -325,6 +325,7 @@ firebase deploy --only hosting:console
 | Variable | Purpose | Default |
 |---|---|---|
 | `AUTH_DISABLED` | Disable Firebase auth for local dev (`1`/`true`/`yes`) | unset (auth enabled) |
+| `ALLOWED_EMAILS` | Comma-separated email allowlist for authorization (403 if not listed) | unset (all authenticated users allowed) |
 | `GEMINI_API_KEY` | Gemini API key for local dev (not needed on GCP) | — |
 | `GOOGLE_CLOUD_PROJECT` | GCP project for Vertex AI | `apexflow-ai` |
 | `GOOGLE_CLOUD_LOCATION` | GCP region for Vertex AI | `us-central1` |

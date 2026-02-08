@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fetchAPI, getAPIUrl, API_URL, ApiError, isUnauthorizedError } from './api'
+import { fetchAPI, getAPIUrl, API_URL, ApiError, isUnauthorizedError, isForbiddenError } from './api'
 
 describe('api', () => {
   const mockFetch = vi.fn()
@@ -86,6 +86,25 @@ describe('api', () => {
         expect(error).toBeInstanceOf(ApiError)
         expect((error as ApiError).status).toBe(401)
         expect(isUnauthorizedError(error)).toBe(true)
+        expect(isForbiddenError(error)).toBe(false)
+      }
+    })
+
+    it('throws ApiError with 403 for forbidden access', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: () => Promise.resolve({ detail: 'Access denied. Your account is not authorized.' }),
+      })
+
+      try {
+        await fetchAPI('/api/runs')
+        expect.fail('Expected fetchAPI to throw')
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError)
+        expect((error as ApiError).status).toBe(403)
+        expect(isForbiddenError(error)).toBe(true)
+        expect(isUnauthorizedError(error)).toBe(false)
       }
     })
 

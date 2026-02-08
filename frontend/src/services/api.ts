@@ -63,6 +63,10 @@ export function isUnauthorizedError(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
 }
 
+export function isForbiddenError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403
+}
+
 export function getAPIUrl(endpoint: string): string {
   return `${API_URL}${endpoint}`
 }

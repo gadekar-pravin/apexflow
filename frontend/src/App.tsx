@@ -4,15 +4,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AppShell } from "@/components/layout"
 import { DashboardPage, DocumentsPage, SettingsPage } from "@/pages"
 import { useAppStore } from "@/store"
-import { isUnauthorizedError } from "@/services/api"
+import { isUnauthorizedError, isForbiddenError } from "@/services/api"
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5000,
       refetchOnWindowFocus: false,
-      // Avoid retry storms for auth-protected endpoints when user is unauthenticated.
-      retry: (failureCount, error) => !isUnauthorizedError(error) && failureCount < 3,
+      // Avoid retry storms for auth errors (401 unauthenticated, 403 unauthorized).
+      retry: (failureCount, error) =>
+        !isUnauthorizedError(error) && !isForbiddenError(error) && failureCount < 3,
     },
   },
 })

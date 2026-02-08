@@ -11,7 +11,7 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 - **Tool routing** — ServiceRegistry dispatches tool calls in OpenAI-compatible format with circuit breaker resilience
 - **Real-time streaming** — Server-Sent Events for live client updates via EventBus pub-sub
 - **Scheduled workflows** — APScheduler with cron expressions and DB-backed job deduplication
-- **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally). Frontend uses Google sign-in via `signInWithPopup`, token provider pattern, and auth guards on all data-fetching components
+- **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally). Email allowlist via `ALLOWED_EMAILS` env var (403 for unauthorized emails). Frontend uses Google sign-in via `signInWithPopup`, token provider pattern, and auth guards on all data-fetching components
 
 ## Tech Stack
 
@@ -144,6 +144,7 @@ Key variables:
 |----------|---------|---------|
 | `GEMINI_API_KEY` | Gemini API key for local dev | — |
 | `AUTH_DISABLED` | Disable Firebase auth (`1`) | unset |
+| `ALLOWED_EMAILS` | Comma-separated email allowlist (403 if not listed) | unset (open access) |
 | `ALLOW_LOCAL_WRITES` | Enable settings/prompt writes (`1`) | unset |
 | `DB_HOST` | Database host | `localhost` |
 | `DB_PORT` | Database port | `5432` |
@@ -399,3 +400,4 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 5 — Deployment | Done | Docker, Cloud Run CI/CD, CORS hardening, health checks, v1→v2 migration, integration tests |
 | 6 — Frontend | Done | React 19 SPA, Firebase Hosting with Cloud Run rewrites, DAG visualization, document management |
 | 6a — Auth | Done | Firebase Authentication (Google sign-in), AuthContext, token provider, SSE auth, COOP headers |
+| 6b — Allowlist | Done | Email allowlist authorization (`ALLOWED_EMAILS` env var, 403 for unauthorized emails) |

@@ -599,7 +599,7 @@ gcloud run deploy $CLOUD_RUN_SERVICE \
   --vpc-connector=$VPC_CONNECTOR \
   --vpc-egress=private-ranges-only \
   --set-secrets=ALLOYDB_PASSWORD=apexflow-db-password:latest \
-  --set-env-vars=ALLOYDB_HOST=$VM_INTERNAL_IP,ALLOYDB_DB=$DB_NAME,ALLOYDB_USER=$DB_USER,LOG_LEVEL=INFO,CORS_ORIGINS=$FRONTEND_ORIGIN \
+  --set-env-vars=ALLOYDB_HOST=$VM_INTERNAL_IP,ALLOYDB_DB=$DB_NAME,ALLOYDB_USER=$DB_USER,LOG_LEVEL=INFO,CORS_ORIGINS=$FRONTEND_ORIGIN,ALLOWED_EMAILS=your@email.com \
   --memory=2Gi \
   --cpu=2 \
   --concurrency=80 \
@@ -1110,6 +1110,7 @@ The backend (`core/auth.py`) verifies Firebase JWTs. Key behaviors:
 - Skip paths: `/liveness`, `/readiness`, `/docs`, `/openapi.json`
 - All other endpoints (including `/api/events` SSE) require auth
 - `AUTH_DISABLED=1` bypasses auth locally; fails startup if set on Cloud Run
+- `ALLOWED_EMAILS` env var (comma-separated) restricts access to listed emails (returns 403 Forbidden); when unset, all authenticated users are allowed
 
 ---
 

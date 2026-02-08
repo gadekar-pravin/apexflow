@@ -122,6 +122,7 @@ Steps (11 total): start pgvector container → wait for DB → lint + typecheck 
 | Variable | Purpose | Default |
 |---|---|---|
 | `AUTH_DISABLED` | Disable Firebase auth for local dev (`1`/`true`/`yes`) | unset (auth enabled) |
+| `ALLOWED_EMAILS` | Comma-separated email allowlist for authorization (403 if not listed) | unset (all authenticated users allowed) |
 | `GEMINI_API_KEY` | Gemini API key for local dev (not needed on GCP) | — |
 | `DATABASE_URL` | Full DB connection string (overrides all `DB_*` vars) | — |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Individual DB connection params | `localhost:5432`, user `apexflow` |

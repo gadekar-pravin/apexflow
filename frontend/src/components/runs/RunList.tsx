@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { runsService } from "@/services"
-import { isUnauthorizedError } from "@/services/api"
+import { isUnauthorizedError, isForbiddenError } from "@/services/api"
 import { useAuth } from "@/contexts/AuthContext"
 import { useAppStore } from "@/store"
 import { formatDate } from "@/utils/utils"
@@ -55,7 +55,7 @@ export function RunList() {
     queryFn: () => runsService.list(),
     enabled: canQueryRuns,
     refetchInterval: (query) =>
-      isUnauthorizedError(query.state.error) ? false : 5000,
+      isUnauthorizedError(query.state.error) || isForbiddenError(query.state.error) ? false : 5000,
   })
 
   const deleteRun = useMutation({
@@ -77,6 +77,14 @@ export function RunList() {
   }
 
   if (!runs?.length) {
+    if (isForbiddenError(error)) {
+      return (
+        <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+          Access denied. Your account is not authorized to use this application.
+        </div>
+      )
+    }
+
     if ((auth.isConfigured && !auth.isAuthenticated) || isUnauthorizedError(error)) {
       return (
         <div className="px-4 py-8 text-center text-sm text-muted-foreground">
