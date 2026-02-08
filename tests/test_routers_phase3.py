@@ -166,8 +166,8 @@ def test_remme_staging_stub(client: TestClient) -> None:
 
 
 def test_app_version_phase3(client: TestClient) -> None:
-    """App version reflects Phase 3."""
+    """App version reflects current phase."""
     resp = client.get("/openapi.json")
     assert resp.status_code == 200
     spec = resp.json()
-    assert "phase3" in spec.get("info", {}).get("version", "")
+    assert "2.0.0" in spec.get("info", {}).get("version", "")

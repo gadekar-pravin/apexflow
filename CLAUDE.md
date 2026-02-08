@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ApexFlow v2 is a web-first rewrite of the desktop-first ApexFlow v1. It's an intelligent workflow automation platform powered by Google Gemini. The backend is FastAPI + asyncpg + AlloyDB (Google's PostgreSQL variant with ScaNN vector indexes).
 
-**Current state:** Phases 1-4c are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phase 4c adds the Monty sandbox (secure code execution via pydantic-monty subprocess with tool bridging). Phase 5 is documented in `docs/` but not yet implemented.
+**Current state:** Phases 1–5 are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phase 4c adds the Monty sandbox (secure code execution via pydantic-monty subprocess with tool bridging). Phase 5 adds production deployment infrastructure (Docker container, Cloud Run CI/CD, CORS hardening, enhanced health checks, v1→v2 migration script, and integration tests for tenant isolation, concurrency, and search quality).
 
 ## Common Commands
 
@@ -46,6 +46,15 @@ AUTH_DISABLED=1 uvicorn api:app --reload
 # Dev environment (GCE VM with AlloyDB Omni)
 ./scripts/dev-start.sh      # start VM + SSH tunnel to localhost:5432
 ./scripts/dev-stop.sh       # close tunnel + stop VM
+
+# Docker (Phase 5)
+docker build -t apexflow-api:local .
+docker run -p 8080:8080 -e AUTH_DISABLED=1 apexflow-api:local
+
+# V1 → V2 migration
+python scripts/migrate.py --source-dir ../apexflow-v1 --dry-run
+python scripts/migrate.py --source-dir ../apexflow-v1 --db-url postgresql://... --user-id default
+python scripts/migrate.py --source-dir ../apexflow-v1 --validate-only
 ```
 
 ## Architecture
@@ -174,7 +183,24 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **Migration:** `alembic/versions/005_sandbox_security_logs.py` — adds `details JSONB` column to `security_logs`.
 
-### CI Pipeline
+### Production Deployment (Phase 5)
+
+**Docker:** Multi-stage `Dockerfile` — builder stage uses `ghcr.io/astral-sh/uv:python3.12-bookworm-slim` for dependency installation, runtime stage uses `python:3.12-slim-bookworm` with non-root `appuser` (uid 1001). Exposes port 8080. `.dockerignore` excludes tests, docs, scripts, alembic, etc.
+
+**CORS:** `api.py` reads `CORS_ORIGINS` env var as comma-separated origins. Falls back to `localhost:3000,5173,8000` for local dev. Production sets specific origins via Cloud Run env vars.
+
+**Readiness:** Enhanced `/readiness` endpoint with 5-second TTL cache and 2-second `asyncio.timeout()`. Returns `503` with error type name on failure. Cache prevents DB polling storms from orchestrators.
+
+**Migration script:** `scripts/migrate.py` — standalone CLI for one-time v1→v2 data migration. Supports `--dry-run` (parse-only), `--validate-only` (count comparison), and full migration with batched inserts (`BATCH_SIZE=100`). Re-embeds memories via `remme/utils.py:get_embedding()` with rate throttling. All inserts use `ON CONFLICT DO NOTHING` for idempotency.
+
+**Integration tests:** Three new test files requiring a real database (gracefully skip when DB is unavailable):
+- `tests/test_tenant_isolation.py` — 8 tests verifying user_id scoping across all stores
+- `tests/test_concurrency.py` — concurrent preference merge (both keys survive) + job dedup race (exactly one wins)
+- `tests/test_search_quality.py` — golden queries with synthetic embeddings against hybrid search
+
+**Shared fixtures:** `tests/conftest.py` provides `mock_pool()` helper (canonical version with `executemany`), `db_pool` (session-scoped real asyncpg pool, graceful skip), `clean_tables` (truncates all 13 tables), and `test_user_id`.
+
+### CI/CD Pipeline
 
 Google Cloud Build (`cloudbuild.yaml`), not GitHub Actions. Trigger fires on **tag pushes** matching `v*` (e.g. `v2.0.0`, `v2.1.0-rc1`). This prevents untrusted fork PRs from executing CI on the GCP project.
 
@@ -184,7 +210,11 @@ git tag v2.0.0          # after merging to main
 git push origin v2.0.0  # triggers CI
 ```
 
-Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (mypy) in parallel → migrate (alembic) → test (pytest). All steps share the `cloudbuild` Docker network; the DB container is reachable by hostname `postgres`.
+**Steps (9 total):** start pgvector container → wait for DB → lint (ruff) + typecheck (mypy) in parallel → migrate (alembic) → test (pytest) → Docker build (tagged `SHORT_SHA` + `latest`) → push to Artifact Registry → deploy to Cloud Run.
+
+**Cloud Run deploy config:** `--allow-unauthenticated` (in-app Firebase auth), `--vpc-connector` for AlloyDB access, `--set-secrets` for DB password/Firebase SA/Gemini key, `--memory=1Gi --cpu=1 --concurrency=80 --max-instances=10`.
+
+**Substitutions:** `_REGION`, `_REPO`, `_IMAGE`, `_SERVICE_ACCOUNT`, `_VPC_CONNECTOR` — configurable per environment.
 
 ### Project Layout
 
@@ -200,6 +230,8 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 - `tools/` — Agent tools (`web_tools_async.py`, `switch_search_method.py`), Monty sandbox (`monty_sandbox.py` executor, `_sandbox_worker.py` subprocess)
 - `config/` — Settings loader, `agent_config.yaml`, `models.json`, `profiles.yaml`, `settings.defaults.json`
 - `prompts/` — Prompt templates (planner, coder, thinker, retriever, etc.)
+- `scripts/migrate.py` — V1→V2 data migration CLI (sessions, jobs, notifications, memories, scanned runs, preferences)
+- `Dockerfile` — Multi-stage production build (uv builder + Python 3.12 slim runtime)
 - `docs/` — Phase documentation (7 phase docs + rewrite plan)
 
 ## Code Conventions
@@ -233,3 +265,5 @@ Steps: start pgvector container → wait for DB → lint (ruff) + typecheck (myp
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Individual DB connection params | `localhost:5432`, user `apexflow` |
 | `DB_POOL_MAX` | Max async connection pool size | `5` |
 | `K_SERVICE` | Auto-set by Cloud Run; triggers production mode (Vertex AI, auth enforced) | — |
+| `CORS_ORIGINS` | Comma-separated allowed origins for CORS | `http://localhost:3000,http://localhost:5173,http://localhost:8000` |
+| `DATABASE_TEST_URL` | Test database URL for integration tests | `postgresql://apexflow:apexflow@localhost:5432/apexflow` |
