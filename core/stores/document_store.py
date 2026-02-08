@@ -21,6 +21,47 @@ class DocumentStore:
 
     # -- index (upsert) -------------------------------------------------------
 
+    async def is_duplicate(
+        self,
+        user_id: str,
+        content: str,
+        chunk_method: str,
+    ) -> dict[str, Any] | None:
+        """Check if a document with identical content and settings exists.
+
+        Returns a dedup result dict if the document is already indexed with
+        the same hash, ingestion version, chunk method, and embedding config.
+        Returns ``None`` if no match — caller should proceed with ingestion.
+        """
+        file_hash = hashlib.sha256(content.encode()).hexdigest()
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, total_chunks
+                FROM documents
+                WHERE user_id = $1
+                  AND file_hash = $2
+                  AND ingestion_version = $3
+                  AND chunk_method = $4
+                  AND embedding_model = $5
+                  AND embedding_dim = $6
+                """,
+                user_id,
+                file_hash,
+                INGESTION_VERSION,
+                chunk_method,
+                EMBEDDING_MODEL,
+                EMBEDDING_DIM,
+            )
+        if row:
+            return {
+                "doc_id": row["id"],
+                "status": "deduplicated",
+                "total_chunks": row["total_chunks"],
+            }
+        return None
+
     async def index_document(
         self,
         user_id: str,
@@ -29,13 +70,15 @@ class DocumentStore:
         chunks: list[str],
         embeddings: list[Any],
         *,
+        chunk_method: str = "rule_based",
         doc_type: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Index a document with its chunks and embeddings.
 
         Uses content-hash dedup: same user + same hash + same ingestion version
-        means the document is already indexed and can be skipped.
+        + same chunk method + same embedding config means the document is
+        already indexed and can be skipped.
 
         Returns dict with ``doc_id``, ``status`` ("indexed" or "deduplicated"),
         and ``total_chunks``.
@@ -50,15 +93,17 @@ class DocumentStore:
                 INSERT INTO documents
                     (id, user_id, filename, doc_type, file_hash, content,
                      total_chunks, embedding_model, embedding_dim,
-                     ingestion_version, metadata)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
+                     ingestion_version, chunk_method, metadata)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
                 ON CONFLICT (user_id, file_hash) DO UPDATE
                     SET filename = EXCLUDED.filename,
                         doc_type = EXCLUDED.doc_type,
                         content = EXCLUDED.content,
                         metadata = EXCLUDED.metadata,
                         updated_at = NOW()
-                RETURNING id, (xmax = 0) AS is_new, ingestion_version
+                RETURNING id, (xmax = 0) AS is_new,
+                          ingestion_version, chunk_method,
+                          embedding_model, embedding_dim, total_chunks
                 """,
                 doc_id,
                 user_id,
@@ -70,6 +115,7 @@ class DocumentStore:
                 EMBEDDING_MODEL,
                 EMBEDDING_DIM,
                 INGESTION_VERSION,
+                chunk_method,
                 json.dumps(metadata or {}),
             )
 
@@ -77,16 +123,22 @@ class DocumentStore:
             is_new: bool = row["is_new"]  # type: ignore[index]
 
             if not is_new:
-                # Check if version matches — if so, skip re-chunking.
-                # Version fields are NOT updated in the upsert above so
-                # the RETURNING value reflects the *existing* row.
-                if row["ingestion_version"] == INGESTION_VERSION:  # type: ignore[index]
+                # Check if all settings match — if so, skip re-chunking.
+                # Version/chunk/embedding fields are NOT updated in the
+                # upsert above so the RETURNING values reflect the
+                # *existing* row.
+                if (
+                    row["ingestion_version"] == INGESTION_VERSION  # type: ignore[index]
+                    and row["chunk_method"] == chunk_method  # type: ignore[index]
+                    and row["embedding_model"] == EMBEDDING_MODEL  # type: ignore[index]
+                    and row["embedding_dim"] == EMBEDDING_DIM  # type: ignore[index]
+                ):
                     return {
                         "doc_id": actual_id,
                         "status": "deduplicated",
-                        "total_chunks": len(chunks),
+                        "total_chunks": row["total_chunks"],  # type: ignore[index]
                     }
-                # Version mismatch — delete stale chunks before re-indexing
+                # Settings changed — delete stale chunks before re-indexing
                 await conn.execute(
                     "DELETE FROM document_chunks WHERE document_id = $1 AND user_id = $2",
                     actual_id,
@@ -104,7 +156,8 @@ class DocumentStore:
                     SET total_chunks = $3,
                         embedding_model = $4,
                         embedding_dim = $5,
-                        ingestion_version = $6
+                        ingestion_version = $6,
+                        chunk_method = $7
                     WHERE id = $1 AND user_id = $2
                     """,
                     actual_id,
@@ -113,6 +166,7 @@ class DocumentStore:
                     EMBEDDING_MODEL,
                     EMBEDDING_DIM,
                     INGESTION_VERSION,
+                    chunk_method,
                 )
 
         return {

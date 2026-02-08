@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -27,7 +27,7 @@ class IndexRequest(BaseModel):
     filename: str
     content: str
     doc_type: str | None = None
-    chunk_method: str = "rule_based"
+    chunk_method: Literal["rule_based", "semantic"] = "rule_based"
     metadata: dict[str, Any] | None = None
 
 

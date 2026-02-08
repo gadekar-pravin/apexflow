@@ -23,10 +23,16 @@ async def ingest_document(
     chunk_method: str = "rule_based",
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Orchestrate: chunk -> embed -> store.
+    """Orchestrate: dedup check -> chunk -> embed -> store.
 
     Returns the result dict from ``DocumentStore.index_document``.
     """
+    # Early dedup check — avoid expensive chunking/embedding when the
+    # same content with identical settings is already indexed.
+    dup = await _doc_store.is_duplicate(user_id, content, chunk_method)
+    if dup:
+        return dup
+
     chunks = await chunk_document(content, method=chunk_method)
     if not chunks:
         return {"doc_id": None, "status": "empty", "total_chunks": 0}
@@ -39,6 +45,7 @@ async def ingest_document(
         content,
         chunks,
         embeddings,
+        chunk_method=chunk_method,
         doc_type=doc_type,
         metadata=metadata,
     )
