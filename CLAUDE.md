@@ -193,12 +193,23 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **Migration script:** `scripts/migrate.py` — standalone CLI for one-time v1→v2 data migration. Supports `--dry-run` (parse-only), `--validate-only` (count comparison), and full migration with batched inserts (`BATCH_SIZE=100`). Re-embeds memories via `remme/utils.py:get_embedding()` with rate throttling. All inserts use `ON CONFLICT DO NOTHING` for idempotency.
 
-**Integration tests:** Three new test files requiring a real database (gracefully skip when DB is unavailable):
+**Integration tests:** 12 test files (101 tests) requiring a real database (gracefully skip when DB is unavailable):
 - `tests/test_tenant_isolation.py` — 8 tests verifying user_id scoping across all stores
 - `tests/test_concurrency.py` — concurrent preference merge (both keys survive) + job dedup race (exactly one wins)
 - `tests/test_search_quality.py` — golden queries with synthetic embeddings against hybrid search
+- `tests/test_schema_constraints.py` — 12 tests for CHECK, UNIQUE, FK, NOT NULL constraint enforcement via raw SQL
+- `tests/test_document_dedup.py` — 12 tests for SHA256 dedup, `xmax=0` trick, cascading deletes, executemany, FTS generated column
+- `tests/test_session_lifecycle.py` — 14 tests for SQL aggregation (`COUNT FILTER`, `SUM`), `mark_scanned` atomic txn, COALESCE(completed_at)
+- `tests/test_preferences_optimistic_lock.py` — 10 tests for optimistic locking, JSONB merge vs overwrite, hub column allowlist
+- `tests/test_chat_lifecycle.py` — 9 tests for add_message + update session atomicity, CASCADE delete, role CHECK
+- `tests/test_memory_lifecycle.py` — 9 tests for vector cosine search, min_similarity threshold, update_text re-embedding
+- `tests/test_job_lifecycle.py` — 8 tests for dynamic SET clause, FK cascade to job_runs, try_claim dedup
+- `tests/test_state_store_lifecycle.py` — 7 tests for UPSERT semantics, composite PK, complex JSONB roundtrip
+- `tests/test_notification_lifecycle.py` — 7 tests for mark_read, unread_only filter, pagination, priority/metadata
 
 **Shared fixtures:** `tests/conftest.py` provides `mock_pool()` helper (canonical version with `executemany`), `db_pool` (session-scoped real asyncpg pool, graceful skip), `clean_tables` (truncates all 13 tables), and `test_user_id`.
+
+**pytest-asyncio config:** `pyproject.toml` sets `asyncio_default_fixture_loop_scope = "session"` and `asyncio_default_test_loop_scope = "session"` so that session-scoped fixtures (like `db_pool`) share an event loop with tests.
 
 ### CI/CD Pipeline
 

@@ -78,6 +78,10 @@ Registered via `ServiceRegistry` during app lifespan:
 - Frameworks: `pytest` + `pytest-asyncio` with `asyncio_mode=auto`.
 - Keep tests in `tests/` and name them `test_*.py` with `test_*` functions.
 - Add or update tests for new behavior, especially in stores/services and routers.
+- **Integration tests** (101 tests across 12 files) run against a real database and gracefully skip when DB is unavailable. To run: `./scripts/dev-start.sh && pytest tests/ -v`.
+- Integration tests use `db_pool`, `clean_tables`, and `test_user_id` fixtures from `tests/conftest.py`. Patch the store's `get_pool` with the `db_pool` fixture (e.g., `patch("core.stores.session_store.get_pool", AsyncMock(return_value=db_pool))`).
+- **pytest-asyncio loop scope:** `pyproject.toml` sets both `asyncio_default_fixture_loop_scope` and `asyncio_default_test_loop_scope` to `"session"` so session-scoped fixtures share an event loop with tests.
+- JSONB columns returned via `SELECT *` come back as strings from asyncpg — use `json.loads(val) if isinstance(val, str) else val` when asserting on metadata fields.
 
 ## CI Pipeline
 Google Cloud Build (`cloudbuild.yaml`), triggered on **tag pushes** matching `v*` (not on PRs). Workflow: merge PR → tag the merge commit → push tag → CI runs.

@@ -229,10 +229,15 @@ The API will be available at `http://localhost:8080`.
 ### Common Commands
 
 ```bash
-# Run tests
+# Run tests (unit tests run instantly; integration tests skip if DB is unavailable)
 pytest tests/ -v
 pytest tests/test_rag.py -v              # single file
 pytest tests/test_rag.py::test_name -v   # single test
+
+# Run integration tests against real AlloyDB
+./scripts/dev-start.sh                   # start VM + SSH tunnel
+pytest tests/ -v                         # 101 integration tests run against AlloyDB
+./scripts/dev-stop.sh                    # stop VM when done
 
 # Lint and format
 ruff check .            # lint
