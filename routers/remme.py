@@ -45,13 +45,12 @@ async def list_memories(
 
     store = get_remme_store()
     if store is None:
-        return {"status": "unavailable", "memories": [], "message": "RemmeStore not initialized"}
+        raise HTTPException(status_code=503, detail="RemmeStore not initialized")
     try:
         memories = store.list_all()
         return {"status": "success", "memories": memories, "count": len(memories)}
     except Exception as e:
-        logger.error("Failed to list memories: %s", e)
-        return {"status": "error", "memories": [], "error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/memories")

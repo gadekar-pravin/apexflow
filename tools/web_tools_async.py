@@ -203,6 +203,7 @@ async def _fetch_with_ssrf_check(
 ) -> httpx.Response:
     """Follow redirects manually, re-validating each hop against SSRF rules."""
     ssrf_validator(url)  # validate the initial URL too
+    response: httpx.Response | None = None
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
         for _ in range(_MAX_REDIRECTS):
             response = await client.get(url, headers=headers)
@@ -214,7 +215,9 @@ async def _fetch_with_ssrf_check(
                 ssrf_validator(url)  # raises ValueError if blocked
                 continue
             return response
-    return response
+    if response is None:
+        raise ValueError("No response received")
+    raise ValueError(f"Too many redirects ({_MAX_REDIRECTS})")
 
 
 async def smart_web_extract(

@@ -30,7 +30,6 @@ _session_store = SessionStore()
 
 class RunRequest(BaseModel):
     query: str
-    model: str | None = None
     agent_type: str | None = None
 
 
@@ -54,7 +53,6 @@ async def process_run(
     query: str,
     *,
     user_id: str = "dev-user",
-    model: str | None = None,
 ) -> dict[str, Any]:
     """Background task to execute the agent loop."""
     context = None
@@ -133,10 +131,9 @@ async def create_run(
         run_id,
         request.query,
         agent_type=request.agent_type,
-        model_used=request.model,
     )
 
-    background_tasks.add_task(process_run, run_id, request.query, user_id=user_id, model=request.model)
+    background_tasks.add_task(process_run, run_id, request.query, user_id=user_id)
 
     return {"id": run_id, "status": "starting", "created_at": now, "query": request.query}
 
@@ -199,6 +196,11 @@ async def provide_input(
     if run_id not in active_loops:
         raise HTTPException(status_code=404, detail="Active run not found")
 
+    # Ownership check
+    session = await _session_store.get(user_id, run_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Run not found")
+
     loop = active_loops[run_id]
     if not loop.context:
         raise HTTPException(status_code=400, detail="Context not initialized")
@@ -214,6 +216,11 @@ async def stop_run(
 ) -> dict[str, Any]:
     if run_id not in active_loops:
         raise HTTPException(status_code=404, detail="Active run not found")
+
+    # Ownership check
+    session = await _session_store.get(user_id, run_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Run not found")
 
     loop = active_loops[run_id]
     loop.stop()
