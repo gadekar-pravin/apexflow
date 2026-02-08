@@ -167,15 +167,15 @@ steps:
     args:
       - '-c'
       - |
-        SERVICE_URL=$(gcloud run services describe apexflow-api \
+        SERVICE_URL=$$(gcloud run services describe apexflow-api \
           --region=${_REGION} --format='value(status.url)')
-        echo "Service URL: $SERVICE_URL"
+        echo "Service URL: $$SERVICE_URL"
 
         # Wait for readiness (new revision may take a moment to initialize DB pool)
-        for i in $(seq 1 12); do
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SERVICE_URL/readiness")
-          [ "$STATUS" = "200" ] && break
-          echo "Waiting for readiness... attempt $i (status: $STATUS)"
+        for i in $$(seq 1 12); do
+          STATUS=$$(curl -s -o /dev/null -w '%{http_code}' "$$SERVICE_URL/readiness")
+          [ "$$STATUS" = "200" ] && break
+          echo "Waiting for readiness... attempt $$i (status: $$STATUS)"
           sleep 5
         done
 
@@ -183,34 +183,34 @@ steps:
         FAIL=0
 
         # 1. Liveness
-        STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SERVICE_URL/liveness")
-        if [ "$STATUS" != "200" ]; then
-          echo "FAIL: /liveness returned $STATUS (expected 200)"
+        STATUS=$$(curl -s -o /dev/null -w '%{http_code}' "$$SERVICE_URL/liveness")
+        if [ "$$STATUS" != "200" ]; then
+          echo "FAIL: /liveness returned $$STATUS (expected 200)"
           FAIL=1
         else
-          echo "PASS: /liveness → $STATUS"
+          echo "PASS: /liveness → $$STATUS"
         fi
 
         # 2. Readiness (Cloud Run → VPC connector → AlloyDB)
-        STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SERVICE_URL/readiness")
-        if [ "$STATUS" != "200" ]; then
-          echo "FAIL: /readiness returned $STATUS (expected 200)"
-          curl -s "$SERVICE_URL/readiness"
+        STATUS=$$(curl -s -o /dev/null -w '%{http_code}' "$$SERVICE_URL/readiness")
+        if [ "$$STATUS" != "200" ]; then
+          echo "FAIL: /readiness returned $$STATUS (expected 200)"
+          curl -s "$$SERVICE_URL/readiness"
           FAIL=1
         else
-          echo "PASS: /readiness → $STATUS"
+          echo "PASS: /readiness → $$STATUS"
         fi
 
         # 3. Auth enforcement (should return 401 without token)
-        STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$SERVICE_URL/api/runs")
-        if [ "$STATUS" != "401" ]; then
-          echo "FAIL: /api/runs returned $STATUS (expected 401 — auth not enforced?)"
+        STATUS=$$(curl -s -o /dev/null -w '%{http_code}' "$$SERVICE_URL/api/runs")
+        if [ "$$STATUS" != "401" ]; then
+          echo "FAIL: /api/runs returned $$STATUS (expected 401 — auth not enforced?)"
           FAIL=1
         else
-          echo "PASS: /api/runs → $STATUS (auth enforced)"
+          echo "PASS: /api/runs → $$STATUS (auth enforced)"
         fi
 
-        exit $FAIL
+        exit $$FAIL
     id: 'smoke-test'
     waitFor: ['deploy']
 
