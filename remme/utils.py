@@ -65,6 +65,7 @@ def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> Any:
         response = client.models.embed_content(model=EMBED_MODEL, contents=text, config={"task_type": gemini_task_type})
 
         # Extract embedding from response
+        assert response.embeddings is not None, "Embedding response was empty"
         embedding = response.embeddings[0].values
         vec = np.array(embedding, dtype=np.float32)
 

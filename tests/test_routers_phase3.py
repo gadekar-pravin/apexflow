@@ -77,37 +77,57 @@ def test_openapi_includes_phase3(client: TestClient) -> None:
 
 
 # ---------------------------------------------------------------------------
-# RAG stub endpoints
+# RAG endpoints (Phase 4a — backed by stores + ingestion pipeline)
 # ---------------------------------------------------------------------------
 
 
-def test_rag_documents_stub(client: TestClient) -> None:
-    resp = client.get("/api/rag/documents")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "stub"
-    assert data["documents"] == []
+def test_rag_documents_list(client: TestClient) -> None:
+    with patch("routers.rag._doc_store.list_documents", AsyncMock(return_value=[])):
+        resp = client.get("/api/rag/documents")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["documents"] == []
 
 
-def test_rag_search_stub(client: TestClient) -> None:
-    resp = client.post("/api/rag/search", json={"query": "test"})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "stub"
+def test_rag_search(client: TestClient) -> None:
+    mock_results = [
+        {
+            "chunk_id": "c1",
+            "document_id": "d1",
+            "content": "hi",
+            "chunk_index": 0,
+            "rrf_score": 0.03,
+            "vector_score": 0.9,
+            "text_score": 0.5,
+        }
+    ]
+    with (
+        patch("routers.rag.embed_query", AsyncMock(return_value=[0.0] * 768)),
+        patch("routers.rag._doc_search.hybrid_search", AsyncMock(return_value=mock_results)),
+    ):
+        resp = client.post("/api/rag/search", json={"query": "test"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["results"]) == 1
 
 
-def test_rag_index_stub(client: TestClient) -> None:
-    resp = client.post("/api/rag/index", json={"filepath": "/tmp/test.pdf"})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "stub"
+def test_rag_index(client: TestClient) -> None:
+    with patch(
+        "routers.rag.ingest_document",
+        AsyncMock(return_value={"doc_id": "d1", "status": "indexed", "total_chunks": 2}),
+    ):
+        resp = client.post("/api/rag/index", json={"filename": "test.txt", "content": "hello world"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "indexed"
 
 
-def test_rag_delete_stub(client: TestClient) -> None:
-    resp = client.delete("/api/rag/documents/doc123")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "stub"
+def test_rag_delete(client: TestClient) -> None:
+    with patch("routers.rag._doc_store.delete", AsyncMock(return_value=True)):
+        resp = client.delete("/api/rag/documents/doc123")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["deleted"] is True
 
 
 # ---------------------------------------------------------------------------

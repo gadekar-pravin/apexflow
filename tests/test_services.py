@@ -125,15 +125,28 @@ class TestRagService:
         svc = create_rag_service()
         assert svc.name == "rag"
         assert len(svc.tools) == 4
+        tool_names = {t.name for t in svc.tools}
+        assert "index_document" in tool_names
+        assert "search_documents" in tool_names
 
     @pytest.mark.asyncio
-    async def test_handler_raises(self) -> None:
+    async def test_handler_wraps_errors(self) -> None:
+        from services.rag_service import create_rag_service
+
+        svc = create_rag_service()
+        assert svc.handler is not None
+        # Missing required keys triggers KeyError -> ToolExecutionError
+        with pytest.raises(ToolExecutionError):
+            await svc.handler("index_document", {}, None)
+
+    @pytest.mark.asyncio
+    async def test_handler_unknown_tool_raises(self) -> None:
         from services.rag_service import create_rag_service
 
         svc = create_rag_service()
         assert svc.handler is not None
         with pytest.raises(ToolExecutionError):
-            await svc.handler("index_document", {"filepath": "test.pdf"}, None)
+            await svc.handler("nonexistent_tool", {}, None)
 
     @pytest.mark.asyncio
     async def test_routes_through_registry(self) -> None:
@@ -141,8 +154,9 @@ class TestRagService:
 
         registry = ServiceRegistry()
         registry.register_service(create_rag_service())
+        # Missing args will cause ToolExecutionError
         with pytest.raises(ToolExecutionError):
-            await registry.route_tool_call("search_documents", {"query": "test"})
+            await registry.route_tool_call("search_documents", {})
 
 
 # ---------------------------------------------------------------------------
