@@ -51,6 +51,9 @@ core/skills/registry.json
 *.log
 logs/
 
+# Firebase
+.firebase/
+
 # Frontend
 frontend/node_modules/
 frontend/dist/
