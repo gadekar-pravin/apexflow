@@ -58,9 +58,9 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
-          rows={1}
-          className="flex-1 resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none px-2 py-2 text-base text-foreground placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
-          style={{ maxHeight: 160 }}
+          rows={3}
+          className="flex-1 resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none px-2 py-1.5 text-base text-foreground placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ maxHeight: 200 }}
         />
         <Button
           size="icon"
@@ -75,12 +75,12 @@ export function ChatInput({
   )
 
   if (inline) {
-    return <div className="max-w-[700px] w-full mx-auto">{inputWidget}</div>
+    return <div className="max-w-4xl w-full mx-auto">{inputWidget}</div>
   }
 
   return (
-    <div className="border-t border-border bg-background px-8 py-4 shrink-0">
-      <div className="max-w-[700px] mx-auto">{inputWidget}</div>
+    <div className="border-t border-border bg-background px-6 py-4 shrink-0">
+      <div className="max-w-4xl mx-auto">{inputWidget}</div>
     </div>
   )
 }

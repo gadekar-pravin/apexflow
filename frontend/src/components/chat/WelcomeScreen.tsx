@@ -38,10 +38,10 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onSend, inputValue, onInputChange, onInputSend, disabled }: WelcomeScreenProps) {
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto px-4 pt-8 pb-6">
+    <div className="flex-1 flex flex-col overflow-y-auto px-4 pt-4 pb-4">
       {/* Centered content block */}
       <div className="flex-1 flex items-center justify-center">
-        <div className="max-w-[700px] w-full mx-auto space-y-8 px-6">
+        <div className="max-w-4xl w-full mx-auto space-y-6 px-4">
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-semibold text-foreground">
               What can I help you with?
