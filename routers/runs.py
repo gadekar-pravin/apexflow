@@ -5,6 +5,7 @@ Replaces filesystem session I/O with session_store partial updates.
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -167,14 +168,21 @@ async def get_run(
     if not session:
         raise HTTPException(status_code=404, detail="Run not found")
 
-    graph_data = session.get("graph_data", {})
+    graph_data = session.get("graph_data")
     react_flow: dict[str, list[dict[str, Any]]] | None = None
-    if graph_data and isinstance(graph_data, dict) and graph_data.get("nodes"):
-        try:
-            g = nx.node_link_graph(graph_data, edges="edges")
-            react_flow = nx_to_reactflow(g)
-        except Exception:
-            pass
+    if graph_data:
+        # asyncpg may return JSONB as str in some environments
+        if isinstance(graph_data, str):
+            try:
+                graph_data = json.loads(graph_data)
+            except (json.JSONDecodeError, TypeError):
+                graph_data = None
+        if isinstance(graph_data, dict) and graph_data.get("nodes"):
+            try:
+                g = nx.node_link_graph(graph_data, edges="edges")
+                react_flow = nx_to_reactflow(g)
+            except Exception:
+                logger.exception("Failed to convert graph for run %s", run_id)
 
     return {
         "id": run_id,
