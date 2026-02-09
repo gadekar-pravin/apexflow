@@ -51,14 +51,6 @@ export function DocumentTree() {
     enabled: canQueryDocuments,
   })
 
-  if (auth.isConfigured && !auth.isAuthenticated) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground text-center">
-        Sign in to load documents.
-      </div>
-    )
-  }
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">

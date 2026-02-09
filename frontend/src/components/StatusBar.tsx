@@ -75,25 +75,15 @@ export function StatusBar() {
         </div>
 
         <div className="flex items-center gap-3 text-muted-foreground">
-          {auth.isConfigured && (
-            auth.isAuthenticated ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => void auth.signOut()}
-              >
-                Sign out
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => void auth.signIn()}
-              >
-                Sign in
-              </Button>
-            )
+          {auth.isConfigured && auth.isAuthenticated && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => void auth.signOut()}
+            >
+              Sign out
+            </Button>
           )}
           {metrics.runId ? (
             <>

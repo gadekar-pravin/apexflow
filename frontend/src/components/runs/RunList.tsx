@@ -85,14 +85,6 @@ export function RunList() {
       )
     }
 
-    if ((auth.isConfigured && !auth.isAuthenticated) || isUnauthorizedError(error)) {
-      return (
-        <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-          Sign in to load your runs.
-        </div>
-      )
-    }
-
     return (
       <div className="px-4 py-8 text-center text-sm text-muted-foreground">
         No runs yet. Create one above to get started.

@@ -82,14 +82,6 @@ export function SettingsPage() {
     })
   }
 
-  if (auth.isConfigured && !auth.isAuthenticated) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Sign in to view and edit settings.
-      </div>
-    )
-  }
-
   if (isLoading || !localSettings) {
     return (
       <div className="flex h-full items-center justify-center">
