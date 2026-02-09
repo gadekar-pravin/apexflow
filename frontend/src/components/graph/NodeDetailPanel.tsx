@@ -21,6 +21,8 @@ import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/utils/utils"
 import type { NodeData } from "@/types"
 
+const USD_TO_INR = 85
+
 const statusConfig: Record<
   string,
   { icon: React.ElementType; color: string; badge: "default" | "secondary" | "success" | "destructive" | "warning" | "muted"; animate?: boolean }
@@ -135,7 +137,7 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
         {nodeData.cost > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <DollarSign className="h-3 w-3" strokeWidth={1.75} />
-            <span className="font-mono">${nodeData.cost.toFixed(4)}</span>
+            <span className="font-mono">${nodeData.cost.toFixed(4)} (₹{(nodeData.cost * USD_TO_INR).toFixed(2)})</span>
           </div>
         )}
       </div>

@@ -43,10 +43,13 @@ function ConnectionIndicator({ label, state }: ConnectionIndicatorProps) {
   )
 }
 
+const USD_TO_INR = 85
+
 function formatCost(cost: number): string {
-  if (cost === 0) return "$0.00"
-  if (cost < 0.01) return "$" + cost.toFixed(6)
-  return "$" + cost.toFixed(2)
+  const inr = cost * USD_TO_INR
+  if (cost === 0) return "$0.00 (₹0.00)"
+  if (cost < 0.01) return "$" + cost.toFixed(6) + " (₹" + inr.toFixed(4) + ")"
+  return "$" + cost.toFixed(2) + " (₹" + inr.toFixed(2) + ")"
 }
 
 export function StatusBar() {
