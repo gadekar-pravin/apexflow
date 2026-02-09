@@ -270,6 +270,25 @@
 }
 
 /* ----------------------------------------
+   NODE ENTRANCE ANIMATION
+   Staggered fade-up on initial render
+   ---------------------------------------- */
+@keyframes node-entrance {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-node-entrance {
+  animation: node-entrance 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ----------------------------------------
    NODE ANIMATIONS
    Refined, purposeful motion with glow
    ---------------------------------------- */
@@ -476,8 +495,13 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-glow-pulse,
   .animate-float,
-  .node-active-glow {
+  .node-active-glow,
+  .animate-node-entrance {
     animation: none;
+  }
+
+  .edge-flow-dot {
+    display: none;
   }
 }
 

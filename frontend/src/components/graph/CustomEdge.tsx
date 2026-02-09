@@ -22,6 +22,8 @@ function CustomEdgeComponent({
     borderRadius: 8,
   })
 
+  const filterId = `edge-glow-${id}`
+
   return (
     <>
       {/* Glow layer for animated edges */}
@@ -48,6 +50,32 @@ function CustomEdgeComponent({
         }}
         className={animated ? "animate-pulse-subtle" : undefined}
       />
+      {/* Flowing dot on animated edges */}
+      {animated && (
+        <>
+          <defs>
+            <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <circle
+            r="3"
+            fill="hsl(var(--primary))"
+            filter={`url(#${filterId})`}
+            className="edge-flow-dot"
+          >
+            <animateMotion
+              dur="2s"
+              repeatCount="indefinite"
+              path={edgePath}
+            />
+          </circle>
+        </>
+      )}
     </>
   )
 }

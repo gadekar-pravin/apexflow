@@ -33,12 +33,12 @@ interface GraphViewProps {
 }
 
 // Convert backend GraphNode to ReactFlow Node
-function toReactFlowNode(node: GraphNode): Node {
+function toReactFlowNode(node: GraphNode, index: number): Node {
   return {
     id: node.id,
     type: node.type,
     position: node.position,
-    data: node.data as unknown as Record<string, unknown>,
+    data: { ...(node.data as unknown as Record<string, unknown>), _nodeIndex: index },
   }
 }
 
@@ -73,7 +73,7 @@ export function GraphView({ runId }: GraphViewProps) {
   // Update nodes and edges when data changes
   useEffect(() => {
     if (data?.graph) {
-      setNodes(data.graph.nodes.map(toReactFlowNode))
+      setNodes(data.graph.nodes.map((node, index) => toReactFlowNode(node, index)))
       setEdges(data.graph.edges.map(toReactFlowEdge))
     }
   }, [data, setNodes, setEdges])

@@ -25,6 +25,18 @@ const agentIcons: Record<string, React.ElementType> = {
   FormatterAgent: FileText,
 }
 
+const agentAccentColors: Record<string, { border: string; iconBg: string }> = {
+  PlannerAgent:    { border: "border-l-indigo-500",  iconBg: "bg-indigo-500/10 border-indigo-500/20" },
+  CoderAgent:      { border: "border-l-emerald-500", iconBg: "bg-emerald-500/10 border-emerald-500/20" },
+  BrowserAgent:    { border: "border-l-cyan-500",    iconBg: "bg-cyan-500/10 border-cyan-500/20" },
+  RetrieverAgent:  { border: "border-l-violet-500",  iconBg: "bg-violet-500/10 border-violet-500/20" },
+  SummarizerAgent: { border: "border-l-amber-500",   iconBg: "bg-amber-500/10 border-amber-500/20" },
+  ThinkerAgent:    { border: "border-l-purple-500",  iconBg: "bg-purple-500/10 border-purple-500/20" },
+  FormatterAgent:  { border: "border-l-orange-500",  iconBg: "bg-orange-500/10 border-orange-500/20" },
+}
+
+const defaultAccent = { border: "", iconBg: "bg-muted/40 border-white/10" }
+
 const statusConfig: Record<
   string,
   {
@@ -82,18 +94,24 @@ function AgentNodeComponent({ data, selected }: AgentNodeProps) {
   const AgentIcon = agentIcons[data.type] || Bot
   const config = statusConfig[data.status] || statusConfig.pending
   const StatusIcon = config.icon
+  const accent = agentAccentColors[data.type] || defaultAccent
+  const nodeIndex = (data as unknown as Record<string, unknown>)._nodeIndex as number | undefined
 
   return (
     <div
       className={cn(
-        "rounded-md border px-3.5 py-2.5 min-w-[160px] max-w-[200px]",
+        "rounded-md border border-l-[3px] px-3.5 py-2.5 min-w-[160px] max-w-[200px]",
         "shadow-glass-sm transition-all duration-200",
+        "hover:scale-[1.02] hover:shadow-glass-md",
+        "animate-node-entrance",
+        accent.border,
         config.containerClass,
         config.glow && "node-active-glow",
         config.glowClass,
         data.status === "stale" && "node-stale",
         selected && "ring-1 ring-primary/60 ring-offset-1 ring-offset-background shadow-glass-glow"
       )}
+      style={nodeIndex != null ? { animationDelay: `${nodeIndex * 80}ms` } : undefined}
     >
       <Handle
         type="target"
@@ -103,7 +121,7 @@ function AgentNodeComponent({ data, selected }: AgentNodeProps) {
 
       {/* Header row */}
       <div className="flex items-center gap-2">
-        <div className="flex h-6 w-6 items-center justify-center rounded backdrop-blur-xs bg-muted/40 border border-white/10">
+        <div className={cn("flex h-6 w-6 items-center justify-center rounded backdrop-blur-xs border", accent.iconBg)}>
           <AgentIcon className="h-3.5 w-3.5 text-foreground/70" strokeWidth={1.75} />
         </div>
         <span className="font-medium text-sm tracking-tight truncate flex-1">
