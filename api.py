@@ -25,7 +25,7 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -237,6 +237,18 @@ async def readiness() -> dict[str, str | bool] | JSONResponse:
             status_code=503,
             content={"status": "not_ready", "error": type(e).__name__},
         )
+
+
+# --- Auth Verification (no DB access) ---
+
+
+@app.get("/api/auth/verify")
+async def auth_verify(request: Request) -> dict[str, str]:
+    """Lightweight auth check — no database access."""
+    from core.auth import get_user_id
+
+    user_id = await get_user_id(request)
+    return {"status": "ok", "user_id": user_id}
 
 
 # --- Phase 2 Routers ---

@@ -1,4 +1,5 @@
 import { useApiHealth, type ConnectionState } from "@/hooks/useApiHealth"
+import { useDbHealth } from "@/hooks/useDbHealth"
 import { useSSEContext, type SSEConnectionState } from "@/contexts/SSEContext"
 import { useExecutionMetrics } from "@/contexts/ExecutionMetricsContext"
 import { useAuth } from "@/contexts/AuthContext"
@@ -51,6 +52,7 @@ function formatCost(cost: number): string {
 
 export function StatusBar() {
   const apiHealth = useApiHealth()
+  const dbHealth = useDbHealth()
   const { connectionState: sseState } = useSSEContext()
   const metrics = useExecutionMetrics()
   const auth = useAuth()
@@ -65,6 +67,7 @@ export function StatusBar() {
       <div className="h-full px-3 flex items-center justify-between text-xs">
         <div className="flex items-center gap-4">
           <ConnectionIndicator label="API" state={apiHealth.state} />
+          <ConnectionIndicator label="DB" state={dbHealth} />
           <ConnectionIndicator label="SSE" state={sseState} />
           <ConnectionIndicator label="Auth" state={authState} />
           {auth.isConfigured && auth.isAuthenticated && (

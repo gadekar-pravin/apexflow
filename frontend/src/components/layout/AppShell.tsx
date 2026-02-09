@@ -26,7 +26,7 @@ function AppContent() {
 
   const authzCheck = useQuery({
     queryKey: ["authz-check"],
-    queryFn: () => fetchAPI("/api/runs?limit=1"),
+    queryFn: () => fetchAPI("/api/auth/verify"),
     enabled: auth.isConfigured && auth.isAuthenticated,
     retry: false,
     staleTime: Infinity,

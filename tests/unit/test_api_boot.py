@@ -79,6 +79,21 @@ def test_liveness_returns_200(client: TestClient) -> None:
     assert data["status"] == "alive"
 
 
+def test_auth_verify_returns_200_with_auth_disabled(client: TestClient) -> None:
+    """GET /api/auth/verify returns 200 with dev-user when AUTH_DISABLED=1."""
+    resp = client.get("/api/auth/verify")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert data["user_id"] == "dev-user"
+
+
+def test_auth_verify_route_is_registered(client: TestClient) -> None:
+    """Auth verify route is registered."""
+    paths = _get_route_paths(client)
+    assert "/api/auth/verify" in paths
+
+
 def test_readiness_returns_503_without_pool(client: TestClient) -> None:
     """Without a real DB pool, readiness should return 503."""
     resp = client.get("/readiness")
