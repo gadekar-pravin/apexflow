@@ -200,7 +200,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **Docker:** Multi-stage `Dockerfile` — builder stage uses `ghcr.io/astral-sh/uv:python3.12-bookworm-slim` for dependency installation, runtime stage uses `python:3.12-slim-bookworm` with non-root `appuser` (uid 1001). Exposes port 8080. `.dockerignore` excludes tests, docs, scripts, alembic, etc.
 
-**CORS:** `api.py` reads `CORS_ORIGINS` env var as comma-separated origins. Falls back to `localhost:3000,5173,8000` for local dev. Production sets specific origins via Cloud Run env vars.
+**CORS:** `api.py` reads `CORS_ORIGINS` env var as comma-separated origins. Falls back to `localhost:3000,5173,8000` for local dev. Production sets `https://apexflow-console.web.app,https://apexflow-ai.web.app` — required because the SSE endpoint (`/api/events`) is accessed directly on Cloud Run (bypasses Firebase Hosting rewrites which don't support streaming).
 
 **Readiness:** Enhanced `/readiness` endpoint with 5-second TTL cache and 2-second `asyncio.timeout()`. Returns `503` with error type name on failure. Cache prevents DB polling storms from orchestrators.
 
@@ -341,7 +341,7 @@ firebase deploy --only hosting:console
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Individual DB connection params | `localhost:5432`, user `apexflow` |
 | `DB_POOL_MAX` | Max async connection pool size | `5` |
 | `K_SERVICE` | Auto-set by Cloud Run; triggers production mode (Vertex AI, auth enforced) | — |
-| `CORS_ORIGINS` | Comma-separated allowed origins for CORS | `http://localhost:3000,http://localhost:5173,http://localhost:8000` |
+| `CORS_ORIGINS` | Comma-separated allowed origins for CORS. Production: `https://apexflow-console.web.app,https://apexflow-ai.web.app` (needed for SSE which bypasses Firebase Hosting) | `http://localhost:3000,http://localhost:5173,http://localhost:8000` |
 | `ALLOYDB_HOST` | AlloyDB VM internal IP (Cloud Run mode only) | — |
 | `DATABASE_TEST_URL` | Test database URL for integration tests | `postgresql://apexflow:apexflow@localhost:5432/apexflow` |
 | `VITE_FIREBASE_API_KEY` | Firebase Web SDK API key (frontend) | — |

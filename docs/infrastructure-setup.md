@@ -1023,7 +1023,15 @@ Firebase Hosting rewrites to Cloud Run [require the service to be in the same Fi
 
 ### CORS note
 
-The Cloud Run service's `CORS_ORIGINS` env var does **not** need to include the Firebase Hosting URL when using rewrites (requests are same-origin). CORS is only relevant for direct cross-origin API calls (e.g., from `localhost:5173` during local dev).
+Most API calls go through Firebase Hosting rewrites (same-origin, no CORS needed). However, the **SSE endpoint** (`/api/events`) is accessed directly on Cloud Run via `VITE_SSE_URL` because Firebase Hosting rewrites don't support long-lived streaming connections. This cross-origin SSE request requires `CORS_ORIGINS` to include the Firebase Hosting origins:
+
+```bash
+gcloud run services update apexflow-api --region=us-central1 \
+  --update-env-vars="^||^CORS_ORIGINS=https://apexflow-console.web.app,https://apexflow-ai.web.app" \
+  --project=apexflow-ai
+```
+
+Note the `^||^` delimiter syntax — gcloud interprets bare commas as key-value separators, so a custom delimiter is needed when the value itself contains commas.
 
 ---
 
