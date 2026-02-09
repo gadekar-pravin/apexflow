@@ -283,7 +283,7 @@ git push origin v2.0.0  # triggers CI
 - **Firebase Hosting:** site `apexflow-console` in project `apexflow-ai` — https://apexflow-console.web.app
 - **Cloud Scheduler:** `vm-auto-stop` stops the VM nightly at 11 PM IST; `cloudrun-auto-stop` sets Cloud Run ingress to internal-only at the same time
 - **Cloud Build SA:** `cloudbuild-ci@apexflow-ai.iam.gserviceaccount.com`
-- **Firebase Auth:** Identity Platform enabled with Google sign-in provider. Authorized domains: `localhost`, `apexflow-console.web.app`, `apexflow-ai.firebaseapp.com`, `apexflow-ai.web.app`
+- **Firebase Auth:** Identity Platform enabled with Google sign-in provider. `authDomain` is `apexflow-console.web.app` (must match hosting domain for `signInWithRedirect` — using `firebaseapp.com` breaks due to third-party cookie blocking). OAuth redirect URI: `https://apexflow-console.web.app/__/auth/handler`. Authorized domains: `localhost`, `apexflow-console.web.app`, `apexflow-ai.firebaseapp.com`, `apexflow-ai.web.app`
 
 ## Frontend
 

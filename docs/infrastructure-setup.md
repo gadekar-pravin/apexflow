@@ -1063,8 +1063,8 @@ This auto-creates the OAuth consent screen and Web OAuth client.
 1. Go to https://console.firebase.google.com/project/$PROJECT_ID/authentication/settings
 2. Under **Authorized domains**, verify these are listed:
    - `localhost` (local dev)
-   - `apexflow-console.web.app` (Firebase Hosting)
-   - `apexflow-ai.firebaseapp.com` (authDomain)
+   - `apexflow-console.web.app` (Firebase Hosting — also used as `authDomain`)
+   - `apexflow-ai.firebaseapp.com` (default Firebase domain)
 
 ### 23d. Verify via CLI
 
@@ -1092,18 +1092,22 @@ Firebase config values are set in `frontend/.env.production`. These are public (
 
 ```env
 VITE_FIREBASE_API_KEY=AIzaSy...
-VITE_FIREBASE_AUTH_DOMAIN=apexflow-ai.firebaseapp.com
+VITE_FIREBASE_AUTH_DOMAIN=apexflow-console.web.app
 VITE_FIREBASE_PROJECT_ID=apexflow-ai
 VITE_FIREBASE_STORAGE_BUCKET=apexflow-ai.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=807506425655
 VITE_FIREBASE_APP_ID=1:807506425655:web:...
 ```
 
+> **Important:** `AUTH_DOMAIN` must be the Firebase Hosting domain (`apexflow-console.web.app`), not `apexflow-ai.firebaseapp.com`. The `signInWithRedirect` flow redirects through the `authDomain` — using a different domain triggers third-party cookie blocking in modern browsers (Chrome 120+), breaking the sign-in flow. Firebase Hosting auto-serves `/__/auth/handler` on all hosting sites. The OAuth client's **Authorized redirect URIs** (in [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)) must include `https://apexflow-console.web.app/__/auth/handler`.
+
 When these are unset (local dev without `.env.production`), auth is bypassed entirely.
 
 ### 23f. Sign-in method: redirect (not popup)
 
 The frontend uses `signInWithRedirect` (not `signInWithPopup`). The redirect flow navigates the page to Google's sign-in page and back, avoiding cross-origin popup issues. Google's sign-in page sets `Cross-Origin-Opener-Policy: same-origin`, which blocks `signInWithPopup`'s `window.closed` polling, producing noisy COOP console errors. The redirect approach eliminates these entirely. `getRedirectResult()` is called on app init to catch errors from the redirect flow.
+
+**Critical:** The `authDomain` must match the Firebase Hosting domain (`apexflow-console.web.app`) so the redirect stays same-origin. If it's set to `apexflow-ai.firebaseapp.com`, the redirect goes cross-origin and modern browsers block the third-party cookies needed to pass the auth result back. When changing the `authDomain`, add `https://<new-authDomain>/__/auth/handler` to the OAuth client's authorized redirect URIs in [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
 
 No COOP headers are needed in `firebase.json` or `vite.config.ts`.
 
