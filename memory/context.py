@@ -358,7 +358,7 @@ class ExecutionContextManager:
                         "executed_variant",
                         "execution_logs",
                     }
-                    content = {k: v for k, v in output.items() if k not in metadata_keys and v}
+                    content = {k: v for k, v in output.items() if k not in metadata_keys and v is not None}
                     if content:
                         non_empty = {k: v for k, v in content.items() if v != [] and v != {}}
                         if len(non_empty) == 1:
