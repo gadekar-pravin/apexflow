@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Bot } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import type { AgentChatMessage } from "@/types"
 
 interface ChatMessageListProps {
@@ -26,7 +26,7 @@ export function ChatMessageList({ messages, isRunning }: ChatMessageListProps) {
           >
             {msg.role === "assistant" && (
               <div className="mr-3 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Bot className="h-4 w-4" />
+                <Sparkles className="h-4 w-4" />
               </div>
             )}
             <div
@@ -50,7 +50,7 @@ export function ChatMessageList({ messages, isRunning }: ChatMessageListProps) {
         {isRunning && (
           <div className="flex justify-start">
             <div className="mr-3 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Bot className="h-4 w-4" />
+              <Sparkles className="h-4 w-4" />
             </div>
             <div className="flex items-center gap-1.5 px-4 py-2.5 text-muted-foreground text-sm">
               <span>Agents working</span>

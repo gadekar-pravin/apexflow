@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { CheckCircle2, XCircle, Loader2, Wrench } from "lucide-react"
+import { CheckCircle2, XCircle, Loader2, Wrench, Search, FileText, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSSESubscription } from "@/contexts/SSEContext"
@@ -53,9 +53,31 @@ export function ReasoningSidebar({ activeRunId }: ReasoningSidebarProps) {
   if (!activeRunId && events.length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground text-center">
-          Send a message to see agent reasoning here
-        </p>
+        <div className="space-y-5">
+          <div className="text-center space-y-1.5">
+            <h3 className="text-sm font-semibold text-foreground">
+              Step-by-step analysis
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Watch the AI work in real-time:
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              { icon: Search, label: "Search your documents" },
+              { icon: FileText, label: "Analyze and extract insights" },
+              { icon: Sparkles, label: "Generate a response" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2.5">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary/30">
+                  <item.icon className="h-3 w-3 text-primary/60" />
+                </div>
+                <span className="text-xs text-muted-foreground">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
