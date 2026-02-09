@@ -11,7 +11,7 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 - **Tool routing** — ServiceRegistry dispatches tool calls in OpenAI-compatible format with circuit breaker resilience
 - **Real-time streaming** — Server-Sent Events for live client updates via EventBus pub-sub
 - **Scheduled workflows** — APScheduler with cron expressions and DB-backed job deduplication
-- **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally). Email allowlist via `ALLOWED_EMAILS` env var (403 for unauthorized emails). Frontend uses Google sign-in via `signInWithPopup`, token provider pattern, and auth guards on all data-fetching components
+- **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally). Email allowlist via `ALLOWED_EMAILS` env var (403 for unauthorized emails). Frontend uses Google sign-in via `signInWithRedirect`, token provider pattern, and auth guards on all data-fetching components. Graceful degradation when DB is down via `/api/auth/verify` (no DB access)
 
 ## Tech Stack
 
@@ -86,7 +86,7 @@ apexflow/
 │   ├── src/
 │   │   ├── components/        # UI components (layout, runs, graph, documents)
 │   │   ├── contexts/          # AuthContext, SSEContext, ExecutionMetricsContext
-│   │   ├── hooks/             # useApiHealth, useSSE
+│   │   ├── hooks/             # useApiHealth, useDbHealth, useSSE
 │   │   ├── services/          # API services (runs, rag, settings)
 │   │   ├── store/             # Zustand stores (useAppStore, useGraphStore)
 │   │   ├── pages/             # Route pages (Dashboard, Documents, Settings)
@@ -218,7 +218,7 @@ The frontend deploys to Firebase Hosting in the `apexflow-ai` GCP project — th
 | Deploy target | `console` |
 | Public dir | `frontend/dist` |
 
-Firebase Hosting rewrites `/api/**`, `/liveness`, and `/readiness` to Cloud Run `apexflow-api` (us-central1). All other paths fall through to `/index.html` (SPA catch-all). HTML responses include `Cross-Origin-Opener-Policy: same-origin-allow-popups` for Firebase `signInWithPopup` compatibility.
+Firebase Hosting rewrites `/api/**`, `/liveness`, and `/readiness` to Cloud Run `apexflow-api` (us-central1). All other paths fall through to `/index.html` (SPA catch-all). API calls go directly to Cloud Run via `VITE_API_URL` (bypasses Firebase Hosting rewrites which can strip the `Authorization` header).
 
 ### Authentication
 
@@ -241,11 +241,12 @@ firebase deploy --only hosting:console
 
 ## API Endpoints
 
-### Health
+### Health & Auth
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/liveness` | Liveness probe |
 | GET | `/readiness` | Readiness probe (checks DB) |
+| GET | `/api/auth/verify` | Auth check (no DB access) |
 
 ### Workflows
 | Method | Path | Description |

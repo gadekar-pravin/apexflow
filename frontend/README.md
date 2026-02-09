@@ -86,7 +86,7 @@ src/
 │   ├── graph/        # GraphView, AgentNode, NodeDetailPanel
 │   └── documents/    # DocumentTree, DocumentChat, ChatMessage
 ├── contexts/         # SSEContext (shared EventSource connection)
-├── hooks/            # useApiHealth, useSSE (deprecated)
+├── hooks/            # useApiHealth, useDbHealth, useSSE (deprecated)
 ├── services/         # API services (runs, rag, settings)
 ├── store/            # Zustand stores (useAppStore, useGraphStore)
 ├── types/            # TypeScript types
