@@ -9,7 +9,8 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 - **Memory management (REMME)** — Smart memory extraction, categorization, and adaptive user profiling from session history
 - **Secure code execution** — Monty sandbox (pydantic-monty) with language-level isolation, subprocess resource limits, and tool bridging via JSON-lines IPC
 - **Tool routing** — ServiceRegistry dispatches tool calls in OpenAI-compatible format with circuit breaker resilience
-- **Real-time streaming** — Server-Sent Events for live client updates via EventBus pub-sub
+- **Conversational chat** — Google-like chat interface (`/chat`) that triggers agent runs behind the scenes, with a collapsible reasoning sidebar showing live execution steps via SSE
+- **Real-time streaming** — Server-Sent Events for live client updates via EventBus pub-sub (`step_start`, `step_complete`, `step_failed`, `tool_call`)
 - **Scheduled workflows** — APScheduler with cron expressions and DB-backed job deduplication
 - **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally). Email allowlist via `ALLOWED_EMAILS` env var (403 for unauthorized emails). Frontend uses Google sign-in via `signInWithRedirect`, token provider pattern, and auth guards on all data-fetching components. Graceful degradation when DB is down via `/api/auth/verify` (no DB access)
 
@@ -84,12 +85,12 @@ apexflow/
 │   └── integration/           # DB-dependent tests (graceful skip if unavailable)
 ├── frontend/                  # React 19 + TypeScript + Vite SPA
 │   ├── src/
-│   │   ├── components/        # UI components (layout, runs, graph, documents)
+│   │   ├── components/        # UI components (layout, runs, graph, chat, documents)
 │   │   ├── contexts/          # AuthContext, SSEContext, ExecutionMetricsContext
 │   │   ├── hooks/             # useApiHealth, useDbHealth, useSSE
-│   │   ├── services/          # API services (runs, rag, settings)
+│   │   ├── services/          # API services (runs, rag, chat, settings)
 │   │   ├── store/             # Zustand stores (useAppStore, useGraphStore)
-│   │   ├── pages/             # Route pages (Dashboard, Documents, Settings)
+│   │   ├── pages/             # Route pages (Dashboard, Chat, Documents, Settings)
 │   │   └── utils/             # Shared utilities
 │   └── package.json
 ├── firebase.json              # Firebase Hosting config (rewrites + caching)
@@ -402,3 +403,4 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 6 — Frontend | Done | React 19 SPA, Firebase Hosting with Cloud Run rewrites, DAG visualization, document management |
 | 6a — Auth | Done | Firebase Authentication (Google sign-in), AuthContext, token provider, SSE auth, COOP headers |
 | 6b — Allowlist | Done | Email allowlist authorization (`ALLOWED_EMAILS` env var, 403 for unauthorized emails) |
+| 7 — Chat | Done | Conversational chat page (`/chat`) with agent orchestration, reasoning sidebar, session management |

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ApexFlow v2 is a web-first rewrite of the desktop-first ApexFlow v1. It's an intelligent workflow automation platform powered by Google Gemini. The backend is FastAPI + asyncpg + AlloyDB (Google's PostgreSQL variant with ScaNN vector indexes).
 
-**Current state:** Phases 1–6 are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phase 4c adds the Monty sandbox (secure code execution via pydantic-monty subprocess with tool bridging). Phase 5 adds production deployment infrastructure (Docker container, Cloud Run CI/CD, CORS hardening, enhanced health checks, v1→v2 migration script, and integration tests for tenant isolation, concurrency, and search quality). Phase 6 adds the React frontend SPA (Firebase Hosting, DAG visualization, document management) and Firebase Authentication integration (AuthContext, Google sign-in via redirect, token provider pattern, SSE auth via query param).
+**Current state:** Phases 1–6 are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phase 4c adds the Monty sandbox (secure code execution via pydantic-monty subprocess with tool bridging). Phase 5 adds production deployment infrastructure (Docker container, Cloud Run CI/CD, CORS hardening, enhanced health checks, v1→v2 migration script, and integration tests for tenant isolation, concurrency, and search quality). Phase 6 adds the React frontend SPA (Firebase Hosting, DAG visualization, document management) and Firebase Authentication integration (AuthContext, Google sign-in via redirect, token provider pattern, SSE auth via query param). Phase 7 adds the conversational Chat page (`/chat`) — an alternative to the DAG dashboard where users interact with agents through a Google-like chat interface, with a collapsible reasoning sidebar showing live execution via SSE.
 
 ## Common Commands
 
@@ -91,7 +91,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **Entry point:** `api.py` — FastAPI app with lifespan manager that initializes DB pool, `ServiceRegistry`, and Firebase auth.
 
-**Execution loop:** `AgentLoop4` (`core/loop.py`) orchestrates multi-phase agent workflows using a DAG-based plan graph. Supports cost thresholds (`cost_exceeded` status), stop requests, and exponential backoff retries for transient failures.
+**Execution loop:** `AgentLoop4` (`core/loop.py`) orchestrates multi-phase agent workflows using a DAG-based plan graph. Supports cost thresholds (`cost_exceeded` status), stop requests, and exponential backoff retries for transient failures. Publishes SSE events for live execution visibility: `step_start`, `step_complete`, `step_failed`, and `tool_call` (each includes `session_id` for client-side filtering).
 
 **ServiceRegistry** (`core/service_registry.py`) replaces v1's MultiMCP. Registers `ServiceDefinition` objects (each containing `ToolDefinition` entries), indexes tools by name, and routes calls via `route_tool_call(name, args, ctx)`. Returns OpenAI-compatible function-calling format via `get_all_tools()`.
 
@@ -262,7 +262,7 @@ git push origin v2.0.0  # triggers CI
 - `scripts/migrate.py` — V1→V2 data migration CLI (sessions, jobs, notifications, memories, scanned runs, preferences)
 - `Dockerfile` — Multi-stage production build (uv builder + Python 3.12 slim runtime)
 - `docs/` — Phase documentation (7 phase docs + rewrite plan)
-- `frontend/` — React 19 + TypeScript + Vite SPA (Tailwind CSS, Radix UI, ReactFlow, TanStack Query, Zustand, Firebase Auth)
+- `frontend/` — React 19 + TypeScript + Vite SPA (Tailwind CSS, Radix UI, ReactFlow, TanStack Query, Zustand, Firebase Auth). Pages: Dashboard (DAG visualization), Chat (conversational agent interface with reasoning sidebar), Documents (RAG management), Settings
 
 ## Code Conventions
 
@@ -319,6 +319,8 @@ firebase deploy --only hosting:console
 **`ApiError` class:** Typed error class in `services/api.ts` with `status` field. `isUnauthorizedError()` helper enables clean 401 detection. `App.tsx` suppresses retries on 401s to prevent retry storms on auth failures.
 
 **API integration:** All API calls go through `fetchAPI()` in `services/api.ts`, routed directly to Cloud Run via `VITE_API_URL`. Auth tokens are attached automatically when a provider is set via `setAuthTokenProvider()`. `getAPIUrl()` is used for non-fetch requests (health checks). `getSSEUrl()` is used for EventSource connections (also routes directly to Cloud Run via `VITE_SSE_URL`).
+
+**Chat page (`/chat`):** Conversational agent interface at `pages/ChatPage.tsx`. Components in `components/chat/`: `WelcomeScreen` (suggestion cards + inline input), `ChatMessageList` (markdown rendering via `react-markdown`), `ChatInput` (InsightAgent-style gradient glow, no focus ring), `ReasoningSidebar` (live SSE timeline of agent execution), `ChatSessionList` (session CRUD). Orchestration: user message → `chatService.addMessage()` → `runsService.create()` → poll `runsService.get()` every 2s → extract output → store as assistant message. Service layer in `services/chatService.ts` wraps `/api/chat/*` endpoints. Types in `types/chat.ts` (`AgentChatSession`, `AgentChatMessage`, `ReasoningEvent`).
 
 **Known limitations (stubbed endpoints):**
 - Document chat (streaming `/rag/ask` endpoint not in v2)

@@ -84,13 +84,14 @@ src/
 │   ├── layout/       # AppShell, Sidebar
 │   ├── runs/         # RunCreator, RunList
 │   ├── graph/        # GraphView, AgentNode, NodeDetailPanel
+│   ├── chat/         # ChatPage components (WelcomeScreen, ChatInput, MessageList, ReasoningSidebar, SessionList)
 │   └── documents/    # DocumentTree, DocumentChat, ChatMessage
 ├── contexts/         # SSEContext (shared EventSource connection)
 ├── hooks/            # useApiHealth, useDbHealth, useSSE (deprecated)
-├── services/         # API services (runs, rag, settings)
+├── services/         # API services (runs, rag, chat, settings)
 ├── store/            # Zustand stores (useAppStore, useGraphStore)
 ├── types/            # TypeScript types
-├── pages/            # Route pages (Dashboard, Documents, Settings)
+├── pages/            # Route pages (Dashboard, Chat, Documents, Settings)
 ├── utils/            # Utilities (cn, formatDate, formatDuration)
 └── test/             # Test setup and utilities
 ```
