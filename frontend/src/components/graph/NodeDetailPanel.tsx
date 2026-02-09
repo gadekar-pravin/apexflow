@@ -21,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/utils/utils"
 import type { NodeData } from "@/types"
 
-const USD_TO_INR = 85
+const USD_TO_INR = 95
 
 const statusConfig: Record<
   string,

@@ -43,7 +43,7 @@ function ConnectionIndicator({ label, state }: ConnectionIndicatorProps) {
   )
 }
 
-const USD_TO_INR = 85
+const USD_TO_INR = 95
 
 function formatCost(cost: number): string {
   const inr = cost * USD_TO_INR
