@@ -43,7 +43,7 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
   const auth = useAuth()
   const canQueryRun = !auth.isConfigured || auth.isAuthenticated
 
-  const { data: runData } = useQuery({
+  const { data: runData, isLoading } = useQuery({
     queryKey: ["run", runId],
     queryFn: () => runsService.get(runId),
     enabled: canQueryRun,
@@ -51,6 +51,14 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
 
   const node = runData?.graph?.nodes.find((n) => n.id === nodeId)
   const nodeData = node?.data as NodeData | undefined
+
+  if (isLoading) {
+    return (
+      <div className="h-full p-4 flex items-center justify-center text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    )
+  }
 
   if (!nodeData) {
     return (
@@ -93,6 +101,7 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
           size="icon"
           className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={() => setSelectedNodeId(null)}
+          aria-label="Close node detail panel"
         >
           <X className="h-3.5 w-3.5" strokeWidth={1.75} />
         </Button>
@@ -111,13 +120,13 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
             </div>
           )}
         </div>
-        {nodeData.reads?.length > 0 && (
+        {nodeData.reads.length > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <ArrowLeft className="h-3 w-3" strokeWidth={1.75} />
             <span>Reads: {nodeData.reads.join(", ")}</span>
           </div>
         )}
-        {nodeData.writes?.length > 0 && (
+        {nodeData.writes.length > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <ArrowRight className="h-3 w-3" strokeWidth={1.75} />
             <span>Writes: {nodeData.writes.join(", ")}</span>

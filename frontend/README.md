@@ -77,7 +77,7 @@ firebase deploy --only hosting:console
 
 ## Project Structure
 
-```
+```text
 src/
 ├── components/
 │   ├── ui/           # shadcn/ui components

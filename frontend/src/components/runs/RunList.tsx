@@ -85,6 +85,14 @@ export function RunList() {
       )
     }
 
+    if (error && !isForbiddenError(error) && !isUnauthorizedError(error)) {
+      return (
+        <div className="px-4 py-8 text-center text-sm text-destructive">
+          Failed to load runs. Please try again later.
+        </div>
+      )
+    }
+
     return (
       <div className="px-4 py-8 text-center text-sm text-muted-foreground">
         No runs yet. Create one above to get started.
@@ -110,6 +118,14 @@ export function RunList() {
                   : "border border-transparent hover:bg-muted/40 hover:backdrop-blur-xs"
               )}
               onClick={() => setSelectedRunId(run.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  setSelectedRunId(run.id)
+                }
+              }}
             >
               <Icon
                 className={cn(
@@ -134,6 +150,7 @@ export function RunList() {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity -mr-1"
+                aria-label={`Delete run: ${run.query}`}
                 onClick={(e) => {
                   e.stopPropagation()
                   deleteRun.mutate(run.id)

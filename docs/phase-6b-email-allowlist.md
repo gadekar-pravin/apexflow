@@ -124,7 +124,7 @@ ALLOWED_EMAILS=user1@gmail.com,user2@company.com,admin@org.com
 ```bash
 gcloud run services update apexflow-api \
   --region=us-central1 \
-  --update-env-vars="ALLOWED_EMAILS=pravin.gadekar@gmail.com" \
+  --update-env-vars="ALLOWED_EMAILS=user@example.com" \
   --project=apexflow-ai
 ```
 

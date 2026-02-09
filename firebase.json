@@ -44,7 +44,7 @@
         ]
       },
       {
-        "source": "**/*.html",
+        "source": "**",
         "headers": [
           {
             "key": "Cache-Control",

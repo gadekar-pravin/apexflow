@@ -45,5 +45,4 @@ async def event_stream(request: Request) -> EventSourceResponse:
 
     return EventSourceResponse(
         event_generator(),
-        ping=PING_INTERVAL,
     )
