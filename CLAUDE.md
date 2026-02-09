@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ApexFlow v2 is a web-first rewrite of the desktop-first ApexFlow v1. It's an intelligent workflow automation platform powered by Google Gemini. The backend is FastAPI + asyncpg + AlloyDB (Google's PostgreSQL variant with ScaNN vector indexes).
 
-**Current state:** Phases 1–5 are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phase 4c adds the Monty sandbox (secure code execution via pydantic-monty subprocess with tool bridging). Phase 5 adds production deployment infrastructure (Docker container, Cloud Run CI/CD, CORS hardening, enhanced health checks, v1→v2 migration script, and integration tests for tenant isolation, concurrency, and search quality).
+**Current state:** Phases 1–6 are complete. Phase 1 covers bootstrap + database. Phase 2 adds the core execution engine, agent runner, auth, event system, and API routers. Phase 3 adds the data access layer (stores), service layer, and remaining routers. Phase 4a adds the RAG system (document indexing + hybrid search). Phase 4b adds the REMME memory system (AlloyDB-backed memory stores, preference hubs, scan engine). Phase 4c adds the Monty sandbox (secure code execution via pydantic-monty subprocess with tool bridging). Phase 5 adds production deployment infrastructure (Docker container, Cloud Run CI/CD, CORS hardening, enhanced health checks, v1→v2 migration script, and integration tests for tenant isolation, concurrency, and search quality). Phase 6 adds the React frontend SPA (Firebase Hosting, DAG visualization, document management) and Firebase Authentication integration (AuthContext, Google sign-in, token provider pattern, SSE auth via query param, COOP headers).
 
 ## Common Commands
 
@@ -53,6 +53,17 @@ AUTH_DISABLED=1 uvicorn api:app --reload
 docker build -t apexflow-api:local .
 docker run -p 8080:8080 -e AUTH_DISABLED=1 apexflow-api:local
 
+# Frontend deploy to Firebase Hosting
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
+
+# Email allowlist — manage authorized users on Cloud Run
+gcloud run services update apexflow-api --region=us-central1 \
+  --update-env-vars="ALLOWED_EMAILS=pbgadekar@gmail.com,pravin.gaadekar@gmail.com" --project=apexflow-ai
+# Remove allowlist (open access to any authenticated user)
+gcloud run services update apexflow-api --region=us-central1 \
+  --remove-env-vars=ALLOWED_EMAILS --project=apexflow-ai
+
 # V1 → V2 migration
 python scripts/migrate.py --source-dir ../apexflow-v1 --dry-run
 python scripts/migrate.py --source-dir ../apexflow-v1 --db-url postgresql://... --user-id default
@@ -88,7 +99,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **LLM client:** `core/gemini_client.py` provides a cached Gemini client singleton. Auto-detects environment: Vertex AI with ADC on GCP (`K_SERVICE` or `GOOGLE_APPLICATION_CREDENTIALS`), or `GEMINI_API_KEY` for local dev. `ModelManager` (`core/model_manager.py`) loads model configs from `config/models.json` + `config/profiles.yaml` and enforces rate limiting (~15 RPM).
 
-**Auth:** Firebase JWT middleware (`core/auth.py`). Skips `/liveness`, `/readiness`, `/docs`, `/openapi.json`. Disabled locally via `AUTH_DISABLED=1`. Fails startup if disabled on Cloud Run (production safety).
+**Auth:** Firebase JWT middleware (`core/auth.py`). Verifies tokens from `Authorization: Bearer <token>` header or `?token=` query param (for SSE/EventSource which can't send headers). Skips `/liveness`, `/readiness`, `/docs`, `/openapi.json`. All other endpoints (including `/api/events` SSE) require auth. Disabled locally via `AUTH_DISABLED=1`. Fails startup if disabled on Cloud Run (production safety). **Email allowlist:** `ALLOWED_EMAILS` env var (comma-separated) restricts access to listed emails (403 Forbidden if not in list). When unset, all authenticated users are allowed.
 
 **Event system:** `EventBus` singleton (`core/event_bus.py`) with pub-sub pattern. Keeps last 100 events in a deque. Clients subscribe via SSE at `GET /events` (`routers/stream.py`).
 
@@ -189,7 +200,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-
 
 **Docker:** Multi-stage `Dockerfile` — builder stage uses `ghcr.io/astral-sh/uv:python3.12-bookworm-slim` for dependency installation, runtime stage uses `python:3.12-slim-bookworm` with non-root `appuser` (uid 1001). Exposes port 8080. `.dockerignore` excludes tests, docs, scripts, alembic, etc.
 
-**CORS:** `api.py` reads `CORS_ORIGINS` env var as comma-separated origins. Falls back to `localhost:3000,5173,8000` for local dev. Production sets specific origins via Cloud Run env vars.
+**CORS:** `api.py` reads `CORS_ORIGINS` env var as comma-separated origins. Falls back to `localhost:3000,5173,8000` for local dev. Production sets `https://apexflow-console.web.app,https://apexflow-ai.web.app` — required because the SSE endpoint (`/api/events`) is accessed directly on Cloud Run (bypasses Firebase Hosting rewrites which don't support streaming).
 
 **Readiness:** Enhanced `/readiness` endpoint with 5-second TTL cache and 2-second `asyncio.timeout()`. Returns `503` with error type name on failure. Cache prevents DB polling storms from orchestrators.
 
@@ -251,6 +262,7 @@ git push origin v2.0.0  # triggers CI
 - `scripts/migrate.py` — V1→V2 data migration CLI (sessions, jobs, notifications, memories, scanned runs, preferences)
 - `Dockerfile` — Multi-stage production build (uv builder + Python 3.12 slim runtime)
 - `docs/` — Phase documentation (7 phase docs + rewrite plan)
+- `frontend/` — React 19 + TypeScript + Vite SPA (Tailwind CSS, Radix UI, ReactFlow, TanStack Query, Zustand, Firebase Auth)
 
 ## Code Conventions
 
@@ -267,14 +279,60 @@ git push origin v2.0.0  # triggers CI
 
 - **Project:** `apexflow-ai`
 - **VM:** `alloydb-omni-dev` in `us-central1-a`
-- **Cloud Scheduler:** `vm-auto-stop` stops the VM nightly at 10 PM ET
+- **Cloud Run:** `apexflow-api` in `us-central1` — https://apexflow-api-j56xbd7o2a-uc.a.run.app
+- **Firebase Hosting:** site `apexflow-console` in project `apexflow-ai` — https://apexflow-console.web.app
+- **Cloud Scheduler:** `vm-auto-stop` stops the VM nightly at 11 PM IST; `cloudrun-auto-stop` sets Cloud Run ingress to internal-only at the same time
 - **Cloud Build SA:** `cloudbuild-ci@apexflow-ai.iam.gserviceaccount.com`
+- **Firebase Auth:** Identity Platform enabled with Google sign-in provider. Authorized domains: `localhost`, `apexflow-console.web.app`, `apexflow-ai.firebaseapp.com`, `apexflow-ai.web.app`
+
+## Frontend
+
+**Directory:** `frontend/` — React 19 + TypeScript + Vite SPA with Tailwind CSS, Radix UI, ReactFlow (DAG visualization), TanStack Query, and Zustand.
+
+**Dev commands:**
+```bash
+cd frontend && npm install    # install dependencies
+cd frontend && npm run dev    # start dev server on port 5173
+cd frontend && npm run build  # production build
+cd frontend && npm run test   # run vitest tests
+```
+
+**Running frontend + backend together:**
+1. Start backend: `AUTH_DISABLED=1 uvicorn api:app --reload` (port 8000)
+2. Start frontend: `cd frontend && npm run dev` (port 5173)
+3. Open `http://localhost:5173` — Vite proxy forwards `/api/*` to the backend
+
+**Proxy setup:** `vite.config.ts` proxies `/api`, `/liveness`, and `/readiness` to the backend. Defaults to `http://localhost:8000`; override with `VITE_BACKEND_URL` env var for remote backends.
+
+**Firebase Hosting:** Deployed to site `apexflow-console` in the `apexflow-ai` project (same project as Cloud Run). Firebase Hosting rewrites proxy `/api/**`, `/liveness`, and `/readiness` to the `apexflow-api` Cloud Run service — same-origin, no CORS needed. Config files: `firebase.json` and `.firebaserc` at repo root.
+
+```bash
+# Deploy frontend to production
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
+```
+
+**Firebase Authentication:** `AuthContext` (`contexts/AuthContext.tsx`) wraps the app with Firebase Auth state. Uses `signInWithPopup` with Google provider. Token provider pattern decouples auth from the API layer — `setAuthTokenProvider()` in `services/api.ts` is called during AuthContext init, and `fetchAPI()` attaches tokens automatically. Every data-fetching component uses the guard pattern `!auth.isConfigured || auth.isAuthenticated` to enable auth-optional in dev and required in production. `AppShell.tsx` shows a loading spinner during Firebase init (~200-500ms) to prevent flash of sign-in content. Cache invalidation via `queryClient.clear()` on user switch (skips first fire to avoid unnecessary clearing on page load). SSE connection (`SSEContext.tsx`) gates on auth state and passes token via `?token=` query param since EventSource can't send headers.
+
+**COOP headers:** `Cross-Origin-Opener-Policy: same-origin-allow-popups` is set on HTML responses in both `vite.config.ts` (dev) and `firebase.json` (production) to allow Firebase's `signInWithPopup` to poll `window.closed` without browser warnings.
+
+**`ApiError` class:** Typed error class in `services/api.ts` with `status` field. `isUnauthorizedError()` helper enables clean 401 detection. `App.tsx` suppresses retries on 401s to prevent retry storms on auth failures.
+
+**API integration:** All API calls go through `fetchAPI()` in `services/api.ts`. Auth tokens are attached automatically when a provider is set via `setAuthTokenProvider()`. `getAPIUrl()` is used for non-fetch requests (health checks). `getSSEUrl()` is used for EventSource connections (routes directly to Cloud Run, bypassing Firebase Hosting which doesn't support streaming).
+
+**Known limitations (stubbed endpoints):**
+- Document chat (streaming `/rag/ask` endpoint not in v2)
+- Filesystem operations (createFolder, createFile, saveFile, rename, upload, delete by path)
+- Keyword search, ripgrep search, document chunks view, indexing status
+- Agent test/save
+- Cron job update (PUT)
 
 ## Environment Variables
 
 | Variable | Purpose | Default |
 |---|---|---|
 | `AUTH_DISABLED` | Disable Firebase auth for local dev (`1`/`true`/`yes`) | unset (auth enabled) |
+| `ALLOWED_EMAILS` | Comma-separated email allowlist for authorization (403 if not listed) | unset (all authenticated users allowed) |
 | `GEMINI_API_KEY` | Gemini API key for local dev (not needed on GCP) | — |
 | `GOOGLE_CLOUD_PROJECT` | GCP project for Vertex AI | `apexflow-ai` |
 | `GOOGLE_CLOUD_LOCATION` | GCP region for Vertex AI | `us-central1` |
@@ -283,5 +341,11 @@ git push origin v2.0.0  # triggers CI
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Individual DB connection params | `localhost:5432`, user `apexflow` |
 | `DB_POOL_MAX` | Max async connection pool size | `5` |
 | `K_SERVICE` | Auto-set by Cloud Run; triggers production mode (Vertex AI, auth enforced) | — |
-| `CORS_ORIGINS` | Comma-separated allowed origins for CORS | `http://localhost:3000,http://localhost:5173,http://localhost:8000` |
+| `CORS_ORIGINS` | Comma-separated allowed origins for CORS. Production: `https://apexflow-console.web.app,https://apexflow-ai.web.app` (needed for SSE which bypasses Firebase Hosting) | `http://localhost:3000,http://localhost:5173,http://localhost:8000` |
+| `ALLOYDB_HOST` | AlloyDB VM internal IP (Cloud Run mode only) | — |
 | `DATABASE_TEST_URL` | Test database URL for integration tests | `postgresql://apexflow:apexflow@localhost:5432/apexflow` |
+| `VITE_FIREBASE_API_KEY` | Firebase Web SDK API key (frontend) | — |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase auth domain (frontend) | — |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase project ID (frontend) | — |
+| `VITE_FIREBASE_APP_ID` | Firebase app ID (frontend) | — |
+| `VITE_SSE_URL` | Direct Cloud Run URL for SSE (bypasses Firebase Hosting) | `API_URL` |

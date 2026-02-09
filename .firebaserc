@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "apexflow-ai"
+  },
+  "targets": {
+    "apexflow-ai": {
+      "hosting": {
+        "console": ["apexflow-console"]
+      }
+    }
+  }
+}

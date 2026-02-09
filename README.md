@@ -11,7 +11,7 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 - **Tool routing** — ServiceRegistry dispatches tool calls in OpenAI-compatible format with circuit breaker resilience
 - **Real-time streaming** — Server-Sent Events for live client updates via EventBus pub-sub
 - **Scheduled workflows** — APScheduler with cron expressions and DB-backed job deduplication
-- **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally)
+- **Firebase auth** — JWT middleware with production safety (enforced on Cloud Run, optional locally). Email allowlist via `ALLOWED_EMAILS` env var (403 for unauthorized emails). Frontend uses Google sign-in via `signInWithPopup`, token provider pattern, and auth guards on all data-fetching components
 
 ## Tech Stack
 
@@ -25,6 +25,11 @@ Intelligent workflow automation platform powered by Google Gemini. A web-first r
 | Vector Search | pgvector (`<=>` cosine distance) |
 | Auth | Firebase Admin SDK |
 | CI/CD | Google Cloud Build |
+| Frontend | React 19 + Vite + TypeScript |
+| UI | shadcn/ui + Tailwind CSS + Radix UI |
+| Graph Viz | ReactFlow |
+| Frontend State | TanStack Query (server) + Zustand (client) |
+| Frontend Hosting | Firebase Hosting |
 | Python | 3.12+ |
 
 ## Project Structure
@@ -77,6 +82,18 @@ apexflow/
 │   ├── conftest.py            # Shared fixture (test_user_id)
 │   ├── unit/                  # Mock-based tests (no DB needed)
 │   └── integration/           # DB-dependent tests (graceful skip if unavailable)
+├── frontend/                  # React 19 + TypeScript + Vite SPA
+│   ├── src/
+│   │   ├── components/        # UI components (layout, runs, graph, documents)
+│   │   ├── contexts/          # AuthContext, SSEContext, ExecutionMetricsContext
+│   │   ├── hooks/             # useApiHealth, useSSE
+│   │   ├── services/          # API services (runs, rag, settings)
+│   │   ├── store/             # Zustand stores (useAppStore, useGraphStore)
+│   │   ├── pages/             # Route pages (Dashboard, Documents, Settings)
+│   │   └── utils/             # Shared utilities
+│   └── package.json
+├── firebase.json              # Firebase Hosting config (rewrites + caching)
+├── .firebaserc                # Firebase project + deploy target mapping
 ├── docs/                      # Phase documentation
 ├── scripts/
 │   ├── init-db.sql            # Database schema (13 tables)
@@ -127,6 +144,7 @@ Key variables:
 |----------|---------|---------|
 | `GEMINI_API_KEY` | Gemini API key for local dev | — |
 | `AUTH_DISABLED` | Disable Firebase auth (`1`) | unset |
+| `ALLOWED_EMAILS` | Comma-separated email allowlist (403 if not listed) | unset (open access) |
 | `ALLOW_LOCAL_WRITES` | Enable settings/prompt writes (`1`) | unset |
 | `DB_HOST` | Database host | `localhost` |
 | `DB_PORT` | Database port | `5432` |
@@ -134,6 +152,7 @@ Key variables:
 | `DB_PASSWORD` | Database password | — |
 | `DB_NAME` | Database name | `apexflow` |
 | `CORS_ORIGINS` | Comma-separated allowed origins for CORS | localhost defaults |
+| `ALLOYDB_HOST` | AlloyDB VM internal IP (Cloud Run mode) | — |
 | `DATABASE_URL` | Full connection string (overrides DB_* vars) | — |
 
 ### Database Setup
@@ -168,6 +187,56 @@ The API will be available at `http://localhost:8080`.
 ```bash
 ./scripts/dev-start.sh    # Start VM + SSH tunnel to localhost:5432
 ./scripts/dev-stop.sh     # Close tunnel + stop VM
+```
+
+## Frontend
+
+The React SPA lives in `frontend/` and is hosted on Firebase Hosting. Firebase Authentication (Google sign-in) is integrated via `AuthContext`.
+
+### Local Development
+
+```bash
+cd frontend && npm install    # install dependencies
+cd frontend && npm run dev    # start dev server on port 5173
+```
+
+Vite proxies `/api/*`, `/liveness`, and `/readiness` to the backend at `http://localhost:8000`. To override the proxy target:
+
+```bash
+VITE_BACKEND_URL=https://apexflow-api-j56xbd7o2a-uc.a.run.app npm run dev
+```
+
+### Firebase Hosting (Production)
+
+The frontend deploys to Firebase Hosting in the `apexflow-ai` GCP project — the same project as the Cloud Run backend. This enables Firebase Hosting rewrites to proxy API calls directly to Cloud Run (same-origin, no CORS needed).
+
+| Setting | Value |
+|---------|-------|
+| Project | `apexflow-ai` |
+| Site | `apexflow-console` |
+| URL | https://apexflow-console.web.app |
+| Deploy target | `console` |
+| Public dir | `frontend/dist` |
+
+Firebase Hosting rewrites `/api/**`, `/liveness`, and `/readiness` to Cloud Run `apexflow-api` (us-central1). All other paths fall through to `/index.html` (SPA catch-all). HTML responses include `Cross-Origin-Opener-Policy: same-origin-allow-popups` for Firebase `signInWithPopup` compatibility.
+
+### Authentication
+
+Firebase Authentication is configured for the `apexflow-ai` project with Google as the sign-in provider. When `VITE_FIREBASE_*` env vars are set (see `frontend/.env.production`), auth is required. When unset (local dev without Firebase), auth is bypassed and all queries run freely.
+
+| Variable | Purpose |
+|----------|---------|
+| `VITE_FIREBASE_API_KEY` | Firebase Web SDK API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `VITE_FIREBASE_APP_ID` | Firebase app ID |
+| `VITE_SSE_URL` | Direct Cloud Run URL for SSE (bypasses Firebase Hosting) |
+
+### Deploy
+
+```bash
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
 ```
 
 ## API Endpoints
@@ -256,6 +325,16 @@ pre-commit run --all-files
 
 # Create a migration
 alembic revision -m "description"
+
+# Frontend
+cd frontend && npm install        # install dependencies
+cd frontend && npm run dev        # dev server (port 5173)
+cd frontend && npm run build      # production build
+cd frontend && npm run test       # run vitest tests
+
+# Deploy frontend to Firebase Hosting
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
 ```
 
 ### Code Conventions
@@ -272,8 +351,9 @@ alembic revision -m "description"
 ### Execution Flow
 
 ```
-Client Request
-    → FastAPI Router (auth middleware)
+Browser (React SPA on Firebase Hosting)
+    → Firebase Hosting Rewrite (/api/**)
+    → Cloud Run (FastAPI + auth middleware)
     → AgentLoop4 (DAG-based plan execution)
     → AgentRunner (prompt building, LLM calls)
     → ServiceRegistry (tool dispatch)
@@ -318,3 +398,6 @@ Pipeline: pgvector container → lint (ruff) + typecheck (mypy) → migrate (ale
 | 4b — REMME | Done | Memory stores, preference hubs, scan engine |
 | 4c — Sandbox | Done | Secure code execution (pydantic-monty) |
 | 5 — Deployment | Done | Docker, Cloud Run CI/CD, CORS hardening, health checks, v1→v2 migration, integration tests |
+| 6 — Frontend | Done | React 19 SPA, Firebase Hosting with Cloud Run rewrites, DAG visualization, document management |
+| 6a — Auth | Done | Firebase Authentication (Google sign-in), AuthContext, token provider, SSE auth, COOP headers |
+| 6b — Allowlist | Done | Email allowlist authorization (`ALLOWED_EMAILS` env var, 403 for unauthorized emails) |

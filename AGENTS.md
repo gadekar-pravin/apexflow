@@ -12,6 +12,9 @@
 - `config/` and `prompts/` store runtime settings and LLM prompt templates.
 - `alembic/` is the source of truth for schema migrations; `scripts/` has dev helpers.
 - `tests/unit/` contains mock-based pytest suites (no DB needed); `tests/integration/` contains DB-dependent tests.
+- `frontend/` is the React 19 + TypeScript + Vite SPA. Service layer in `frontend/src/services/` calls the v2 backend at `/api/*` via Vite proxy. Components use TanStack Query for server state, Zustand for client state, ReactFlow for DAG visualization, Tailwind CSS + Radix UI for styling. Firebase Authentication via `AuthContext` (Google sign-in with `signInWithPopup`, token provider pattern decoupled from API layer). Every data-fetching component uses `!auth.isConfigured || auth.isAuthenticated` guard. SSE auth via `?token=` query param. Production builds deploy to Firebase Hosting (site `apexflow-console` in project `apexflow-ai`).
+- `firebase.json` configures Firebase Hosting: rewrites `/api/**`, `/liveness`, `/readiness` to Cloud Run `apexflow-api`, SPA catch-all, cache headers, and `Cross-Origin-Opener-Policy: same-origin-allow-popups` on HTML responses (required for Firebase `signInWithPopup`).
+- `.firebaserc` maps the deploy target `console` → site `apexflow-console` in project `apexflow-ai`.
 - `docs/` holds phase/architecture notes.
 
 ## Architecture
@@ -70,6 +73,19 @@ Registered via `ServiceRegistry` during app lifespan:
 - `alembic upgrade head` applies database migrations.
 - `pre-commit run --all-files` runs the full pre-commit suite.
 
+### Frontend commands
+- `cd frontend && npm install` installs frontend dependencies.
+- `cd frontend && npm run dev` starts the Vite dev server on port 5173 (proxies `/api`, `/liveness`, `/readiness` to `localhost:8000`).
+- `cd frontend && npm run build` creates a production build (runs `tsc -b && vite build`).
+- `cd frontend && npx vitest run` runs the frontend test suite (94 tests across 8 files).
+- Frontend + backend together: run the backend in one terminal, `cd frontend && npm run dev` in another, then open `http://localhost:5173`.
+
+### Firebase Hosting (frontend deployment)
+- `cd frontend && npm run build && cd .. && firebase deploy --only hosting:console` builds and deploys to `https://apexflow-console.web.app`.
+- Firebase Hosting rewrites route `/api/**`, `/liveness`, `/readiness` to Cloud Run `apexflow-api` (same project `apexflow-ai`, same-origin — no CORS needed).
+- Config: `firebase.json` (hosting rules), `.firebaserc` (project + deploy target mapping).
+- Cache policy: `/assets/**` gets 1-year immutable cache (Vite content-hashed filenames); `*.html` gets `no-cache` + `Cross-Origin-Opener-Policy: same-origin-allow-popups`.
+
 ## Coding Style & Naming Conventions
 - Python 3.12+, 120-char line length, Ruff rules `E`, `F`, `I`, `UP`, `B`, `SIM`.
 - `mypy` is strict with the `pydantic.mypy` plugin enabled.
@@ -106,12 +122,21 @@ Steps (11 total): start pgvector container → wait for DB → lint + typecheck 
 | Variable | Purpose | Default |
 |---|---|---|
 | `AUTH_DISABLED` | Disable Firebase auth for local dev (`1`/`true`/`yes`) | unset (auth enabled) |
+| `ALLOWED_EMAILS` | Comma-separated email allowlist for authorization (403 if not listed) | unset (all authenticated users allowed) |
 | `GEMINI_API_KEY` | Gemini API key for local dev (not needed on GCP) | — |
 | `DATABASE_URL` | Full DB connection string (overrides all `DB_*` vars) | — |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Individual DB connection params | `localhost:5432`, user `apexflow` |
 | `DB_POOL_MAX` | Max async connection pool size | `5` |
 | `K_SERVICE` | Auto-set by Cloud Run; triggers production mode | — |
 | `ALLOW_LOCAL_WRITES` | Enable prompt/settings write endpoints | unset (writes disabled) |
+| `CORS_ORIGINS` | Comma-separated allowed origins for CORS | localhost defaults |
+| `ALLOYDB_HOST` | AlloyDB VM internal IP (Cloud Run mode) | — |
+| `VITE_BACKEND_URL` | Override Vite proxy target for frontend dev | `http://localhost:8000` |
+| `VITE_SSE_URL` | Direct Cloud Run URL for SSE (bypasses Firebase Hosting) | `API_URL` |
+| `VITE_FIREBASE_API_KEY` | Firebase Web SDK API key (frontend) | — |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase auth domain (frontend) | — |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase project ID (frontend) | — |
+| `VITE_FIREBASE_APP_ID` | Firebase app ID (frontend) | — |
 
 ## Configuration & Security Notes
 - Start from `.env.example` and keep secrets out of the repo.

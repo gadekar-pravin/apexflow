@@ -16,3 +16,4 @@ benchmarks/
 .ruff_cache
 .mypy_cache
 .pytest_cache
+frontend/

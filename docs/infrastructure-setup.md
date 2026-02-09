@@ -1,6 +1,6 @@
 # ApexFlow Infrastructure Setup Guide
 
-Comprehensive guide to provision all GCP infrastructure for the ApexFlow v2 backend from scratch. This replicates the production environment originally deployed to `apexflow-ai`.
+Comprehensive guide to provision all GCP infrastructure for the ApexFlow v2 backend and frontend from scratch. This replicates the production environment originally deployed to `apexflow-ai`.
 
 ---
 
@@ -27,6 +27,8 @@ Comprehensive guide to provision all GCP infrastructure for the ApexFlow v2 back
 19. [Rollback](#19-rollback)
 20. [Cost Management](#20-cost-management)
 21. [Architecture Diagram](#21-architecture-diagram)
+22. [Firebase Hosting (Frontend)](#22-firebase-hosting-frontend)
+23. [Firebase Authentication](#23-firebase-authentication)
 
 ---
 
@@ -56,7 +58,7 @@ export DB_USER="apexflow"                     # PostgreSQL username
 export DB_NAME="apexflow"                     # PostgreSQL database name
 export GITHUB_OWNER="gadekar-pravin"          # GitHub username or org
 export GITHUB_REPO="apexflow"                 # GitHub repository name
-export FRONTEND_ORIGIN="https://apexflow.web.app"  # CORS allowed origin
+export FRONTEND_ORIGIN="https://apexflow-console.web.app"  # Firebase Hosting URL
 export CLOUD_RUN_SERVICE="apexflow-api"       # Cloud Run service name
 export AR_REPO="apexflow-api"                 # Artifact Registry repo name
 export VPC_CONNECTOR="apexflow-vpc-connector" # VPC connector name
@@ -82,6 +84,8 @@ gcloud services enable \
   secretmanager.googleapis.com \
   cloudbuild.googleapis.com \
   cloudscheduler.googleapis.com \
+  identitytoolkit.googleapis.com \
+  iap.googleapis.com \
   --project=$PROJECT_ID
 ```
 
@@ -228,9 +232,9 @@ gcloud compute ssh $VM_NAME --zone=$ZONE --project=$PROJECT_ID \
 
 ---
 
-## 5. Cloud Scheduler (VM Auto-Stop)
+## 5. Cloud Scheduler (Nightly Auto-Stop)
 
-Automatically stops the database VM nightly to save costs during development.
+Automatically stops the database VM and disables the Cloud Run service nightly at 11 PM IST to save costs during development.
 
 ### 5a. Create the scheduler service account
 
@@ -242,21 +246,54 @@ gcloud iam service-accounts create vm-scheduler \
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:$SCHEDULER_SA" \
   --role="roles/compute.instanceAdmin.v1"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$SCHEDULER_SA" \
+  --role="roles/run.developer"
 ```
 
-### 5b. Create the scheduler job
+### 5b. Create the VM auto-stop job
 
 ```bash
 gcloud scheduler jobs create http vm-auto-stop \
   --location=$REGION \
-  --schedule="0 22 * * *" \
-  --time-zone="America/New_York" \
-  --description="Auto-stop $VM_NAME VM every night at 10 PM ET" \
+  --schedule="0 23 * * *" \
+  --time-zone="Asia/Kolkata" \
+  --description="Auto-stop $VM_NAME VM every night at 11 PM IST" \
   --uri="https://compute.googleapis.com/compute/v1/projects/$PROJECT_ID/zones/$ZONE/instances/$VM_NAME/stop" \
   --http-method=POST \
   --oauth-service-account-email=$SCHEDULER_SA \
   --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform" \
   --attempt-deadline=180s \
+  --project=$PROJECT_ID
+```
+
+### 5c. Create the Cloud Run auto-stop job
+
+Switches Cloud Run ingress to `internal-only`, blocking all external traffic. The service stays deployed but unreachable. Uses `X-HTTP-Method-Override: PATCH` because Cloud Scheduler doesn't support PATCH directly.
+
+```bash
+gcloud scheduler jobs create http cloudrun-auto-stop \
+  --location=$REGION \
+  --schedule="0 23 * * *" \
+  --time-zone="Asia/Kolkata" \
+  --description="Auto-disable Cloud Run $CLOUD_RUN_SERVICE every night at 11 PM IST (set ingress to internal-only)" \
+  --uri="https://run.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/services/$CLOUD_RUN_SERVICE?updateMask=ingress" \
+  --http-method=post \
+  --headers="Content-Type=application/json,X-HTTP-Method-Override=PATCH" \
+  --message-body='{"ingress": "INGRESS_TRAFFIC_INTERNAL_ONLY"}' \
+  --oauth-service-account-email=$SCHEDULER_SA \
+  --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform" \
+  --attempt-deadline=180s \
+  --project=$PROJECT_ID
+```
+
+To manually re-enable external traffic:
+
+```bash
+gcloud run services update $CLOUD_RUN_SERVICE \
+  --ingress=all \
+  --region=$REGION \
   --project=$PROJECT_ID
 ```
 
@@ -330,7 +367,7 @@ done
 |---|---|---|
 | `apexflow-api@` | Cloud Run runtime | `roles/aiplatform.user` |
 | `cloudbuild-ci@` | CI/CD pipeline | `roles/cloudbuild.builds.builder`, `roles/run.admin`, `roles/iam.serviceAccountUser`, `roles/artifactregistry.writer`, `roles/logging.logWriter`, `roles/secretmanager.secretAccessor` |
-| `vm-scheduler@` | Nightly VM auto-stop | `roles/compute.instanceAdmin.v1` |
+| `vm-scheduler@` | Nightly VM + Cloud Run auto-stop | `roles/compute.instanceAdmin.v1`, `roles/run.developer` |
 
 ---
 
@@ -562,7 +599,7 @@ gcloud run deploy $CLOUD_RUN_SERVICE \
   --vpc-connector=$VPC_CONNECTOR \
   --vpc-egress=private-ranges-only \
   --set-secrets=ALLOYDB_PASSWORD=apexflow-db-password:latest \
-  --set-env-vars=ALLOYDB_HOST=$VM_INTERNAL_IP,ALLOYDB_DB=$DB_NAME,ALLOYDB_USER=$DB_USER,LOG_LEVEL=INFO,CORS_ORIGINS=$FRONTEND_ORIGIN \
+  --set-env-vars=ALLOYDB_HOST=$VM_INTERNAL_IP,ALLOYDB_DB=$DB_NAME,ALLOYDB_USER=$DB_USER,LOG_LEVEL=INFO,CORS_ORIGINS=$FRONTEND_ORIGIN,ALLOWED_EMAILS=pbgadekar@gmail.com,pravin.gaadekar@gmail.com \
   --memory=2Gi \
   --cpu=2 \
   --concurrency=80 \
@@ -754,9 +791,9 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
 
 ### Cost-saving measures already in place
 
-- **Cloud Scheduler** auto-stops the DB VM at 10 PM ET nightly (saves ~$100/mo in compute when idle)
+- **Cloud Scheduler** auto-stops the DB VM and disables Cloud Run (ingress → internal-only) at 11 PM IST nightly (saves ~$100/mo in compute when idle)
 - **VPC connector** uses `e2-micro` instances (cheapest option)
-- **Cloud Run** scales to zero when idle (pay only for requests)
+- **Cloud Run** scales to zero when idle; nightly ingress lockdown prevents any off-hours traffic from spinning up instances
 - **Cloud Build** uses `CLOUD_LOGGING_ONLY` (no GCS log storage costs)
 
 ### Monthly cost estimate (us-central1)
@@ -784,61 +821,76 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
 ## 21. Architecture Diagram
 
 ```
-                          ┌─────────────────────────────┐
-                          │       GitHub Repository      │
-                          │  (tag push: v* triggers CI)  │
-                          └──────────────┬──────────────┘
-                                         │
-                                         ▼
-                          ┌─────────────────────────────┐
-                          │        Cloud Build           │
-                          │  lint → typecheck → test →   │
-                          │  docker build → push → deploy│
-                          │  SA: cloudbuild-ci@           │
-                          └──────────────┬──────────────┘
-                                         │
-                     ┌───────────────────┬┘
-                     ▼                   ▼
-        ┌────────────────────┐  ┌──────────────────┐
-        │ Artifact Registry  │  │    Cloud Run      │
-        │ (Docker images)    │  │  apexflow-api     │
-        │                    │  │  SA: apexflow-api@ │
-        └────────────────────┘  │  Port: 8080       │
-                                │  Min: 0 / Max: 1   │
-                                └────────┬─────────┘
-                                         │
-                                         │ VPC Connector
-                                         │ (10.8.0.0/28)
-                                         │
-                                         ▼
-                          ┌─────────────────────────────┐
-                          │    GCE VM: alloydb-omni-dev  │
-                          │    n2-standard-4             │
-                          │    Internal IP: 10.128.0.x   │
-                          │  ┌───────────────────────┐  │
-                          │  │  AlloyDB Omni 15.12.0 │  │
-                          │  │  PostgreSQL + pgvector │  │
-                          │  │  + ScaNN indexes      │  │
-                          │  │  Port: 5432           │  │
-                          │  └───────────────────────┘  │
-                          └─────────────────────────────┘
-                                         ▲
-                                         │ SSH Tunnel
-                                         │ (localhost:5432)
-                          ┌─────────────────────────────┐
-                          │    Developer Laptop          │
-                          │  ./scripts/dev-start.sh      │
-                          │  AUTH_DISABLED=1 uvicorn ...  │
-                          └─────────────────────────────┘
+  ┌─────────────────────────────┐
+  │       User Browser          │
+  └──────────────┬──────────────┘
+                 │
+                 ▼
+  ┌─────────────────────────────┐
+  │    Firebase Hosting         │
+  │  apexflow-console.web.app   │
+  │  Serves: frontend/dist      │
+  │  Rewrites: /api/** →        │
+  │    Cloud Run (same-origin)  │
+  └──────────────┬──────────────┘
+                 │ rewrite
+                 ▼
+  ┌─────────────────────────────┐
+  │       GitHub Repository     │
+  │  (tag push: v* triggers CI) │
+  └──────────────┬──────────────┘
+                 │
+                 ▼
+  ┌─────────────────────────────┐
+  │        Cloud Build          │
+  │  lint → typecheck → test →  │
+  │  docker build → push → deploy│
+  │  SA: cloudbuild-ci@          │
+  └──────────────┬──────────────┘
+                 │
+            ┌────┬────┐
+            ▼         ▼
+  ┌──────────────┐  ┌──────────────────┐
+  │ Artifact     │  │    Cloud Run      │
+  │ Registry     │  │  apexflow-api     │◄── Firebase Hosting rewrites
+  │ (images)     │  │  SA: apexflow-api@ │
+  └──────────────┘  │  Port: 8080       │
+                    │  Min: 0 / Max: 1   │
+                    └────────┬─────────┘
+                             │
+                             │ VPC Connector
+                             │ (10.8.0.0/28)
+                             │
+                             ▼
+              ┌─────────────────────────────┐
+              │    GCE VM: alloydb-omni-dev  │
+              │    n2-standard-4             │
+              │    Internal IP: 10.128.0.x   │
+              │  ┌───────────────────────┐  │
+              │  │  AlloyDB Omni 15.12.0 │  │
+              │  │  PostgreSQL + pgvector │  │
+              │  │  + ScaNN indexes      │  │
+              │  │  Port: 5432           │  │
+              │  └───────────────────────┘  │
+              └─────────────────────────────┘
+                             ▲
+                             │ SSH Tunnel
+                             │ (localhost:5432)
+              ┌─────────────────────────────┐
+              │    Developer Laptop          │
+              │  ./scripts/dev-start.sh      │
+              │  AUTH_DISABLED=1 uvicorn ...  │
+              └─────────────────────────────┘
 
 
-  Secret Manager                    Cloud Scheduler
-  ┌──────────────────┐              ┌──────────────────┐
-  │ apexflow-db-     │              │ vm-auto-stop     │
-  │ password         │              │ 10 PM ET daily   │
-  │ (mounted in      │              │ stops GCE VM     │
-  │  Cloud Run)      │              │ SA: vm-scheduler@│
-  └──────────────────┘              └──────────────────┘
+  Secret Manager                    Cloud Scheduler (11 PM IST)
+  ┌──────────────────┐              ┌─────────────────────────┐
+  │ apexflow-db-     │              │ vm-auto-stop            │
+  │ password         │              │   stops GCE VM          │
+  │ (mounted in      │              │ cloudrun-auto-stop      │
+  │  Cloud Run)      │              │   ingress → internal    │
+  └──────────────────┘              │ SA: vm-scheduler@       │
+                                    └─────────────────────────┘
 ```
 
 ### Environment detection flow
@@ -859,6 +911,266 @@ Application starts
 
 ---
 
+## 22. Firebase Hosting (Frontend)
+
+The React frontend is deployed via Firebase Hosting in the **same** `apexflow-ai` project as the Cloud Run backend. This is required because Firebase Hosting rewrites to Cloud Run only work within the same GCP project.
+
+### 22a. Enable Firebase on the GCP project (one-time)
+
+```bash
+firebase projects:addfirebase $PROJECT_ID
+```
+
+### 22b. Create a hosting site
+
+```bash
+firebase hosting:sites:create apexflow-console --project $PROJECT_ID
+```
+
+This creates the site at `https://apexflow-console.web.app`.
+
+### 22c. Configuration files
+
+Two files at the repo root configure Firebase Hosting:
+
+**`.firebaserc`** — project and deploy target mapping:
+
+```json
+{
+  "projects": {
+    "default": "apexflow-ai"
+  },
+  "targets": {
+    "apexflow-ai": {
+      "hosting": {
+        "console": ["apexflow-console"]
+      }
+    }
+  }
+}
+```
+
+**`firebase.json`** — hosting config with Cloud Run rewrites:
+
+```json
+{
+  "hosting": {
+    "target": "console",
+    "public": "frontend/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": { "serviceId": "apexflow-api", "region": "us-central1" }
+      },
+      {
+        "source": "/liveness",
+        "run": { "serviceId": "apexflow-api", "region": "us-central1" }
+      },
+      {
+        "source": "/readiness",
+        "run": { "serviceId": "apexflow-api", "region": "us-central1" }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" },
+          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 22d. Deploy
+
+```bash
+# Build frontend and deploy
+cd frontend && npm run build && cd ..
+firebase deploy --only hosting:console
+```
+
+### 22e. Verify
+
+```bash
+# Frontend serves index.html
+curl -s -o /dev/null -w "%{http_code}" https://apexflow-console.web.app/
+# Expected: 200
+
+# API rewrites proxy to Cloud Run
+curl -s https://apexflow-console.web.app/liveness
+# Expected: {"status":"alive"}
+
+# SPA routing works (returns index.html for any path)
+curl -s -o /dev/null -w "%{http_code}" https://apexflow-console.web.app/documents
+# Expected: 200
+```
+
+### Why same project?
+
+Firebase Hosting rewrites to Cloud Run [require the service to be in the same Firebase project](https://firebase.google.com/docs/hosting/cloud-run). Since the backend runs in `apexflow-ai`, the hosting site must also be in `apexflow-ai`. This means API calls from the browser go through Firebase Hosting's CDN edge to Cloud Run — same-origin from the browser's perspective, so no CORS configuration is needed for the frontend.
+
+### CORS note
+
+Most API calls go through Firebase Hosting rewrites (same-origin, no CORS needed). However, the **SSE endpoint** (`/api/events`) is accessed directly on Cloud Run via `VITE_SSE_URL` because Firebase Hosting rewrites don't support long-lived streaming connections. This cross-origin SSE request requires `CORS_ORIGINS` to include the Firebase Hosting origins:
+
+```bash
+gcloud run services update apexflow-api --region=us-central1 \
+  --update-env-vars="^||^CORS_ORIGINS=https://apexflow-console.web.app,https://apexflow-ai.web.app" \
+  --project=apexflow-ai
+```
+
+Note the `^||^` delimiter syntax — gcloud interprets bare commas as key-value separators, so a custom delimiter is needed when the value itself contains commas.
+
+---
+
+## 23. Firebase Authentication
+
+Firebase Authentication provides Google sign-in for the frontend. The backend validates Firebase JWTs via the Admin SDK.
+
+### 23a. Initialize Identity Platform
+
+Identity Platform is the GCP service backing Firebase Auth. Initialize it via the REST API:
+
+```bash
+curl -s -X POST \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: $PROJECT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  "https://identitytoolkit.googleapis.com/v2/projects/$PROJECT_ID/identityPlatform:initializeAuth"
+```
+
+### 23b. Enable Google sign-in provider (Console)
+
+The Google sign-in provider requires an OAuth consent screen and Web OAuth client, which must be created through the Firebase Console for personal GCP projects (non-organization).
+
+1. Go to https://console.firebase.google.com/project/$PROJECT_ID/authentication/providers
+2. Click **"Get Started"** if prompted
+3. Click **Google** > Toggle **Enable** > Set **Project support email** > **Save**
+
+This auto-creates the OAuth consent screen and Web OAuth client.
+
+### 23c. Configure authorized domains
+
+1. Go to https://console.firebase.google.com/project/$PROJECT_ID/authentication/settings
+2. Under **Authorized domains**, verify these are listed:
+   - `localhost` (local dev)
+   - `apexflow-console.web.app` (Firebase Hosting)
+   - `apexflow-ai.firebaseapp.com` (authDomain)
+
+### 23d. Verify via CLI
+
+```bash
+# Check Google sign-in is enabled
+curl -s \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: $PROJECT_ID" \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/$PROJECT_ID/defaultSupportedIdpConfigs/google.com" \
+  | python3 -m json.tool
+# Expected: {"enabled": true, "clientId": "...", "clientSecret": "..."}
+
+# Check authorized domains
+curl -s \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: $PROJECT_ID" \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/$PROJECT_ID/config" \
+  | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('authorizedDomains',[]), indent=2))"
+# Expected: ["apexflow-ai.firebaseapp.com", "apexflow-ai.web.app", "apexflow-console.web.app", "localhost"]
+```
+
+### 23e. Frontend configuration
+
+Firebase config values are set in `frontend/.env.production`. These are public (embedded in the built JS bundle — security is in Firebase Security Rules and backend JWT verification):
+
+```env
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=apexflow-ai.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=apexflow-ai
+VITE_FIREBASE_STORAGE_BUCKET=apexflow-ai.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=807506425655
+VITE_FIREBASE_APP_ID=1:807506425655:web:...
+```
+
+When these are unset (local dev without `.env.production`), auth is bypassed entirely.
+
+### 23f. COOP headers
+
+`Cross-Origin-Opener-Policy: same-origin-allow-popups` must be set on HTML responses to allow Firebase's `signInWithPopup` to poll `window.closed`. Configured in:
+- `frontend/vite.config.ts` — `server.headers` (dev)
+- `firebase.json` — `headers` on `**/*.html` (production)
+
+### 23g. Backend auth middleware
+
+The backend (`core/auth.py`) verifies Firebase JWTs. Key behaviors:
+- Accepts tokens from `Authorization: Bearer <token>` header OR `?token=` query param (for SSE/EventSource)
+- Skip paths: `/liveness`, `/readiness`, `/docs`, `/openapi.json`
+- All other endpoints (including `/api/events` SSE) require auth
+- `AUTH_DISABLED=1` bypasses auth locally; fails startup if set on Cloud Run
+- `ALLOWED_EMAILS` env var (comma-separated) restricts access to listed emails (returns 403 Forbidden); when unset, all authenticated users are allowed
+
+### 23h. Managing the email allowlist
+
+The `ALLOWED_EMAILS` env var controls which Google accounts can use the application. Comparison is case-insensitive. Changes take effect on the next Cloud Run cold start (or force a new revision with `gcloud run deploy`).
+
+**Add or update authorized users:**
+
+```bash
+gcloud run services update apexflow-api \
+  --region=$REGION \
+  --update-env-vars="ALLOWED_EMAILS=pbgadekar@gmail.com,pravin.gaadekar@gmail.com" \
+  --project=$PROJECT_ID
+```
+
+**Add a user to the existing list** — include all current emails plus the new one:
+
+```bash
+gcloud run services update apexflow-api \
+  --region=$REGION \
+  --update-env-vars="ALLOWED_EMAILS=pbgadekar@gmail.com,pravin.gaadekar@gmail.com,newuser@gmail.com" \
+  --project=$PROJECT_ID
+```
+
+**Remove a user** — rewrite the list without their email:
+
+```bash
+gcloud run services update apexflow-api \
+  --region=$REGION \
+  --update-env-vars="ALLOWED_EMAILS=pbgadekar@gmail.com" \
+  --project=$PROJECT_ID
+```
+
+**Remove the allowlist entirely (open access):**
+
+```bash
+gcloud run services update apexflow-api \
+  --region=$REGION \
+  --remove-env-vars=ALLOWED_EMAILS \
+  --project=$PROJECT_ID
+```
+
+**Verify current setting:**
+
+```bash
+gcloud run services describe apexflow-api \
+  --region=$REGION \
+  --format='value(spec.template.spec.containers[0].env)' \
+  --project=$PROJECT_ID | tr ',' '\n' | grep ALLOWED
+```
+
+---
+
 ## Appendix: Complete Resource Inventory
 
 | Resource Type | Name | Key Config |
@@ -873,8 +1185,11 @@ Application starts
 | Secret | `apexflow-db-password` | DB password, accessed by `apexflow-api@` and `cloudbuild-ci@` |
 | Service Account | `apexflow-api@` | Cloud Run runtime, Vertex AI + secret access |
 | Service Account | `cloudbuild-ci@` | CI/CD, build + deploy + secret access |
-| Service Account | `vm-scheduler@` | Nightly VM stop |
-| Cloud Scheduler | `vm-auto-stop` | `0 22 * * *` America/New_York |
+| Service Account | `vm-scheduler@` | Nightly VM + Cloud Run stop |
+| Cloud Scheduler | `vm-auto-stop` | `0 23 * * *` Asia/Kolkata, stops GCE VM |
+| Cloud Scheduler | `cloudrun-auto-stop` | `0 23 * * *` Asia/Kolkata, sets Cloud Run ingress to internal-only |
 | Cloud Build Connection | `apexflow-github` | GitHub OAuth, linked to repo |
 | Cloud Build Trigger | `apexflow-ci` | Tag `^v.*$`, substitution: `_ALLOYDB_HOST` |
-| APIs Enabled | 7 APIs | compute, run, vpcaccess, artifactregistry, secretmanager, cloudbuild, cloudscheduler |
+| Firebase Hosting | `apexflow-console` | Site in `apexflow-ai`, serves `frontend/dist`, rewrites `/api/**` to Cloud Run |
+| Firebase Auth | Identity Platform | Google sign-in provider, authorized domains: localhost + `*.web.app` |
+| APIs Enabled | 10 APIs | compute, run, vpcaccess, artifactregistry, secretmanager, cloudbuild, cloudscheduler, firebase, identitytoolkit, iap |
