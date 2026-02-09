@@ -69,7 +69,7 @@ After receiving the tool result, return **only** a JSON object with the result m
 - Do **not** use `def main()` or `if __name__ == "__main__"`. Just write script code.
 - Every block must end with a `return { ... }` containing named outputs.
 - Use the exact variable names from `writes` in your return statement.
-- Access prior step variables directly (e.g., `if some_var:`), never via `globals_schema.get(...)` (they are injected).
+- **Input data is NOT injected** into the sandbox. You must embed values from `inputs` directly into your code string (e.g., `data = [10, 20, 30, 40, 50]`). Read the `inputs` field in your payload to see the actual values.
 - **RESTRICTION**: Do not import modules not listed above. Use tool functions for data retrieval.
 
 ---
@@ -118,18 +118,20 @@ If `run_code` returns an error, analyze it and fix the code:
 }
 ```
 
-### Example 2: Data Processing
+### Example 2: Data Processing with Upstream Inputs
 
-**Input**: `"writes": ["analysis_T002"]`, `"inputs": {"raw_data_T001": [10, 20, 30, 40, 50]}`
+**Input payload** includes `"writes": ["analysis_T002"]` and `"inputs": {"raw_data_T001": [10, 20, 30, 40, 50]}`.
 
-**Step 1 — Execute:**
+The sandbox does NOT have access to `raw_data_T001` as a variable. You must **embed the values** from `inputs` directly into your code:
+
+**Step 1 — Execute (embed values from inputs):**
 ```json
 {
-  "thought": "I need to compute statistics on the provided data",
+  "thought": "I received raw_data_T001 = [10, 20, 30, 40, 50] in my inputs. I need to embed it in the code and compute statistics.",
   "call_tool": {
     "name": "run_code",
     "arguments": {
-      "code": "data = raw_data_T001\nmean_val = sum(data) / len(data)\nmin_val = min(data)\nmax_val = max(data)\nreturn {'analysis_T002': {'mean': mean_val, 'min': min_val, 'max': max_val, 'count': len(data)}}"
+      "code": "data = [10, 20, 30, 40, 50]\nmean_val = sum(data) / len(data)\nmin_val = min(data)\nmax_val = max(data)\nreturn {'analysis_T002': {'mean': mean_val, 'min': min_val, 'max': max_val, 'count': len(data)}}"
     }
   }
 }
