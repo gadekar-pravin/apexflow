@@ -3,9 +3,10 @@ import { useQueryClient } from "@tanstack/react-query"
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app"
 import {
   getAuth,
+  getRedirectResult,
   GoogleAuthProvider,
   onIdTokenChanged,
-  signInWithPopup,
+  signInWithRedirect,
   signOut as firebaseSignOut,
   type Auth,
   type User,
@@ -67,6 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return currentUser ? currentUser.getIdToken() : null
       })
 
+      // Handle redirect result (catches errors from signInWithRedirect flow)
+      getRedirectResult(auth).catch((error) => {
+        const message = error instanceof Error ? error.message : "Sign-in redirect failed"
+        setLastError(message)
+      })
+
       const unsubscribe = onIdTokenChanged(auth, (nextUser) => {
         setUser(nextUser)
         setLastError(null)
@@ -99,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLastError(null)
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: "select_account" })
-      await signInWithPopup(authRef.current, provider)
+      await signInWithRedirect(authRef.current, provider)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Sign-in failed"
       setLastError(message)
