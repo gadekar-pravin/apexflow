@@ -83,9 +83,10 @@ export function GraphView({ runId }: GraphViewProps) {
     (event: SSEEvent) => {
       // Invalidate run query on relevant events
       if (
-        event.type === "node_status" ||
-        event.type === "run_complete" ||
-        event.type === "run_failed"
+        event.type === "context_updated" ||
+        event.type === "step_start" ||
+        event.type === "success" ||
+        event.type === "error"
       ) {
         queryClient.invalidateQueries({ queryKey: ["run", runId] })
         queryClient.invalidateQueries({ queryKey: ["runs"] })
