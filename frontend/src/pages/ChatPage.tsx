@@ -238,20 +238,26 @@ export function ChatPage() {
           </Button>
         </div>
 
-        {/* Messages or Welcome */}
+        {/* Messages with fixed footer input, or Welcome with inline input */}
         {hasMessages ? (
-          <ChatMessageList messages={messages} isRunning={isRunning} />
+          <>
+            <ChatMessageList messages={messages} isRunning={isRunning} />
+            <ChatInput
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSend}
+              disabled={isRunning}
+              placeholder="Ask a follow-up question..."
+            />
+          </>
         ) : (
-          <WelcomeScreen onSend={sendMessage} />
+          <WelcomeScreen
+            onSend={sendMessage}
+            inputValue={inputValue}
+            onInputChange={setInputValue}
+            onInputSend={handleSend}
+          />
         )}
-
-        {/* Input */}
-        <ChatInput
-          value={inputValue}
-          onChange={setInputValue}
-          onSend={handleSend}
-          disabled={isRunning}
-        />
       </div>
 
       {/* Reasoning sidebar */}

@@ -8,6 +8,8 @@ interface ChatInputProps {
   onSend: () => void
   disabled?: boolean
   placeholder?: string
+  /** When true, renders without the fixed-footer wrapper (border-t, bg, padding) */
+  inline?: boolean
 }
 
 export function ChatInput({
@@ -16,6 +18,7 @@ export function ChatInput({
   onSend,
   disabled = false,
   placeholder = "Ask anything...",
+  inline = false,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -42,36 +45,42 @@ export function ChatInput({
     [onChange]
   )
 
-  return (
-    <div className="border-t border-border bg-background px-8 py-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="relative">
-          {/* Subtle gradient glow */}
-          <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 blur-sm opacity-40" />
+  const inputWidget = (
+    <div className="relative">
+      {/* Animated gradient glow behind input */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-blue-500/20 to-primary/20 rounded-2xl blur-sm opacity-60 animate-pulse" />
 
-          <div className="relative flex items-end gap-2 rounded-xl border border-border bg-card p-2 shadow-sm">
-            <textarea
-              ref={textareaRef}
-              value={value}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              disabled={disabled}
-              placeholder={placeholder}
-              rows={1}
-              className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ maxHeight: 160 }}
-            />
-            <Button
-              size="icon"
-              onClick={onSend}
-              disabled={disabled || !value.trim()}
-              className="h-8 w-8 shrink-0 rounded-lg transition-transform hover:scale-105"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+      <div className="relative flex items-center gap-3 bg-card rounded-xl border-2 border-primary/30 p-3 shadow-lg shadow-primary/10">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder={placeholder}
+          rows={1}
+          className="flex-1 resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none px-2 py-2 text-base text-foreground placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ maxHeight: 160 }}
+        />
+        <Button
+          size="icon"
+          onClick={onSend}
+          disabled={disabled || !value.trim()}
+          className="h-10 w-10 shrink-0 rounded-lg transition-all hover:scale-105"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
       </div>
+    </div>
+  )
+
+  if (inline) {
+    return <div className="max-w-[700px] w-full mx-auto">{inputWidget}</div>
+  }
+
+  return (
+    <div className="border-t border-border bg-background px-8 py-4 shrink-0">
+      <div className="max-w-[700px] mx-auto">{inputWidget}</div>
     </div>
   )
 }
