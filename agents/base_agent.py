@@ -31,6 +31,18 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Gemini pricing per million tokens: (input_cost, output_cost)
+_GEMINI_PRICING: dict[str, tuple[float, float]] = {
+    "gemini-2.5-pro": (1.25, 10.00),
+    "gemini-2.5-flash-lite": (0.075, 0.30),
+    "gemini-2.5-flash": (0.15, 0.60),
+    "gemini-2.0-flash-lite": (0.075, 0.30),
+    "gemini-2.0-flash": (0.10, 0.40),
+    "gemini-1.5-pro": (1.25, 5.00),
+    "gemini-1.5-flash": (0.075, 0.30),
+}
+_DEFAULT_PRICING = (0.075, 0.30)
+
 
 class AgentRunner:
     def __init__(self, service_registry: ServiceRegistry) -> None:
@@ -42,24 +54,15 @@ class AgentRunner:
         with open(config_path) as f:
             self.agent_configs: dict[str, Any] = yaml.safe_load(f)["agents"]
 
-    def calculate_cost(self, input_text: str, output_text: str) -> dict[str, float | int]:
-        """Calculate cost and token usage."""
-        input_words = len(input_text.split()) if input_text else 0
-        output_words = len(output_text.split()) if output_text else 0
+    def calculate_cost(self, input_tokens: int, output_tokens: int, model_name: str = "") -> dict[str, float | int]:
+        """Calculate cost from actual token counts and model-specific pricing."""
+        input_rate, output_rate = _GEMINI_PRICING.get(model_name, _DEFAULT_PRICING)
 
-        input_tokens = int(input_words * 1.5)
-        output_tokens = int(output_words * 1.5)
-
-        input_cost_per_million = 0.1
-        output_cost_per_million = 0.4
-
-        input_cost = (input_tokens / 1_000_000) * input_cost_per_million
-        output_cost = (output_tokens / 1_000_000) * output_cost_per_million
-
-        total_cost = input_cost + output_cost
+        input_cost = (input_tokens / 1_000_000) * input_rate
+        output_cost = (output_tokens / 1_000_000) * output_rate
 
         return {
-            "cost": total_cost,
+            "cost": input_cost + output_cost,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "total_tokens": input_tokens + output_tokens,
@@ -160,12 +163,12 @@ class AgentRunner:
             if image_path and os.path.exists(image_path) and Image is not None:
                 log_step(f"{agent_type} (with image)")
                 with Image.open(image_path) as image:
-                    response = await model_manager.generate_content([full_prompt, image])
+                    result = await model_manager.generate_content([full_prompt, image])
             else:
-                response = await model_manager.generate_text(full_prompt)
+                result = await model_manager.generate_text(full_prompt)
 
             # 6. Parse JSON response dynamically
-            output: Any = parse_llm_json(response)
+            output: Any = parse_llm_json(result.text)
 
             # Robustness: Some models wrap JSON in a list
             if isinstance(output, list) and len(output) > 0 and isinstance(output[0], dict):
@@ -176,10 +179,8 @@ class AgentRunner:
                 payload={"output_keys": list(output.keys()) if isinstance(output, dict) else "raw_string"},
             )
 
-            # Calculate cost and tokens
-            input_text = full_prompt
-            output_text = str(output)
-            cost_data = self.calculate_cost(input_text, output_text)
+            # Calculate cost from actual Gemini API token counts
+            cost_data = self.calculate_cost(result.input_tokens, result.output_tokens, model_name)
 
             if isinstance(output, dict):
                 output.update(cost_data)

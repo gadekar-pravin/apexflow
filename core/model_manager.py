@@ -5,7 +5,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import yaml
 from google.genai.errors import ServerError
@@ -15,6 +15,16 @@ from core.gemini_client import get_gemini_client
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).parent.parent
+
+
+class GenerateResult(NamedTuple):
+    """Result from a Gemini generation call with actual token counts."""
+
+    text: str
+    input_tokens: int
+    output_tokens: int
+
+
 MODELS_JSON = ROOT / "config" / "models.json"
 PROFILE_YAML = ROOT / "config" / "profiles.yaml"
 
@@ -76,10 +86,10 @@ class ModelManager:
             # Initialize Gemini client
             self.client = get_gemini_client()
 
-    async def generate_text(self, prompt: str) -> str:
+    async def generate_text(self, prompt: str) -> GenerateResult:
         return await self._gemini_generate(prompt)
 
-    async def generate_content(self, contents: list[Any]) -> str:
+    async def generate_content(self, contents: list[Any]) -> GenerateResult:
         """Generate content with support for text and images.
 
         Contents can contain:
@@ -99,30 +109,41 @@ class ModelManager:
                 await asyncio.sleep(sleep_time)
             ModelManager._last_call = time.time()
 
-    async def _gemini_generate(self, prompt: str) -> str:
+    def _extract_usage(self, response: Any) -> tuple[int, int]:
+        """Extract actual token counts from Gemini response usage_metadata."""
+        usage = getattr(response, "usage_metadata", None)
+        if usage is None:
+            return 0, 0
+        input_tokens = getattr(usage, "prompt_token_count", 0) or 0
+        output_tokens = getattr(usage, "candidates_token_count", 0) or 0
+        return input_tokens, output_tokens
+
+    async def _gemini_generate(self, prompt: str) -> GenerateResult:
         await self._wait_for_rate_limit()
         try:
             # Use synchronous SDK client in thread to bypass aiohttp/DNS issues common on macOS
             response = await asyncio.to_thread(
                 self.client.models.generate_content, model=self.model_info["model"], contents=prompt
             )
-            result_text = response.text or ""
-            return result_text.strip()
+            result_text = (response.text or "").strip()
+            input_tokens, output_tokens = self._extract_usage(response)
+            return GenerateResult(text=result_text, input_tokens=input_tokens, output_tokens=output_tokens)
 
         except ServerError:
             raise
         except Exception as e:
             raise RuntimeError(f"Gemini generation failed: {e!s}") from e
 
-    async def _gemini_generate_content(self, contents: list[Any]) -> str:
+    async def _gemini_generate_content(self, contents: list[Any]) -> GenerateResult:
         """Generate content with support for text and images using Gemini SDK"""
         try:
             # Use synchronous SDK client in thread (text + images)
             response = await asyncio.to_thread(
                 self.client.models.generate_content, model=self.model_info["model"], contents=contents
             )
-            result_text = response.text or ""
-            return result_text.strip()
+            result_text = (response.text or "").strip()
+            input_tokens, output_tokens = self._extract_usage(response)
+            return GenerateResult(text=result_text, input_tokens=input_tokens, output_tokens=output_tokens)
 
         except ServerError:
             raise

@@ -86,7 +86,8 @@ Extract memories and preferences. Return ONLY valid JSON with this structure:
 
         try:
             model_manager = ModelManager(self.model, provider="gemini")
-            response = await model_manager.generate_text(full_prompt)
+            result = await model_manager.generate_text(full_prompt)
+            response = result.text
 
             logger.debug("Raw Extraction Output (%d chars): %s...", len(response), response[:200])
 

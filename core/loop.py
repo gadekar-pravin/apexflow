@@ -241,9 +241,15 @@ class AgentLoop4:
                     log_step("Planner already added ClarificationAgent, skipping auto-injection")
 
                 # Mark Query/Planner as Done
-                self.context.plan_graph.nodes["Query"]["output"] = plan_result["output"]
+                planner_output = plan_result["output"]
+                self.context.plan_graph.nodes["Query"]["output"] = planner_output
                 self.context.plan_graph.nodes["Query"]["status"] = "completed"
                 self.context.plan_graph.nodes["Query"]["end_time"] = datetime.now(UTC).isoformat()
+                if isinstance(planner_output, dict):
+                    self.context.plan_graph.nodes["Query"]["cost"] = planner_output.get("cost", 0.0)
+                    self.context.plan_graph.nodes["Query"]["input_tokens"] = planner_output.get("input_tokens", 0)
+                    self.context.plan_graph.nodes["Query"]["output_tokens"] = planner_output.get("output_tokens", 0)
+                    self.context.plan_graph.nodes["Query"]["total_tokens"] = planner_output.get("total_tokens", 0)
 
                 # PHASE 3: EXPAND GRAPH
                 new_plan_graph = plan_result["output"]["plan_graph"]
