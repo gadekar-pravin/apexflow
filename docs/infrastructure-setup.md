@@ -830,10 +830,9 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
   │    Firebase Hosting         │
   │  apexflow-console.web.app   │
   │  Serves: frontend/dist      │
-  │  Rewrites: /api/** →        │
-  │    Cloud Run (same-origin)  │
+  │  (static assets only)       │
   └──────────────┬──────────────┘
-                 │ rewrite
+                 │ VITE_API_URL (direct)
                  ▼
   ┌─────────────────────────────┐
   │       GitHub Repository     │
@@ -852,7 +851,7 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
             ▼         ▼
   ┌──────────────┐  ┌──────────────────┐
   │ Artifact     │  │    Cloud Run      │
-  │ Registry     │  │  apexflow-api     │◄── Firebase Hosting rewrites
+  │ Registry     │  │  apexflow-api     │◄── Direct from browser (CORS)
   │ (images)     │  │  SA: apexflow-api@ │
   └──────────────┘  │  Port: 8080       │
                     │  Min: 0 / Max: 1   │
@@ -913,7 +912,7 @@ Application starts
 
 ## 22. Firebase Hosting (Frontend)
 
-The React frontend is deployed via Firebase Hosting in the **same** `apexflow-ai` project as the Cloud Run backend. This is required because Firebase Hosting rewrites to Cloud Run only work within the same GCP project.
+The React frontend is deployed via Firebase Hosting in the **same** `apexflow-ai` project as the Cloud Run backend. Firebase Hosting serves only static assets; all API calls go directly to Cloud Run via `VITE_API_URL` (cross-origin with CORS).
 
 ### 22a. Enable Firebase on the GCP project (one-time)
 
@@ -950,7 +949,7 @@ Two files at the repo root configure Firebase Hosting:
 }
 ```
 
-**`firebase.json`** — hosting config with Cloud Run rewrites:
+**`firebase.json`** — hosting config with Cloud Run rewrites (kept for health check proxying; API calls bypass via `VITE_API_URL`):
 
 ```json
 {
@@ -978,15 +977,12 @@ Two files at the repo root configure Firebase Hosting:
     ],
     "headers": [
       {
-        "source": "/assets/**",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        "source": "**",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },
       {
-        "source": "**/*.html",
-        "headers": [
-          { "key": "Cache-Control", "value": "no-cache" },
-          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" }
-        ]
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
       }
     ]
   }
@@ -1017,13 +1013,13 @@ curl -s -o /dev/null -w "%{http_code}" https://apexflow-console.web.app/document
 # Expected: 200
 ```
 
-### Why same project?
+### Why direct-to-Cloud-Run instead of Firebase Hosting rewrites?
 
-Firebase Hosting rewrites to Cloud Run [require the service to be in the same Firebase project](https://firebase.google.com/docs/hosting/cloud-run). Since the backend runs in `apexflow-ai`, the hosting site must also be in `apexflow-ai`. This means API calls from the browser go through Firebase Hosting's CDN edge to Cloud Run — same-origin from the browser's perspective, so no CORS configuration is needed for the frontend.
+Firebase Hosting rewrites can strip or overwrite the client's `Authorization` header with its own invoker token, causing the backend's `verify_id_token()` to fail with 401. All API calls (including SSE) now go directly to Cloud Run via `VITE_API_URL` and `VITE_SSE_URL`, which are set in `frontend/.env.production`.
 
-### CORS note
+### CORS configuration
 
-Most API calls go through Firebase Hosting rewrites (same-origin, no CORS needed). However, the **SSE endpoint** (`/api/events`) is accessed directly on Cloud Run via `VITE_SSE_URL` because Firebase Hosting rewrites don't support long-lived streaming connections. This cross-origin SSE request requires `CORS_ORIGINS` to include the Firebase Hosting origins:
+Since all API calls are cross-origin (browser on `apexflow-console.web.app` → Cloud Run), `CORS_ORIGINS` must include the Firebase Hosting origins. The auth middleware passes through `OPTIONS` requests to let `CORSMiddleware` handle CORS preflight.
 
 ```bash
 gcloud run services update apexflow-api --region=us-central1 \
@@ -1105,17 +1101,18 @@ VITE_FIREBASE_APP_ID=1:807506425655:web:...
 
 When these are unset (local dev without `.env.production`), auth is bypassed entirely.
 
-### 23f. COOP headers
+### 23f. Sign-in method: redirect (not popup)
 
-`Cross-Origin-Opener-Policy: same-origin-allow-popups` must be set on HTML responses to allow Firebase's `signInWithPopup` to poll `window.closed`. Configured in:
-- `frontend/vite.config.ts` — `server.headers` (dev)
-- `firebase.json` — `headers` on `**/*.html` (production)
+The frontend uses `signInWithRedirect` (not `signInWithPopup`). The redirect flow navigates the page to Google's sign-in page and back, avoiding cross-origin popup issues. Google's sign-in page sets `Cross-Origin-Opener-Policy: same-origin`, which blocks `signInWithPopup`'s `window.closed` polling, producing noisy COOP console errors. The redirect approach eliminates these entirely. `getRedirectResult()` is called on app init to catch errors from the redirect flow.
+
+No COOP headers are needed in `firebase.json` or `vite.config.ts`.
 
 ### 23g. Backend auth middleware
 
 The backend (`core/auth.py`) verifies Firebase JWTs. Key behaviors:
 - Accepts tokens from `Authorization: Bearer <token>` header OR `?token=` query param (for SSE/EventSource)
 - Skip paths: `/liveness`, `/readiness`, `/docs`, `/openapi.json`
+- Passes through `OPTIONS` requests (CORS preflight) — required because all API calls are cross-origin
 - All other endpoints (including `/api/events` SSE) require auth
 - `AUTH_DISABLED=1` bypasses auth locally; fails startup if set on Cloud Run
 - `ALLOWED_EMAILS` env var (comma-separated) restricts access to listed emails (returns 403 Forbidden); when unset, all authenticated users are allowed
