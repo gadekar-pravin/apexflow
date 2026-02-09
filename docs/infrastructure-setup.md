@@ -599,7 +599,7 @@ gcloud run deploy $CLOUD_RUN_SERVICE \
   --vpc-connector=$VPC_CONNECTOR \
   --vpc-egress=private-ranges-only \
   --set-secrets=ALLOYDB_PASSWORD=apexflow-db-password:latest \
-  --set-env-vars=ALLOYDB_HOST=$VM_INTERNAL_IP,ALLOYDB_DB=$DB_NAME,ALLOYDB_USER=$DB_USER,LOG_LEVEL=INFO,CORS_ORIGINS=$FRONTEND_ORIGIN,ALLOWED_EMAILS=your@email.com \
+  --set-env-vars=ALLOYDB_HOST=$VM_INTERNAL_IP,ALLOYDB_DB=$DB_NAME,ALLOYDB_USER=$DB_USER,LOG_LEVEL=INFO,CORS_ORIGINS=$FRONTEND_ORIGIN,ALLOWED_EMAILS=pbgadekar@gmail.com,pravin.gaadekar@gmail.com \
   --memory=2Gi \
   --cpu=2 \
   --concurrency=80 \
@@ -827,7 +827,7 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
                  │
                  ▼
   ┌─────────────────────────────┐
-  │    Firebase Hosting          │
+  │    Firebase Hosting         │
   │  apexflow-console.web.app   │
   │  Serves: frontend/dist      │
   │  Rewrites: /api/** →        │
@@ -836,16 +836,16 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
                  │ rewrite
                  ▼
   ┌─────────────────────────────┐
-  │       GitHub Repository      │
-  │  (tag push: v* triggers CI)  │
+  │       GitHub Repository     │
+  │  (tag push: v* triggers CI) │
   └──────────────┬──────────────┘
                  │
                  ▼
   ┌─────────────────────────────┐
-  │        Cloud Build           │
-  │  lint → typecheck → test →   │
+  │        Cloud Build          │
+  │  lint → typecheck → test →  │
   │  docker build → push → deploy│
-  │  SA: cloudbuild-ci@           │
+  │  SA: cloudbuild-ci@          │
   └──────────────┬──────────────┘
                  │
             ┌────┬────┐
@@ -1121,7 +1121,7 @@ The `ALLOWED_EMAILS` env var controls which Google accounts can use the applicat
 ```bash
 gcloud run services update apexflow-api \
   --region=$REGION \
-  --update-env-vars="ALLOWED_EMAILS=user1@gmail.com,user2@company.com" \
+  --update-env-vars="ALLOWED_EMAILS=pbgadekar@gmail.com,pravin.gaadekar@gmail.com" \
   --project=$PROJECT_ID
 ```
 
@@ -1130,7 +1130,7 @@ gcloud run services update apexflow-api \
 ```bash
 gcloud run services update apexflow-api \
   --region=$REGION \
-  --update-env-vars="ALLOWED_EMAILS=existing@gmail.com,newuser@gmail.com" \
+  --update-env-vars="ALLOWED_EMAILS=pbgadekar@gmail.com,pravin.gaadekar@gmail.com,newuser@gmail.com" \
   --project=$PROJECT_ID
 ```
 
@@ -1139,7 +1139,7 @@ gcloud run services update apexflow-api \
 ```bash
 gcloud run services update apexflow-api \
   --region=$REGION \
-  --update-env-vars="ALLOWED_EMAILS=remaining@gmail.com" \
+  --update-env-vars="ALLOWED_EMAILS=pbgadekar@gmail.com" \
   --project=$PROJECT_ID
 ```
 

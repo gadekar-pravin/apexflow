@@ -59,7 +59,7 @@ firebase deploy --only hosting:console
 
 # Email allowlist — manage authorized users on Cloud Run
 gcloud run services update apexflow-api --region=us-central1 \
-  --update-env-vars="ALLOWED_EMAILS=user1@gmail.com,user2@gmail.com" --project=apexflow-ai
+  --update-env-vars="ALLOWED_EMAILS=pbgadekar@gmail.com,pravin.gaadekar@gmail.com" --project=apexflow-ai
 # Remove allowlist (open access to any authenticated user)
 gcloud run services update apexflow-api --region=us-central1 \
   --remove-env-vars=ALLOWED_EMAILS --project=apexflow-ai
