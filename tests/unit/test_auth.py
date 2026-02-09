@@ -243,3 +243,37 @@ def test_valid_token_sets_user_id(monkeypatch: pytest.MonkeyPatch) -> None:
         assert resp.json()["user_id"] == "firebase-user-42"
 
     importlib.reload(core.auth)
+
+
+# ---------------------------------------------------------------------------
+# OPTIONS passthrough (CORS preflight)
+# ---------------------------------------------------------------------------
+
+
+def test_options_request_passes_through(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OPTIONS requests to protected paths should pass through (for CORS preflight)."""
+    monkeypatch.delenv("AUTH_DISABLED", raising=False)
+    monkeypatch.delenv("K_SERVICE", raising=False)
+
+    import core.auth
+
+    importlib.reload(core.auth)
+
+    app = FastAPI()
+
+    @app.api_route("/api/protected", methods=["GET", "OPTIONS"])
+    async def protected() -> dict[str, str]:
+        return {"status": "ok"}
+
+    app.add_middleware(core.auth.FirebaseAuthMiddleware)
+    client = TestClient(app)
+
+    # OPTIONS should pass through without auth
+    resp = client.options("/api/protected")
+    assert resp.status_code == 200
+
+    # GET should still require auth
+    resp = client.get("/api/protected")
+    assert resp.status_code == 401
+
+    importlib.reload(core.auth)

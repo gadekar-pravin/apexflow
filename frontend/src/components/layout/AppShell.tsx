@@ -9,7 +9,17 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext"
 import { SignInScreen } from "@/components/auth/SignInScreen"
 import { SSEProvider } from "@/contexts/SSEContext"
 import { ExecutionMetricsProvider } from "@/contexts/ExecutionMetricsContext"
-import { fetchAPI, isForbiddenError } from "@/services/api"
+import { ApiError, fetchAPI, isForbiddenError } from "@/services/api"
+
+function classifyError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return "Authentication failed"
+    if (error.status >= 500) return "Server error"
+    return `HTTP ${error.status}`
+  }
+  if (error instanceof TypeError) return "Network error"
+  return "Unknown error"
+}
 
 function AppContent() {
   const auth = useAuth()
@@ -64,6 +74,9 @@ function AppContent() {
             <h1 className="text-lg font-semibold">Something went wrong</h1>
             <p className="text-sm text-muted-foreground">
               Unable to verify access. Please try again.
+            </p>
+            <p className="text-xs text-destructive font-mono">
+              {classifyError(authzCheck.error)}: {authzCheck.error instanceof Error ? authzCheck.error.message : String(authzCheck.error)}
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => authzCheck.refetch()}>

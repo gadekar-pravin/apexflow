@@ -92,6 +92,10 @@ class FirebaseAuthMiddleware(BaseHTTPMiddleware):
         if request.url.path in SKIP_PATHS:
             return await call_next(request)
 
+        # Skip auth for CORS preflight (OPTIONS) — let CORSMiddleware handle them
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Auth disabled (local dev only)
         if _AUTH_DISABLED:
             request.state.user_id = "dev-user"
