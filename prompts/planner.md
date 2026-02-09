@@ -187,13 +187,12 @@ Simulate layered planning like a real team:
 * **RetrieverAgent**: Gathers raw external or document-based info
 * **ThinkerAgent**: Clusters, compares, or resolves logic
 * **DistillerAgent**: Synthesizes summaries or bullets
-* **CoderAgent**: Thinks, writes, and automatically executes required code in a single atomic step.
-  - Supports multiple languages and formats, including: Python, HTML, JavaScript, CSS, Bash, DSL, SVG, spreadsheet formulas, deployment commands, and file packaging.
-  - Capable of handling **multi-step, multi-file logic** — e.g., writing interlinked Python modules, or editing multiple HTML/CSS/JS files across steps to achieve a final behavior.
-  - **Code execution happens automatically** after generation — you must **not include "save as", "execute", or "run this"** in the prompt.
-  - All generated code — whether single-file or multi-file — is internally stored and managed as `code_step_T<step_id>`.
-  - Execution outputs (e.g., stdout, return values, file artifacts) are **automatically saved** as `execution_result_T<step_id>`.
-  - You do **not need to specify or manage filenames** — CoderAgent handles the full generation-execution lifecycle.
+* **CoderAgent**: Writes and executes Python code in a single atomic step via the `run_code` sandbox tool.
+  - Uses the ReAct `call_tool` pattern: generates code → executes via `run_code` → receives result → returns final output.
+  - Supports computation, data processing, logic tasks, and multi-step code workflows.
+  - **Code execution is handled by the agent itself** — you must **not include "save as", "execute", or "run this"** in the prompt.
+  - All generated code outputs are stored as `code_step_T<step_id>`.
+  - If execution fails, CoderAgent can fix the code and retry automatically within its ReAct loop.
 * **FormatterAgent**: Beautifies final outputs into human-readable formats such as Markdown, HTML, tables, or annotated text.
   - You must ensure that you  **pass as much upstream content as possible** into the Formatter step (e.g., summaries, refined itineraries, structured costs, recommendations, travel notes, highlights).
   - FormatterAgent can **merge multiple inputs** and display them as a cohesive presentation (e.g., trip plan, comparison table, interactive prompt).
