@@ -418,11 +418,16 @@ If tools fail or no relevant tools available:
 - When using call_self, ensure next_instruction is clear and actionable
 - Assume every tool returns a well-formed value, but verify types before access
 
-Use only the following tools (in positional form):
+The tools listed below are **examples only**:
 *   `fetch_search_urls(query, limit)`
 *   `search_web_with_text_content(query, limit)`
 *   `webpage_url_to_raw_text(url)`
 *   `search_stored_documents_rag(query)`  <-- USE THIS FOR "RAG" or "LOCAL DATA" REQUESTS
+
+**IMPORTANT**: The tool names above are examples. Always check the **### Available Tools** section
+appended to this prompt for the **ACTUAL** tool names available in this session. Use those exact names
+in your `code_variants`. For example, the actual search tool may be called `web_search` instead of
+`fetch_search_urls`, and the actual extraction tool may be `web_extract_text` instead of `webpage_url_to_raw_text`.
 
 ---
 

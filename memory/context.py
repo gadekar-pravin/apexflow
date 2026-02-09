@@ -338,9 +338,43 @@ class ExecutionContextManager:
                         globals_schema[write_key] = output["final_answer"]
                         extracted = True
 
+                # Strategy 2b: Store whole output (minus metadata) as fallback
+                if not extracted and output and isinstance(output, dict):
+                    metadata_keys = {
+                        "call_self",
+                        "call_tool",
+                        "next_instruction",
+                        "iteration_context",
+                        "code_variants",
+                        "cost",
+                        "input_tokens",
+                        "output_tokens",
+                        "total_tokens",
+                        "executed_model",
+                        "execution_result",
+                        "execution_status",
+                        "execution_error",
+                        "execution_time",
+                        "executed_variant",
+                        "execution_logs",
+                    }
+                    content = {k: v for k, v in output.items() if k not in metadata_keys and v}
+                    if content:
+                        non_empty = {k: v for k, v in content.items() if v != [] and v != {}}
+                        if len(non_empty) == 1:
+                            globals_schema[write_key] = next(iter(non_empty.values()))
+                        else:
+                            globals_schema[write_key] = content
+                        extracted = True
+                        logger.info("Extracted %s via whole-output fallback (%d keys)", write_key, len(content))
+
                 # Strategy 3: Fallback
                 if not extracted:
-                    logger.warning("Could not extract %s", write_key)
+                    logger.warning(
+                        "Could not extract %s from output keys: %s",
+                        write_key,
+                        list(output.keys()) if isinstance(output, dict) else type(output),
+                    )
                     globals_schema[write_key] = []
 
         # Store results
