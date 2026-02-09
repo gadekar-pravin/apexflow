@@ -18,6 +18,10 @@ export function DocumentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] })
     },
+    onError: (error) => {
+      console.error("Reindex failed:", error)
+      alert(error instanceof Error ? error.message : "Reindex failed. Please try again.")
+    },
   })
 
   return (
@@ -38,6 +42,8 @@ export function DocumentsPage() {
             className="h-7 w-7 text-muted-foreground hover:text-foreground"
             onClick={() => reindex.mutate()}
             disabled={!canMutateDocuments || reindex.isPending}
+            aria-label="Reindex documents"
+            title="Reindex documents"
           >
             {reindex.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

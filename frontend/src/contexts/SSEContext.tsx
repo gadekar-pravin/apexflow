@@ -61,7 +61,7 @@ export function SSEProvider({ children }: { children: ReactNode }) {
         if (!mountedRef.current) return
         try {
           const data = JSON.parse(event.data) as SSEEvent
-          subscribersRef.current.forEach((callback) => callback(data))
+          subscribersRef.current.forEach((callback) => { callback(data) })
         } catch (error) {
           console.error("Failed to parse SSE event:", error)
         }

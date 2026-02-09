@@ -104,10 +104,12 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
           <Badge variant="secondary" className="text-xs font-normal">
             {nodeData.type}
           </Badge>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" strokeWidth={1.75} />
-            <span className="font-mono">{(nodeData.execution_time / 1000).toFixed(2)}s</span>
-          </div>
+          {nodeData.execution_time != null && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" strokeWidth={1.75} />
+              <span className="font-mono">{(nodeData.execution_time / 1000).toFixed(2)}s</span>
+            </div>
+          )}
         </div>
         {nodeData.reads?.length > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -56,7 +56,7 @@ export async function fetchAPI<T>(
   }
 
   const text = await response.text()
-  return text ? JSON.parse(text) as T : {} as T
+  return text ? JSON.parse(text) as T : undefined as unknown as T
 }
 
 export function isUnauthorizedError(error: unknown): boolean {
