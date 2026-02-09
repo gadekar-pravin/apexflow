@@ -44,9 +44,8 @@ function ConnectionIndicator({ label, state }: ConnectionIndicatorProps) {
 }
 
 function formatCost(cost: number): string {
-  if (cost < 0.01) {
-    return cost > 0 ? "<$0.01" : "$0.00"
-  }
+  if (cost === 0) return "$0.00"
+  if (cost < 0.01) return "$" + cost.toFixed(6)
   return "$" + cost.toFixed(2)
 }
 
