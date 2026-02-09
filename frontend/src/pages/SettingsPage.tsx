@@ -34,7 +34,7 @@ export function SettingsPage() {
   const auth = useAuth()
   const canQuerySettings = !auth.isConfigured || auth.isAuthenticated
 
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading, isError, error } = useQuery({
     queryKey: ["settings"],
     queryFn: () => settingsService.get(),
     enabled: canQuerySettings,
@@ -82,10 +82,28 @@ export function SettingsPage() {
     })
   }
 
-  if (isLoading || !localSettings) {
+  if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (isError || !localSettings) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3">
+        <p className="text-sm text-destructive">
+          {error instanceof Error ? error.message : "Failed to load settings"}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["settings"] })}
+        >
+          <RotateCcw className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+          Retry
+        </Button>
       </div>
     )
   }
