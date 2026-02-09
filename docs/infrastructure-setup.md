@@ -52,7 +52,7 @@ export PROJECT_ID="apexflow-ai"               # Your GCP project ID
 export REGION="us-central1"                    # GCP region
 export ZONE="${REGION}-a"                      # GCE zone
 export VM_NAME="alloydb-omni-dev"             # Database VM name
-export VM_MACHINE_TYPE="n2-standard-4"        # VM size (4 vCPU, 16 GB RAM)
+export VM_MACHINE_TYPE="n2-standard-2"        # VM size (2 vCPU, 8 GB RAM)
 export VM_DISK_SIZE="50"                      # Boot disk GB
 export DB_USER="apexflow"                     # PostgreSQL username
 export DB_NAME="apexflow"                     # PostgreSQL database name
@@ -800,7 +800,7 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
 
 | Resource | Spec | Est. Monthly Cost |
 |---|---|---|
-| GCE VM (`n2-standard-4`) | 4 vCPU, 16 GB, 50 GB disk, ~14 hrs/day | ~$95 |
+| GCE VM (`n2-standard-2`) | 2 vCPU, 8 GB, 50 GB disk, ~14 hrs/day | ~$47 |
 | Cloud Run | 2 CPU, 2 Gi, min 0 / max 1 instance | ~$5-20 (usage-dependent) |
 | VPC Connector | 2x `e2-micro` always-on | ~$14 |
 | Artifact Registry | Image storage | ~$1-3 |
@@ -808,7 +808,7 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
 | Cloud Build | E2_HIGHCPU_8, per-build | ~$0.50/build |
 | Cloud Scheduler | 1 job | Free tier |
 
-**Total estimate:** ~$115-135/month for development workloads.
+**Total estimate:** ~$67-87/month for development workloads.
 
 ### Further cost reduction options
 
@@ -863,7 +863,7 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
                              ▼
               ┌─────────────────────────────┐
               │    GCE VM: alloydb-omni-dev  │
-              │    n2-standard-4             │
+              │    n2-standard-2             │
               │    Internal IP: 10.128.0.x   │
               │  ┌───────────────────────┐  │
               │  │  AlloyDB Omni 15.12.0 │  │
@@ -1177,7 +1177,7 @@ gcloud run services describe apexflow-api \
 | Resource Type | Name | Key Config |
 |---|---|---|
 | GCP Project | `apexflow-ai` | Billing enabled |
-| GCE VM | `alloydb-omni-dev` | `n2-standard-4`, `us-central1-a`, 50 GB disk, tag: `alloydb` |
+| GCE VM | `alloydb-omni-dev` | `n2-standard-2`, `us-central1-a`, 50 GB disk, tag: `alloydb` |
 | Docker (on VM) | AlloyDB Omni | `google/alloydbomni:15.12.0`, port 5432 |
 | Artifact Registry | `apexflow-api` | Docker, `us-central1` |
 | Cloud Run | `apexflow-api` | 2 CPU, 2 Gi, min 0 / max 1 instance, 80 concurrency |

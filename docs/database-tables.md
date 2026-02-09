@@ -52,7 +52,7 @@ Results are fused via `1/(K + vector_rank) + 1/(K + text_rank)` (K=60), deduplic
 
 | Factor | Value |
 |---|---|
-| VM | `n2-standard-4` — 4 vCPU, 16 GB RAM |
+| VM | `n2-standard-2` — 2 vCPU, 8 GB RAM |
 | Embedding dimensions | 768 (`text-embedding-004`) |
 | Vector index | ScaNN on AlloyDB (must be created after first data insertion) |
 | FTS index | GIN on `content_tsv` (auto-maintained generated column) |

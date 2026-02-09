@@ -74,7 +74,7 @@ python scripts/migrate.py --source-dir ../apexflow-v1 --validate-only
 
 ### Database
 
-AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-4`, `us-central1-a`). Developers connect via SSH tunnel (`localhost:5432`). The schema has 13 tables defined in `scripts/init-db.sql`.
+AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-2`, `us-central1-a`). Developers connect via SSH tunnel (`localhost:5432`). The schema has 13 tables defined in `scripts/init-db.sql`.
 
 **Connection priority** (`core/database.py`):
 1. `DATABASE_URL` env var (explicit override)
