@@ -57,6 +57,27 @@ function AppContent() {
       )
     }
 
+    if (authzCheck.isError) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-background bg-gradient-radial">
+          <div className="flex flex-col items-center gap-4 max-w-md text-center">
+            <h1 className="text-lg font-semibold">Something went wrong</h1>
+            <p className="text-sm text-muted-foreground">
+              Unable to verify access. Please try again.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => authzCheck.refetch()}>
+                Retry
+              </Button>
+              <Button variant="outline" onClick={() => auth.signOut()}>
+                Sign out
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     if (!authzCheck.isSuccess) {
       return (
         <div className="flex items-center justify-center h-screen bg-background bg-gradient-radial">

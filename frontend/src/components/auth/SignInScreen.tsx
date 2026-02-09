@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Hexagon, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { ApexFlowLogo } from "@/components/icons/ApexFlowLogo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -45,7 +46,7 @@ export function SignInScreen() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary shadow-glow-sm">
-            <Hexagon className="h-8 w-8 text-primary-foreground" strokeWidth={2} />
+            <ApexFlowLogo className="h-8 w-8 text-primary-foreground" />
           </div>
           <div className="text-center">
             <h1 className="text-3xl font-semibold tracking-tight">ApexFlow</h1>

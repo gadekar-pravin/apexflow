@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <defs>
+    <linearGradient id="af" x1="12" y1="22" x2="12" y2="2" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2D5A4A"/>
+      <stop offset="100%" stop-color="#5BA68B"/>
+    </linearGradient>
+  </defs>
+  <!-- Flow connections -->
+  <path d="M12 20L6 12.5M12 20L18 12.5M6 12.5L12 4M18 12.5L12 4" stroke="url(#af)" stroke-width="2" stroke-linecap="round"/>
+  <!-- Apex node (larger) -->
+  <circle cx="12" cy="4" r="3" fill="#5BA68B"/>
+  <!-- Side nodes -->
+  <circle cx="6" cy="12.5" r="2.5" fill="#3B7A63"/>
+  <circle cx="18" cy="12.5" r="2.5" fill="#3B7A63"/>
+  <!-- Base node -->
+  <circle cx="12" cy="20" r="2.5" fill="#2D5A4A"/>
+</svg>

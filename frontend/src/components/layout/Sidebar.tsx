@@ -3,8 +3,8 @@ import {
   Play,
   FileText,
   Settings,
-  Hexagon,
 } from "lucide-react"
+import { ApexFlowLogo } from "@/components/icons/ApexFlowLogo"
 import { cn } from "@/utils/utils"
 import {
   Tooltip,
@@ -40,7 +40,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-14 items-center justify-center">
         <div className="group flex h-8 w-8 items-center justify-center rounded-md bg-primary shadow-sm transition-all duration-200 hover:shadow-glow-sm hover:scale-105">
-          <Hexagon className="h-4 w-4 text-primary-foreground transition-transform duration-200 group-hover:scale-110" strokeWidth={2.5} />
+          <ApexFlowLogo className="h-4 w-4 text-primary-foreground transition-transform duration-200 group-hover:scale-110" />
         </div>
       </div>
 
