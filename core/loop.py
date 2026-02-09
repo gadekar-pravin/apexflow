@@ -483,6 +483,8 @@ class AgentLoop4:
                     log_step(f"{step_id}: Waiting for user input...")
                     continue
 
+                session_id = context.plan_graph.graph.get("session_id", "")
+
                 if isinstance(result, Exception):
                     if retry_count < MAX_STEP_RETRIES:
                         step_data["_retry_count"] = retry_count + 1
@@ -491,9 +493,31 @@ class AgentLoop4:
                     else:
                         context.mark_failed(step_id, str(result))
                         log_error(f"Failed {step_id} after {MAX_STEP_RETRIES} retries: {result!s}")
+                        await event_bus.publish(
+                            "step_failed",
+                            "AgentLoop4",
+                            {
+                                "step_id": step_id,
+                                "session_id": session_id,
+                                "agent_type": step_data.get("agent", ""),
+                                "error": str(result),
+                            },
+                        )
                 elif result["success"]:
                     await context.mark_done(step_id, result["output"])
                     log_step(f"Completed {step_id} ({step_data['agent']})")
+                    node_data = context.plan_graph.nodes[step_id]
+                    await event_bus.publish(
+                        "step_complete",
+                        "AgentLoop4",
+                        {
+                            "step_id": step_id,
+                            "session_id": session_id,
+                            "agent_type": step_data.get("agent", ""),
+                            "execution_time": node_data.get("execution_time", 0),
+                            "cost": node_data.get("cost", 0),
+                        },
+                    )
                 else:
                     if retry_count < MAX_STEP_RETRIES:
                         step_data["_retry_count"] = retry_count + 1
@@ -504,6 +528,16 @@ class AgentLoop4:
                     else:
                         context.mark_failed(step_id, result["error"])
                         log_error(f"Failed {step_id} after {MAX_STEP_RETRIES} retries: {result['error']}")
+                        await event_bus.publish(
+                            "step_failed",
+                            "AgentLoop4",
+                            {
+                                "step_id": step_id,
+                                "session_id": session_id,
+                                "agent_type": step_data.get("agent", ""),
+                                "error": result["error"],
+                            },
+                        )
 
             # Cost threshold check
             accumulated_cost = sum(
@@ -541,7 +575,12 @@ class AgentLoop4:
 
     async def _execute_step(self, step_id: str, context: ExecutionContextManager) -> dict[str, Any]:
         """Execute a single step with ReAct tool-calling loop."""
-        await event_bus.publish("step_start", "AgentLoop4", {"step_id": step_id})
+        session_id = context.plan_graph.graph.get("session_id", "")
+        await event_bus.publish(
+            "step_start",
+            "AgentLoop4",
+            {"step_id": step_id, "session_id": session_id},
+        )
         step_data = context.get_step_data(step_id)
         agent_type = step_data["agent"]
 
@@ -620,6 +659,17 @@ class AgentLoop4:
                 tool_args = tool_call.get("arguments", {})
 
                 log_step(f"Executing Tool: {tool_name}", payload=tool_args)
+
+                await event_bus.publish(
+                    "tool_call",
+                    "AgentLoop4",
+                    {
+                        "step_id": step_id,
+                        "session_id": session_id,
+                        "tool_name": tool_name,
+                        "args_summary": str(tool_args)[:200],
+                    },
+                )
 
                 try:
                     # Execute tool via ServiceRegistry (returns raw Python object)

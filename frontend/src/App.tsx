@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AppShell } from "@/components/layout"
-import { DashboardPage, DocumentsPage, SettingsPage } from "@/pages"
+import { DashboardPage, DocumentsPage, SettingsPage, ChatPage } from "@/pages"
 import { useAppStore } from "@/store"
 import { isUnauthorizedError, isForbiddenError } from "@/services/api"
 
@@ -38,6 +38,7 @@ function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

@@ -1,6 +1,7 @@
 export * from "./run"
 export * from "./document"
 export * from "./settings"
+export * from "./chat"
 
 // SSE Event types matching backend routers/stream.py
 export interface SSEEvent {
