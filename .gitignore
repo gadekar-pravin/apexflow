@@ -21,6 +21,7 @@ build/
 .env
 .env.local
 .env.*.local
+.env.production
 
 # Docker overrides
 docker-compose.override.yml
