@@ -115,7 +115,7 @@ export function SettingsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Configure ApexFlow system settings
+            Configure Cortex system settings
           </p>
         </div>
         <div className="flex gap-2">

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { ApexFlowLogo } from "@/components/icons/ApexFlowLogo"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,117 @@ function GoogleIcon() {
   )
 }
 
+interface Node {
+  x: number
+  y: number
+  vx: number
+  vy: number
+}
+
+function NeuralBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    let animationId: number
+    const nodeCount = 80
+    const connectionDistance = 180
+    const nodes: Node[] = []
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1
+      canvas!.width = window.innerWidth * dpr
+      canvas!.height = window.innerHeight * dpr
+      canvas!.style.width = `${window.innerWidth}px`
+      canvas!.style.height = `${window.innerHeight}px`
+      ctx!.scale(dpr, dpr)
+    }
+    resize()
+    window.addEventListener("resize", resize)
+
+    // Initialize nodes
+    for (let i = 0; i < nodeCount; i++) {
+      nodes.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+      })
+    }
+
+    function draw() {
+      const w = window.innerWidth
+      const h = window.innerHeight
+      ctx!.clearRect(0, 0, w, h)
+
+      // Update positions
+      for (const node of nodes) {
+        node.x += node.vx
+        node.y += node.vy
+
+        if (node.x < 0 || node.x > w) node.vx *= -1
+        if (node.y < 0 || node.y > h) node.vy *= -1
+      }
+
+      // Draw connections
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x
+          const dy = nodes[i].y - nodes[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+
+          if (dist < connectionDistance) {
+            const opacity = (1 - dist / connectionDistance) * 0.35
+            ctx!.beginPath()
+            ctx!.moveTo(nodes[i].x, nodes[i].y)
+            ctx!.lineTo(nodes[j].x, nodes[j].y)
+            ctx!.strokeStyle = `rgba(99, 102, 241, ${opacity})`
+            ctx!.lineWidth = 0.8
+            ctx!.stroke()
+          }
+        }
+      }
+
+      // Draw nodes with glow
+      for (const node of nodes) {
+        // Outer glow
+        ctx!.beginPath()
+        ctx!.arc(node.x, node.y, 6, 0, Math.PI * 2)
+        ctx!.fillStyle = "rgba(99, 102, 241, 0.08)"
+        ctx!.fill()
+
+        // Core dot
+        ctx!.beginPath()
+        ctx!.arc(node.x, node.y, 2.5, 0, Math.PI * 2)
+        ctx!.fillStyle = "rgba(99, 102, 241, 0.5)"
+        ctx!.fill()
+      }
+
+      animationId = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      cancelAnimationFrame(animationId)
+      window.removeEventListener("resize", resize)
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 z-[1] pointer-events-none"
+      aria-hidden="true"
+    />
+  )
+}
+
 export function SignInScreen() {
   const auth = useAuth()
   const [isSigningIn, setIsSigningIn] = useState(false)
@@ -41,23 +152,25 @@ export function SignInScreen() {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-background bg-gradient-radial">
-      <div className="flex flex-col items-center gap-8 animate-fade-up">
+    <div className="relative flex items-center justify-center h-screen bg-background bg-gradient-radial overflow-hidden">
+      <NeuralBackground />
+
+      <div className="relative z-10 flex flex-col items-center gap-8 animate-fade-up">
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary shadow-glow-sm">
             <ApexFlowLogo className="h-8 w-8 text-primary-foreground" />
           </div>
           <div className="text-center">
-            <h1 className="text-3xl font-semibold tracking-tight">ApexFlow</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Cortex</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Intelligent workflow automation
+              Think deeper. Work smarter.
             </p>
           </div>
         </div>
 
         {/* Sign-in card */}
-        <div className="w-80 rounded-xl border border-border/40 bg-card/50 p-6 shadow-glass-md backdrop-blur-glass">
+        <div className="w-80 rounded-xl border border-border/40 bg-card/80 p-6 shadow-glass-md backdrop-blur-md">
           <Button
             className="w-full gap-3 h-11"
             variant="outline"

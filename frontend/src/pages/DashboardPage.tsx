@@ -56,7 +56,7 @@ export function DashboardPage() {
                 </div>
               </div>
               <h2 className="text-xl font-semibold tracking-tight mb-2">
-                Welcome to ApexFlow
+                Welcome to Cortex
               </h2>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Create a new run or select an existing one from the panel to view
