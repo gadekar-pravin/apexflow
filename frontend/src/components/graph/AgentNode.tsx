@@ -96,7 +96,7 @@ function AgentNodeComponent({ data, selected }: AgentNodeProps) {
         "animate-node-entrance",
         GLASS_CARD,
         data.status === "stale" && "node-stale",
-        selected && "ring-1 ring-foreground/40 ring-offset-1 ring-offset-background"
+        selected && "ring-2 ring-primary/50 ring-offset-2 ring-offset-background"
       )}
       style={nodeIndex != null ? { animationDelay: `${nodeIndex * 80}ms` } : undefined}
     >
