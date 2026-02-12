@@ -200,7 +200,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-2`, `us-
 
 **Docker:** Multi-stage `Dockerfile` — builder stage uses `ghcr.io/astral-sh/uv:python3.12-bookworm-slim` for dependency installation, runtime stage uses `python:3.12-slim-bookworm` with non-root `appuser` (uid 1001). Exposes port 8080. `.dockerignore` excludes tests, docs, scripts, alembic, etc.
 
-**CORS:** `api.py` reads `CORS_ORIGINS` env var as comma-separated origins. Falls back to `localhost:3000,5173,8000` for local dev. Production sets `https://apexflow-console.web.app,https://apexflow-ai.web.app,https://cortex.pravin.work` — required because all API calls (including SSE) go directly to Cloud Run, bypassing Firebase Hosting rewrites. The auth middleware passes through `OPTIONS` requests to let `CORSMiddleware` handle CORS preflight.
+**CORS:** `api.py` reads `CORS_ORIGINS` env var as comma-separated origins. Falls back to `localhost:3000,5173,8000` for local dev. Production sets `https://apexflow-console.web.app,https://apexflow-ai.web.app,https://askcortex.dev` — required because all API calls (including SSE) go directly to Cloud Run, bypassing Firebase Hosting rewrites. The auth middleware passes through `OPTIONS` requests to let `CORSMiddleware` handle CORS preflight.
 
 **Readiness:** Enhanced `/readiness` endpoint with 5-second TTL cache and 2-second `asyncio.timeout()`. Returns `503` with error type name on failure. Cache prevents DB polling storms from orchestrators.
 
@@ -280,10 +280,10 @@ git push origin v2.0.0  # triggers CI
 - **Project:** `apexflow-ai`
 - **VM:** `alloydb-omni-dev` in `us-central1-a`
 - **Cloud Run:** `apexflow-api` in `us-central1` — https://apexflow-api-j56xbd7o2a-uc.a.run.app
-- **Firebase Hosting:** site `apexflow-console` in project `apexflow-ai` — https://cortex.pravin.work (alias: https://apexflow-console.web.app)
+- **Firebase Hosting:** site `apexflow-console` in project `apexflow-ai` — https://askcortex.dev (alias: https://apexflow-console.web.app)
 - **Cloud Scheduler:** `vm-auto-stop` stops the VM nightly at 11 PM IST; `cloudrun-auto-stop` sets Cloud Run ingress to internal-only at the same time
 - **Cloud Build SA:** `cloudbuild-ci@apexflow-ai.iam.gserviceaccount.com`
-- **Firebase Auth:** Identity Platform enabled with Google sign-in provider. `authDomain` is `cortex.pravin.work` (must match hosting domain for `signInWithRedirect` — using `firebaseapp.com` breaks due to third-party cookie blocking). OAuth redirect URIs: `https://cortex.pravin.work/__/auth/handler`, `https://apexflow-console.web.app/__/auth/handler`. Authorized domains: `localhost`, `cortex.pravin.work`, `apexflow-console.web.app`, `apexflow-ai.firebaseapp.com`, `apexflow-ai.web.app`
+- **Firebase Auth:** Identity Platform enabled with Google sign-in provider. `authDomain` is `askcortex.dev` (must match hosting domain for `signInWithRedirect` — using `firebaseapp.com` breaks due to third-party cookie blocking). OAuth redirect URIs: `https://askcortex.dev/__/auth/handler`, `https://apexflow-console.web.app/__/auth/handler`. Authorized domains: `localhost`, `askcortex.dev`, `apexflow-console.web.app`, `apexflow-ai.firebaseapp.com`, `apexflow-ai.web.app`
 
 ## Frontend
 
@@ -353,7 +353,7 @@ firebase deploy --only hosting:console
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Individual DB connection params | `localhost:5432`, user `apexflow` |
 | `DB_POOL_MAX` | Max async connection pool size | `5` |
 | `K_SERVICE` | Auto-set by Cloud Run; triggers production mode (Vertex AI, auth enforced) | — |
-| `CORS_ORIGINS` | Comma-separated allowed origins for CORS. Production: `https://apexflow-console.web.app,https://apexflow-ai.web.app,https://cortex.pravin.work` (needed for SSE which bypasses Firebase Hosting) | `http://localhost:3000,http://localhost:5173,http://localhost:8000` |
+| `CORS_ORIGINS` | Comma-separated allowed origins for CORS. Production: `https://apexflow-console.web.app,https://apexflow-ai.web.app,https://askcortex.dev` (needed for SSE which bypasses Firebase Hosting) | `http://localhost:3000,http://localhost:5173,http://localhost:8000` |
 | `ALLOYDB_HOST` | AlloyDB VM internal IP (Cloud Run mode only) | — |
 | `DATABASE_TEST_URL` | Test database URL for integration tests | `postgresql://apexflow:apexflow@localhost:5432/apexflow` |
 | `VITE_FIREBASE_API_KEY` | Firebase Web SDK API key (frontend) | — |
