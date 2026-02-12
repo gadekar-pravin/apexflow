@@ -19,6 +19,8 @@ function isValidSpec(spec: unknown): spec is VisualizationSpec {
     ["bar", "line", "pie", "area"].includes(s.chart_type as string) &&
     Array.isArray(s.data) &&
     s.data.length > 0 &&
+    typeof (s.data as unknown[])[0] === "object" &&
+    (s.data as unknown[])[0] !== null &&
     typeof s.x_key === "string" &&
     Array.isArray(s.y_keys) &&
     s.y_keys.length > 0

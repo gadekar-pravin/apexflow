@@ -25,6 +25,7 @@ function validateSpec(spec: VisualizationSpec): boolean {
   if (!spec.data || spec.data.length === 0) return false
   if (!spec.x_key || !spec.y_keys || spec.y_keys.length === 0) return false
   const first = spec.data[0]
+  if (typeof first !== "object" || first === null) return false
   if (!(spec.x_key in first)) return false
   if (!spec.y_keys.every((k) => k in first)) return false
   if (spec.chart_type === "pie" && spec.y_keys.length !== 1) return false

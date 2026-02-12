@@ -67,23 +67,27 @@ export function RightPanel({ messages, activeRunId, sessionId }: RightPanelProps
         </TabsList>
       </div>
 
-      {/* Always-mounted panels — CSS visibility toggle keeps ReasoningSidebar
-          subscribed to SSE events even when the Charts tab is active */}
+      {/* ReasoningSidebar is always mounted (CSS hidden) so it stays subscribed
+          to SSE events even when the Charts tab is active */}
       <div className={cn("flex-1 min-h-0", activeTab !== "activity" && "hidden")}>
         <ReasoningSidebar activeRunId={activeRunId} sessionId={sessionId} />
       </div>
 
-      <div className={cn("flex-1 min-h-0", activeTab !== "charts" && "hidden")}>
-        <Suspense
-          fallback={
-            <div className="flex h-full items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          }
-        >
-          <VisualizationCanvas messages={messages} />
-        </Suspense>
-      </div>
+      {/* Charts panel is conditionally rendered (not just hidden) so React.lazy
+          only triggers the ~388KB recharts import when the user opens this tab */}
+      {activeTab === "charts" && (
+        <div className="flex-1 min-h-0">
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <VisualizationCanvas messages={messages} />
+          </Suspense>
+        </div>
+      )}
     </Tabs>
   )
 }
