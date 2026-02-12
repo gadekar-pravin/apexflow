@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -25,6 +26,39 @@ from core.utils import log_error, log_step
 from memory.context import ExecutionContextManager
 
 logger = logging.getLogger(__name__)
+
+# Keys whose values should be masked before broadcasting via SSE
+_SENSITIVE_KEYS = frozenset(
+    {
+        "password",
+        "token",
+        "secret",
+        "api_key",
+        "apikey",
+        "credentials",
+        "access_key",
+        "auth",
+        "authorization",
+        "private_key",
+        "client_secret",
+    }
+)
+
+
+def _mask_sensitive(obj: Any) -> Any:
+    """Recursively mask values whose keys match _SENSITIVE_KEYS."""
+    if isinstance(obj, dict):
+        return {k: "***" if k.lower() in _SENSITIVE_KEYS else _mask_sensitive(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_mask_sensitive(item) for item in obj]
+    return obj
+
+
+def _sanitize_args_summary(tool_args: Any) -> str:
+    """Build a truncated args summary with sensitive values masked."""
+    if not isinstance(tool_args, dict):
+        return str(tool_args)[:200]
+    return str(_mask_sensitive(tool_args))[:200]
 
 
 # ===== EXPONENTIAL BACKOFF FOR TRANSIENT FAILURES =====
@@ -75,6 +109,7 @@ class AgentLoop4:
         self.agent_runner = AgentRunner(service_registry)
         self.context: ExecutionContextManager | None = None
         self._tasks: set[asyncio.Task[Any]] = set()
+        self._user_id: str = "dev-user"
 
     def stop(self) -> None:
         """Request execution stop."""
@@ -106,8 +141,10 @@ class AgentLoop4:
         uploaded_files: list[str],
         session_id: str | None = None,
         memory_context: Any = None,
+        user_id: str = "dev-user",
     ) -> ExecutionContextManager | None:
         """Main execution entry point."""
+        self._user_id = user_id
         # PHASE 0: BOOTSTRAP CONTEXT
         bootstrap_graph: dict[str, Any] = {
             "nodes": [
@@ -483,6 +520,8 @@ class AgentLoop4:
                     log_step(f"{step_id}: Waiting for user input...")
                     continue
 
+                session_id = context.plan_graph.graph.get("session_id", "")
+
                 if isinstance(result, Exception):
                     if retry_count < MAX_STEP_RETRIES:
                         step_data["_retry_count"] = retry_count + 1
@@ -491,9 +530,33 @@ class AgentLoop4:
                     else:
                         context.mark_failed(step_id, str(result))
                         log_error(f"Failed {step_id} after {MAX_STEP_RETRIES} retries: {result!s}")
+                        await event_bus.publish(
+                            "step_failed",
+                            "AgentLoop4",
+                            {
+                                "step_id": step_id,
+                                "session_id": session_id,
+                                "user_id": self._user_id,
+                                "agent_type": step_data.get("agent", ""),
+                                "error": str(result),
+                            },
+                        )
                 elif result["success"]:
                     await context.mark_done(step_id, result["output"])
                     log_step(f"Completed {step_id} ({step_data['agent']})")
+                    node_data = context.plan_graph.nodes[step_id]
+                    await event_bus.publish(
+                        "step_complete",
+                        "AgentLoop4",
+                        {
+                            "step_id": step_id,
+                            "session_id": session_id,
+                            "user_id": self._user_id,
+                            "agent_type": step_data.get("agent", ""),
+                            "execution_time": node_data.get("execution_time", 0),
+                            "cost": node_data.get("cost", 0),
+                        },
+                    )
                 else:
                     if retry_count < MAX_STEP_RETRIES:
                         step_data["_retry_count"] = retry_count + 1
@@ -504,6 +567,17 @@ class AgentLoop4:
                     else:
                         context.mark_failed(step_id, result["error"])
                         log_error(f"Failed {step_id} after {MAX_STEP_RETRIES} retries: {result['error']}")
+                        await event_bus.publish(
+                            "step_failed",
+                            "AgentLoop4",
+                            {
+                                "step_id": step_id,
+                                "session_id": session_id,
+                                "user_id": self._user_id,
+                                "agent_type": step_data.get("agent", ""),
+                                "error": result["error"],
+                            },
+                        )
 
             # Cost threshold check
             accumulated_cost = sum(
@@ -541,7 +615,12 @@ class AgentLoop4:
 
     async def _execute_step(self, step_id: str, context: ExecutionContextManager) -> dict[str, Any]:
         """Execute a single step with ReAct tool-calling loop."""
-        await event_bus.publish("step_start", "AgentLoop4", {"step_id": step_id})
+        session_id = context.plan_graph.graph.get("session_id", "")
+        await event_bus.publish(
+            "step_start",
+            "AgentLoop4",
+            {"step_id": step_id, "session_id": session_id, "user_id": self._user_id},
+        )
         step_data = context.get_step_data(step_id)
         agent_type = step_data["agent"]
 
@@ -621,10 +700,24 @@ class AgentLoop4:
 
                 log_step(f"Executing Tool: {tool_name}", payload=tool_args)
 
+                await event_bus.publish(
+                    "tool_call",
+                    "AgentLoop4",
+                    {
+                        "step_id": step_id,
+                        "session_id": session_id,
+                        "user_id": self._user_id,
+                        "tool_name": tool_name,
+                        "args_summary": _sanitize_args_summary(tool_args),
+                    },
+                )
+
                 try:
                     # Execute tool via ServiceRegistry (returns raw Python object)
                     ctx = ToolContext(
-                        user_id=context.plan_graph.graph.get("session_id", "unknown"),
+                        user_id=self._user_id,
+                        trace_id=f"{step_id}-{turn}",
+                        deadline=time.monotonic() + 120,
                         metadata={"step_id": step_id},
                     )
                     tool_result = await self.service_registry.route_tool_call(tool_name, tool_args, ctx)

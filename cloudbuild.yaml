@@ -158,6 +158,7 @@ steps:
       - '--min-instances=0'
       - '--max-instances=1'
       - '--timeout=300'
+      - '--no-cpu-boost'
     id: 'deploy'
     waitFor: ['docker-push', 'validate-config']
 

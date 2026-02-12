@@ -832,10 +832,10 @@ For dev/demo deployments where managed AlloyDB's ~$200/month minimum is too high
 | Setting | Recommended | Budget Minimum |
 |---------|------------|----------------|
 | **Machine Family** | **N2** (Intel Ice Lake) | E2 (mixed hardware) |
-| **Machine Type** | `n2-standard-4` (4 vCPU, 16 GB) | `e2-standard-2` (2 vCPU, 8 GB) |
+| **Machine Type** | `n2-standard-4` (2 vCPU, 16 GB) | `e2-standard-2` (2 vCPU, 8 GB) |
 | **Boot Disk** | 50 GB SSD (`pd-ssd`) | 50 GB SSD (`pd-ssd`) |
 | **OS** | Ubuntu 22.04 LTS or Debian 11 | Same |
-| **Approx. Cost** | ~$140/month | ~$50/month |
+| **Approx. Cost** | ~$71/month | ~$50/month |
 
 ### Why N2 (not E2) for ScaNN
 
@@ -871,7 +871,7 @@ Vector index building is **write-heavy** — AlloyDB reads raw vectors and write
 # 1. Create the VM
 gcloud compute instances create alloydb-omni-dev \
   --zone=us-central1-a \
-  --machine-type=n2-standard-4 \
+  --machine-type=n2-standard-2 \
   --boot-disk-size=50GB \
   --boot-disk-type=pd-ssd \
   --image-family=ubuntu-2204-lts \

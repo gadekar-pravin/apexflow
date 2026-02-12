@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom"
 import {
   Play,
+  MessageSquare,
   FileText,
   Settings,
 } from "lucide-react"
@@ -14,11 +15,17 @@ import {
 
 const navItems = [
   {
-    title: "Dashboard",
+    title: "Chat",
     href: "/",
+    icon: MessageSquare,
+    description: "Conversational agent interface",
+    end: true,
+  },
+  {
+    title: "Runs",
+    href: "/dashboard",
     icon: Play,
     description: "Agent execution & graph view",
-    end: true,
   },
   {
     title: "Documents",

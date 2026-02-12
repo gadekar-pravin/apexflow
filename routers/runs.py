@@ -67,7 +67,7 @@ async def process_run(
 
         await _session_store.update_status(user_id, run_id, "running")
 
-        context = await loop.run(query, [], {}, [], session_id=run_id)
+        context = await loop.run(query, [], {}, [], session_id=run_id, user_id=user_id)
 
         # Save graph data
         if context and context.plan_graph:
