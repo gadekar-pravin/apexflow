@@ -25,63 +25,53 @@ const agentIcons: Record<string, React.ElementType> = {
   FormatterAgent: FileText,
 }
 
-const agentAccentColors: Record<string, { border: string; iconBg: string }> = {
-  PlannerAgent:    { border: "border-l-indigo-500",  iconBg: "bg-indigo-500/10 border-indigo-500/20" },
-  CoderAgent:      { border: "border-l-emerald-500", iconBg: "bg-emerald-500/10 border-emerald-500/20" },
-  BrowserAgent:    { border: "border-l-cyan-500",    iconBg: "bg-cyan-500/10 border-cyan-500/20" },
-  RetrieverAgent:  { border: "border-l-violet-500",  iconBg: "bg-violet-500/10 border-violet-500/20" },
-  SummarizerAgent: { border: "border-l-amber-500",   iconBg: "bg-amber-500/10 border-amber-500/20" },
-  ThinkerAgent:    { border: "border-l-purple-500",  iconBg: "bg-purple-500/10 border-purple-500/20" },
-  FormatterAgent:  { border: "border-l-orange-500",  iconBg: "bg-orange-500/10 border-orange-500/20" },
+const agentAccentColors: Record<string, { iconBg: string; iconText: string }> = {
+  PlannerAgent:    { iconBg: "bg-indigo-500/10 border-indigo-500/20",  iconText: "text-indigo-600 dark:text-indigo-400" },
+  CoderAgent:      { iconBg: "bg-emerald-500/10 border-emerald-500/20", iconText: "text-emerald-600 dark:text-emerald-400" },
+  BrowserAgent:    { iconBg: "bg-cyan-500/10 border-cyan-500/20",     iconText: "text-cyan-600 dark:text-cyan-400" },
+  RetrieverAgent:  { iconBg: "bg-blue-500/10 border-blue-500/20",     iconText: "text-blue-600 dark:text-blue-400" },
+  SummarizerAgent: { iconBg: "bg-amber-500/10 border-amber-500/20",   iconText: "text-amber-600 dark:text-amber-400" },
+  ThinkerAgent:    { iconBg: "bg-purple-500/10 border-purple-500/20",  iconText: "text-purple-600 dark:text-purple-400" },
+  FormatterAgent:  { iconBg: "bg-orange-500/10 border-orange-500/20",  iconText: "text-orange-600 dark:text-orange-400" },
 }
 
-const defaultAccent = { border: "", iconBg: "bg-muted/40 border-white/10" }
+const defaultAccent = { iconBg: "bg-muted/40 border-white/10", iconText: "text-foreground/70" }
+
+// Glass card style shared across all statuses — matches mockup's glass-panel
+const GLASS_CARD = "bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border-border/40"
 
 const statusConfig: Record<
   string,
   {
     icon: React.ElementType
-    containerClass: string
     iconClass: string
     animate?: boolean
-    glow?: boolean
-    glowClass?: string
   }
 > = {
   pending: {
     icon: Circle,
-    containerClass: "border-border/60 bg-card/70 backdrop-blur-xs",
     iconClass: "text-muted-foreground",
   },
   idle: {
     icon: Circle,
-    containerClass: "border-border/60 bg-card/70 backdrop-blur-xs",
     iconClass: "text-muted-foreground",
   },
   running: {
     icon: Loader2,
-    containerClass: "border-foreground/30 bg-foreground/5 backdrop-blur-xs",
     iconClass: "text-foreground",
     animate: true,
-    glow: true,
   },
   completed: {
     icon: CheckCircle2,
-    containerClass: "border-success/30 bg-success/5 backdrop-blur-xs",
     iconClass: "text-success",
-    glowClass: "node-success-glow",
   },
   failed: {
     icon: XCircle,
-    containerClass: "border-destructive/30 bg-destructive/5 backdrop-blur-xs",
     iconClass: "text-destructive",
-    glowClass: "node-error-glow",
   },
   stale: {
     icon: AlertCircle,
-    containerClass: "border-warning/30 bg-warning/5 backdrop-blur-xs",
     iconClass: "text-warning",
-    glowClass: "node-warning-glow",
   },
 }
 
@@ -100,16 +90,13 @@ function AgentNodeComponent({ data, selected }: AgentNodeProps) {
   return (
     <div
       className={cn(
-        "rounded-md border border-l-[3px] px-3.5 py-2.5 min-w-[160px] max-w-[200px]",
-        "shadow-glass-sm transition-all duration-200",
-        "hover:scale-[1.02] hover:shadow-glass-md",
+        "w-56 rounded-xl border p-4",
+        "shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] transition-all duration-200",
+        "hover:shadow-[0_4px_20px_-2px_rgba(0,0,0,0.1)]",
         "animate-node-entrance",
-        accent.border,
-        config.containerClass,
-        config.glow && "node-active-glow",
-        config.glowClass,
+        GLASS_CARD,
         data.status === "stale" && "node-stale",
-        selected && "ring-1 ring-foreground/40 ring-offset-1 ring-offset-background shadow-glass-md"
+        selected && "ring-1 ring-foreground/40 ring-offset-1 ring-offset-background"
       )}
       style={nodeIndex != null ? { animationDelay: `${nodeIndex * 80}ms` } : undefined}
     >
@@ -120,16 +107,18 @@ function AgentNodeComponent({ data, selected }: AgentNodeProps) {
       />
 
       {/* Header row */}
-      <div className="flex items-center gap-2">
-        <div className={cn("flex h-6 w-6 items-center justify-center rounded backdrop-blur-xs border", accent.iconBg)}>
-          <AgentIcon className="h-3.5 w-3.5 text-foreground/70" strokeWidth={1.75} />
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg border", accent.iconBg)}>
+            <AgentIcon className={cn("h-3.5 w-3.5", accent.iconText)} strokeWidth={1.75} />
+          </div>
+          <span className="font-semibold text-sm tracking-tight">
+            {data.label}
+          </span>
         </div>
-        <span className="font-medium text-sm tracking-tight truncate flex-1">
-          {data.label}
-        </span>
         <StatusIcon
           className={cn(
-            "h-3.5 w-3.5 shrink-0",
+            "h-4.5 w-4.5 shrink-0",
             config.iconClass,
             config.animate && "animate-spin"
           )}
@@ -139,18 +128,16 @@ function AgentNodeComponent({ data, selected }: AgentNodeProps) {
 
       {/* Description */}
       {data.description && (
-        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-tight">
           {data.description}
         </p>
       )}
 
       {/* Execution time */}
       {data.execution_time > 0 && (
-        <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/40">
-          <span className="text-2xs text-muted-foreground font-mono">
-            {(data.execution_time / 1000).toFixed(2)}s
-          </span>
-        </div>
+        <p className="text-[10px] text-muted-foreground font-mono mt-3">
+          {(data.execution_time / 1000).toFixed(2)}s
+        </p>
       )}
 
       <Handle

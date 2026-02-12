@@ -2,7 +2,7 @@ import { RunCreator, RunList } from "@/components/runs"
 import { GraphView, NodeDetailPanel } from "@/components/graph"
 import { ResizablePanel } from "@/components/ui/resizable-panel"
 import { useAppStore } from "@/store"
-import { Hexagon } from "lucide-react"
+import { Hexagon, Plus } from "lucide-react"
 
 export function DashboardPage() {
   const { selectedRunId, selectedNodeId } = useAppStore()
@@ -18,7 +18,22 @@ export function DashboardPage() {
         className="border-r border-border/40 flex flex-col backdrop-blur-glass bg-sidebar/40"
       >
         <div className="px-4 pt-5 pb-4">
-          <h2 className="text-sm font-medium text-foreground mb-3">Agent Runs</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-foreground">Agent Runs</h2>
+            <button
+              className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              aria-label="New run"
+              onClick={() => {
+                // Scroll to / focus the textarea
+                const textarea = document.querySelector<HTMLTextAreaElement>(
+                  'textarea[placeholder*="Describe"]'
+                )
+                textarea?.focus()
+              }}
+            >
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          </div>
           <RunCreator />
         </div>
         <div className="mx-4 divider-fade" />

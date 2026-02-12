@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Send, Loader2 } from "lucide-react"
+import { Play, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { runsService } from "@/services"
 import { useAuth } from "@/contexts/AuthContext"
@@ -55,12 +55,12 @@ export function RunCreator() {
             type="submit"
             disabled={!canCreateRun || !query.trim() || createRun.isPending}
             size="sm"
-            className="rounded-xl"
+            className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {createRun.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <Play className="h-3.5 w-3.5 fill-current" strokeWidth={1.75} />
             )}
             <span className="ml-1.5">Run</span>
           </Button>
