@@ -144,7 +144,10 @@ export function SignInScreen() {
                   className="italic text-3xl text-slate-500 dark:text-slate-400 font-light tracking-wide"
                   style={{ fontFamily: "\"Playfair Display\", serif" }}
                 >
-                  Enterprise Intelligence
+                  Enterprise Intelligence{" "}
+                  <span className="not-italic text-lg tracking-[0.2em] uppercase font-normal text-slate-400 dark:text-slate-500" style={{ fontFamily: "Inter, sans-serif" }}>
+                    Think deeper. Work smarter.
+                  </span>
                 </p>
               </div>
             </div>
@@ -170,15 +173,12 @@ export function SignInScreen() {
 
               <div className="relative pt-6">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
-                <div className="flex flex-col items-center gap-2 mt-6">
-                  <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                    Portfolio Project
-                  </span>
+                <div className="flex flex-col items-center mt-6">
                   <p
                     className="text-sm md:text-base font-bold tracking-[0.15em] text-slate-800 dark:text-slate-200 uppercase"
                     style={{ fontFamily: "Inter, sans-serif" }}
                   >
-                    DESIGNED &amp; DEVELOPED BY [YOUR NAME]
+                    DESIGNED &amp; DEVELOPED BY Pravin Gadekar
                   </p>
                 </div>
               </div>
