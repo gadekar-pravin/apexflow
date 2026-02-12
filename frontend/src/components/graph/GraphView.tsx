@@ -155,7 +155,7 @@ export function GraphView({ runId }: GraphViewProps) {
           variant={BackgroundVariant.Dots}
           gap={20}
           size={1.5}
-          color="hsl(var(--border) / 0.6)"
+          color="hsl(var(--foreground) / 0.25)"
         />
       </ReactFlow>
     </div>
