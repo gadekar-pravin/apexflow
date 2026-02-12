@@ -60,7 +60,7 @@ export function WelcomeScreen({ onSend, inputValue, onInputChange, onInputSend, 
                 className="group flex items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left transition-all hover:border-foreground/20 hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none"
               >
                 <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-foreground/[0.06] text-muted-foreground transition-all group-hover:bg-foreground/10 group-hover:text-foreground group-hover:scale-110">
-                  <item.icon className="h-4.5 w-4.5" />
+                  <item.icon className="h-[18px] w-[18px]" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground">{item.title}</p>
