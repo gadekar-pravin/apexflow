@@ -648,7 +648,7 @@ class AgentLoop4:
                 **({"iteration_context": iteration_context} if iteration_context else {}),
             }
 
-            if agent_type == "FormatterAgent":
+            if agent_type in ("FormatterAgent", "ChartAgent"):
                 payload["all_globals_schema"] = context.plan_graph.graph["globals_schema"].copy()
 
             return payload

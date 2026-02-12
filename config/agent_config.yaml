@@ -47,6 +47,11 @@ agents:
     model: gemini
     services: []
     description: Formats final reports to high standards.
+  ChartAgent:
+    prompt_file: prompts/chart_agent.md
+    model: gemini
+    services: []
+    description: Generates interactive chart visualizations from data.
   ClarificationAgent:
     prompt_file: prompts/clarification.md
     model: gemini

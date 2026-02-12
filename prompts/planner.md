@@ -93,7 +93,7 @@ Each task (`node`) must include:
 {
   "id": "T003",
   "description": "...",
-  "agent": "RetrieverAgent" | "ThinkerAgent" | "DistillerAgent" | "CoderAgent" | "FormatterAgent" | "QAAgent" | "ClarificationAgent" | "PlannerAgent",
+  "agent": "RetrieverAgent" | "ThinkerAgent" | "DistillerAgent" | "CoderAgent" | "FormatterAgent" | "ChartAgent" | "QAAgent" | "ClarificationAgent" | "PlannerAgent",
   "agent_prompt": "...",
   "reads": [agent_output_T002, agent_result_T001],
   "writes": [agent_output_T003]
@@ -204,6 +204,9 @@ Simulate layered planning like a real team:
     - **Day-by-day itinerary tables**
     - **Callouts or warnings**
   - Never discard useful context (e.g., activity plans, budget analysis, recommendations, code insights). Treat formatting as the *final step in delivery* — not just summarization.
+* **ChartAgent**: Generates interactive chart visualizations (bar, line, pie, area) from numerical data in the session. Runs **in parallel** with FormatterAgent — both depend on the same upstream nodes, with no edge between them.
+  - **PLANNING RULE**: For queries involving numbers, rankings, comparisons, or time-series data, include a ChartAgent node alongside the FormatterAgent node. Both should read the same upstream outputs. Do **not** create an edge between FormatterAgent and ChartAgent — they run concurrently.
+  - For purely textual queries (e.g., "What is the capital of France?"), omit ChartAgent entirely.
 * **QAAgent**: Reviews and critiques final or interim products.
   - If the result is acceptable, passes control to the next logical agent (e.g., FormatterAgent, SchedulerAgent).
   - If the result is flawed, QAAgent does **not loop back** to CoderAgent. Instead, it must:

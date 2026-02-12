@@ -145,15 +145,15 @@ export function ChatPage() {
               if (run.status === "completed" && run.graph?.nodes) {
                 const completedNodes = run.graph.nodes
                   .filter((n) => n.data.status === "completed" && n.data.output)
-                  .sort((a, b) => {
-                    if (a.data.type === "FormatterAgent") return 1
-                    if (b.data.type === "FormatterAgent") return -1
-                    return 0
-                  })
-                const lastNode = completedNodes[completedNodes.length - 1]
-                if (lastNode?.data.output) {
+
+                // Extract text from FormatterAgent (or last completed node as fallback)
+                const formatterNode = completedNodes.find(
+                  (n) => n.data.type === "FormatterAgent"
+                )
+                const textSource = formatterNode || completedNodes[completedNodes.length - 1]
+                if (textSource?.data.output) {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  let raw: any = lastNode.data.output
+                  let raw: any = textSource.data.output
                   if (typeof raw === "string") {
                     try { raw = JSON.parse(raw) } catch { /* keep as string */ }
                   }
@@ -161,8 +161,22 @@ export function ChatPage() {
                     outputText = raw
                   } else if (raw && typeof raw === "object") {
                     outputText = raw.markdown_report || raw.result || raw.output || JSON.stringify(raw, null, 2)
-                    // Extract and validate visualizations
-                    visualizations = sanitizeVisualizations(raw.visualizations)
+                  }
+                }
+
+                // Extract charts from ChartAgent; fall back to FormatterAgent for old runs
+                const chartNode = completedNodes.find(
+                  (n) => n.data.type === "ChartAgent"
+                )
+                const vizSource = chartNode || formatterNode
+                if (vizSource?.data.output) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  let vizRaw: any = vizSource.data.output
+                  if (typeof vizRaw === "string") {
+                    try { vizRaw = JSON.parse(vizRaw) } catch { /* keep as string */ }
+                  }
+                  if (vizRaw && typeof vizRaw === "object") {
+                    visualizations = sanitizeVisualizations(vizRaw.visualizations)
                   }
                 }
               }
