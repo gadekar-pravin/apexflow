@@ -157,6 +157,9 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
       <Tabs defaultValue="output" className="flex-1 flex flex-col min-h-0">
         <TabsList className="mx-4 mt-3 h-8 p-0.5 bg-muted/30 backdrop-blur-xs">
           <TabsTrigger value="output" className="text-xs h-7">Output</TabsTrigger>
+          {nodeData.inputs && Object.keys(nodeData.inputs).length > 0 && (
+            <TabsTrigger value="input" className="text-xs h-7">Input</TabsTrigger>
+          )}
           <TabsTrigger value="prompt" className="text-xs h-7">Prompt</TabsTrigger>
           {nodeData.iterations && nodeData.iterations.length > 0 && (
             <TabsTrigger value="iterations" className="text-xs h-7">
@@ -175,6 +178,24 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
               onCopy={handleCopy}
             />
           </TabsContent>
+
+          {nodeData.inputs && Object.keys(nodeData.inputs).length > 0 && (
+            <TabsContent value="input" className="p-4 m-0">
+              <div className="space-y-3">
+                {Object.entries(nodeData.inputs).map(([key, value]) => (
+                  <div key={key} className="border border-border/40 rounded-md p-3 bg-muted/15 backdrop-blur-xs">
+                    <p className="font-medium text-xs text-muted-foreground mb-2">{key}</p>
+                    <CopyBlock
+                      text={typeof value === "object" ? JSON.stringify(value, null, 2) : String(value ?? "")}
+                      id={`input-${key}`}
+                      copiedId={copiedId}
+                      onCopy={handleCopy}
+                    />
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="prompt" className="p-4 m-0">
             <div className="space-y-4">

@@ -44,6 +44,7 @@ export interface NodeData {
   prompt: string
   reads: string[]
   writes: string[]
+  inputs?: Record<string, unknown>
   cost: number
   execution_time: number
   output: string

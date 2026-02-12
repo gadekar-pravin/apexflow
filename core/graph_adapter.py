@@ -50,6 +50,9 @@ def nx_to_reactflow(graph: nx.DiGraph) -> dict[str, list[dict[str, Any]]]:
         for node_id, p in spring_pos.items():
             pos[node_id] = {"x": p[0] * 500, "y": p[1] * 500}
 
+    # Resolve input values from globals_schema for each node
+    globals_schema: dict[str, Any] = graph.graph.get("globals_schema", {})
+
     for node_id, data in graph.nodes(data=True):
         status = data.get("status", "pending")
         agent_type = data.get("agent", data.get("agent_type", "Generic"))
@@ -57,6 +60,13 @@ def nx_to_reactflow(graph: nx.DiGraph) -> dict[str, list[dict[str, Any]]]:
             agent_type = "PlannerAgent"
 
         p = pos.get(node_id, {"x": 0, "y": 0})
+
+        # Resolve actual input values from globals_schema using reads keys
+        reads = data.get("reads", [])
+        inputs: dict[str, Any] = {}
+        for key in reads:
+            if key in globals_schema:
+                inputs[key] = globals_schema[key]
 
         nodes.append(
             {
@@ -69,8 +79,9 @@ def nx_to_reactflow(graph: nx.DiGraph) -> dict[str, list[dict[str, Any]]]:
                     "status": status,
                     "description": data.get("description", ""),
                     "prompt": data.get("agent_prompt") or data.get("prompt") or data.get("description") or "",
-                    "reads": data.get("reads", []),
+                    "reads": reads,
                     "writes": data.get("writes", []),
+                    "inputs": inputs,
                     "cost": data.get("cost", 0.0),
                     "execution_time": data.get("execution_time", 0.0),
                     "output": _extract_output(data.get("output")),
