@@ -26,6 +26,36 @@ from memory.context import ExecutionContextManager
 
 logger = logging.getLogger(__name__)
 
+# Keys whose values should be masked before broadcasting via SSE
+_SENSITIVE_KEYS = frozenset(
+    {
+        "password",
+        "token",
+        "secret",
+        "api_key",
+        "apikey",
+        "credentials",
+        "access_key",
+        "auth",
+        "authorization",
+        "private_key",
+        "client_secret",
+    }
+)
+
+
+def _sanitize_args_summary(tool_args: Any) -> str:
+    """Build a truncated args summary with sensitive values masked."""
+    if not isinstance(tool_args, dict):
+        return str(tool_args)[:200]
+    sanitized = {}
+    for key, value in tool_args.items():
+        if key.lower() in _SENSITIVE_KEYS:
+            sanitized[key] = "***"
+        else:
+            sanitized[key] = value
+    return str(sanitized)[:200]
+
 
 # ===== EXPONENTIAL BACKOFF FOR TRANSIENT FAILURES =====
 
@@ -75,6 +105,7 @@ class AgentLoop4:
         self.agent_runner = AgentRunner(service_registry)
         self.context: ExecutionContextManager | None = None
         self._tasks: set[asyncio.Task[Any]] = set()
+        self._user_id: str = "dev-user"
 
     def stop(self) -> None:
         """Request execution stop."""
@@ -106,8 +137,10 @@ class AgentLoop4:
         uploaded_files: list[str],
         session_id: str | None = None,
         memory_context: Any = None,
+        user_id: str = "dev-user",
     ) -> ExecutionContextManager | None:
         """Main execution entry point."""
+        self._user_id = user_id
         # PHASE 0: BOOTSTRAP CONTEXT
         bootstrap_graph: dict[str, Any] = {
             "nodes": [
@@ -499,6 +532,7 @@ class AgentLoop4:
                             {
                                 "step_id": step_id,
                                 "session_id": session_id,
+                                "user_id": self._user_id,
                                 "agent_type": step_data.get("agent", ""),
                                 "error": str(result),
                             },
@@ -513,6 +547,7 @@ class AgentLoop4:
                         {
                             "step_id": step_id,
                             "session_id": session_id,
+                            "user_id": self._user_id,
                             "agent_type": step_data.get("agent", ""),
                             "execution_time": node_data.get("execution_time", 0),
                             "cost": node_data.get("cost", 0),
@@ -534,6 +569,7 @@ class AgentLoop4:
                             {
                                 "step_id": step_id,
                                 "session_id": session_id,
+                                "user_id": self._user_id,
                                 "agent_type": step_data.get("agent", ""),
                                 "error": result["error"],
                             },
@@ -579,7 +615,7 @@ class AgentLoop4:
         await event_bus.publish(
             "step_start",
             "AgentLoop4",
-            {"step_id": step_id, "session_id": session_id},
+            {"step_id": step_id, "session_id": session_id, "user_id": self._user_id},
         )
         step_data = context.get_step_data(step_id)
         agent_type = step_data["agent"]
@@ -666,8 +702,9 @@ class AgentLoop4:
                     {
                         "step_id": step_id,
                         "session_id": session_id,
+                        "user_id": self._user_id,
                         "tool_name": tool_name,
-                        "args_summary": str(tool_args)[:200],
+                        "args_summary": _sanitize_args_summary(tool_args),
                     },
                 )
 

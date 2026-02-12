@@ -12,11 +12,9 @@ interface ReasoningSidebarProps {
 export function ReasoningSidebar({ activeRunId }: ReasoningSidebarProps) {
   const [events, setEvents] = useState<ReasoningEvent[]>([])
 
-  // Clear events when run changes
+  // Clear events when run changes (including when set to null)
   useEffect(() => {
-    if (activeRunId) {
-      setEvents([])
-    }
+    setEvents([])
   }, [activeRunId])
 
   const handleSSEEvent = useCallback(
@@ -26,9 +24,9 @@ export function ReasoningSidebar({ activeRunId }: ReasoningSidebarProps) {
       const { type, data } = event
       if (!["step_start", "step_complete", "step_failed", "tool_call"].includes(type)) return
 
-      // Filter by session_id matching the active run
+      // Filter by session_id — require match, reject events without session_id
       const sessionId = data.session_id as string | undefined
-      if (sessionId && sessionId !== activeRunId) return
+      if (!sessionId || sessionId !== activeRunId) return
 
       const reasoningEvent: ReasoningEvent = {
         type: type as ReasoningEvent["type"],

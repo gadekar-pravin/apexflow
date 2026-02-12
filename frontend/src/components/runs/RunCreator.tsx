@@ -47,6 +47,7 @@ export function RunCreator() {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={3}
+          disabled={!canCreateRun || createRun.isPending}
           className="w-full resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none text-sm text-foreground placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <div className="flex items-center justify-between">

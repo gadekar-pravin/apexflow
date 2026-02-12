@@ -56,7 +56,8 @@ export function WelcomeScreen({ onSend, inputValue, onInputChange, onInputSend, 
               <button
                 key={item.title}
                 onClick={() => onSend(item.query)}
-                className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
+                disabled={disabled}
+                className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none"
               >
                 <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
                   <item.icon className="h-4 w-4" />

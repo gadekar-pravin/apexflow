@@ -29,7 +29,7 @@ interface MessagesResponse {
 
 export const chatService = {
   async listSessions(): Promise<AgentChatSession[]> {
-    const res = await fetchAPI<SessionsResponse>("/api/chat/sessions?target_type=chat")
+    const res = await fetchAPI<SessionsResponse>("/api/chat/sessions?target_type=chat&target_id=chat")
     return res.sessions
   },
 
