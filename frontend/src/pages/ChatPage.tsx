@@ -27,7 +27,7 @@ export function ChatPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [showReasoning, setShowReasoning] = useState(false)
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const activePollsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
   const currentSessionIdRef = useRef<string | null>(null)
   const unmountedRef = useRef(false)
   const skipNextLoadRef = useRef(false)
@@ -68,52 +68,39 @@ export function ChatPage() {
     return () => { cancelled = true }
   }, [currentSessionId, canFetchData])
 
-  const clearPolling = useCallback(() => {
-    if (pollIntervalRef.current) {
-      clearTimeout(pollIntervalRef.current)
-      pollIntervalRef.current = null
-    }
-  }, [])
-
-  // Cleanup polling on unmount
+  // Cleanup all active polls on unmount
   useEffect(() => {
     return () => {
       unmountedRef.current = true
-      clearPolling()
+      activePollsRef.current.forEach((id) => clearTimeout(id))
+      activePollsRef.current.clear()
     }
-  }, [clearPolling])
+  }, [])
 
+  // Each call creates an independent poll loop so overlapping runs
+  // across sessions can all persist their results without cancelling
+  // each other.  Timeouts are tracked in activePollsRef for cleanup.
   const pollRunStatus = useCallback(
     (runId: string, sessionId: string) => {
-      clearPolling()
-
       let errorCount = 0
 
-      // Use setTimeout-based loop instead of setInterval to prevent
-      // overlapping ticks when a poll takes longer than the interval.
       const scheduleTick = () => {
-        pollIntervalRef.current = setTimeout(async () => {
-          // Guard: stop if component has unmounted
-          if (unmountedRef.current) return
+        const id = setTimeout(async () => {
+          activePollsRef.current.delete(id)
 
-          // Continue polling even if the user switched sessions —
-          // the run must complete and persist its assistant message.
+          if (unmountedRef.current) return
 
           try {
             const run = await runsService.get(runId)
             errorCount = 0
 
             if (run.status === "completed" || run.status === "failed") {
-              pollIntervalRef.current = null
-
               // Extract output from run graph
               let outputText = ""
               if (run.status === "completed" && run.graph?.nodes) {
-                // Find the last completed node's output
                 const completedNodes = run.graph.nodes
                   .filter((n) => n.data.status === "completed" && n.data.output)
                   .sort((a, b) => {
-                    // Prefer FormatterAgent if available, otherwise take the last one
                     if (a.data.type === "FormatterAgent") return 1
                     if (b.data.type === "FormatterAgent") return -1
                     return 0
@@ -122,14 +109,12 @@ export function ChatPage() {
                 if (lastNode?.data.output) {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   let raw: any = lastNode.data.output
-                  // Parse stringified JSON if needed
                   if (typeof raw === "string") {
                     try { raw = JSON.parse(raw) } catch { /* keep as string */ }
                   }
                   if (typeof raw === "string") {
                     outputText = raw
                   } else if (raw && typeof raw === "object") {
-                    // Extract markdown_report from agent output JSON
                     outputText = raw.markdown_report || raw.result || raw.output || JSON.stringify(raw, null, 2)
                   }
                 }
@@ -161,7 +146,6 @@ export function ChatPage() {
                   setMessages((prev) => [...prev, assistantMsg])
                 }
               } catch {
-                // Still show it locally even if DB save fails
                 if (onOriginalSession) {
                   const localMsg: AgentChatMessage = {
                     id: `local-${Date.now()}`,
@@ -184,7 +168,6 @@ export function ChatPage() {
           } catch {
             errorCount++
             if (errorCount >= MAX_POLL_ERRORS) {
-              pollIntervalRef.current = null
               if (currentSessionIdRef.current === sessionId) {
                 setIsRunning(false)
                 setActiveRunId(null)
@@ -193,14 +176,14 @@ export function ChatPage() {
             }
           }
 
-          // Schedule next tick only after this one completes
           if (!unmountedRef.current) scheduleTick()
         }, 2000)
+        activePollsRef.current.add(id)
       }
 
       scheduleTick()
     },
-    [clearPolling]
+    []
   )
 
   const sendMessage = useCallback(
