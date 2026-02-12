@@ -207,8 +207,20 @@ export function ChatPage() {
           queryClient.invalidateQueries({ queryKey: ["chatSessions"] })
         }
 
-        // 2. Store + display user message
-        const userMsg = await chatService.addMessage(sessionId, "user", trimmed)
+        // 2. Store + display user message (with local fallback)
+        let userMsg: AgentChatMessage
+        try {
+          userMsg = await chatService.addMessage(sessionId, "user", trimmed)
+        } catch {
+          userMsg = {
+            id: `local-${Date.now()}`,
+            session_id: sessionId,
+            role: "user",
+            content: trimmed,
+            metadata: null,
+            created_at: new Date().toISOString(),
+          }
+        }
         setMessages((prev) => [...prev, userMsg])
         setInputValue("")
 

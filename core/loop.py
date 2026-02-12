@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -44,17 +45,20 @@ _SENSITIVE_KEYS = frozenset(
 )
 
 
+def _mask_sensitive(obj: Any) -> Any:
+    """Recursively mask values whose keys match _SENSITIVE_KEYS."""
+    if isinstance(obj, dict):
+        return {k: "***" if k.lower() in _SENSITIVE_KEYS else _mask_sensitive(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_mask_sensitive(item) for item in obj]
+    return obj
+
+
 def _sanitize_args_summary(tool_args: Any) -> str:
     """Build a truncated args summary with sensitive values masked."""
     if not isinstance(tool_args, dict):
         return str(tool_args)[:200]
-    sanitized = {}
-    for key, value in tool_args.items():
-        if key.lower() in _SENSITIVE_KEYS:
-            sanitized[key] = "***"
-        else:
-            sanitized[key] = value
-    return str(sanitized)[:200]
+    return str(_mask_sensitive(tool_args))[:200]
 
 
 # ===== EXPONENTIAL BACKOFF FOR TRANSIENT FAILURES =====
@@ -713,6 +717,7 @@ class AgentLoop4:
                     ctx = ToolContext(
                         user_id=self._user_id,
                         trace_id=f"{step_id}-{turn}",
+                        deadline=time.monotonic() + 120,
                         metadata={"step_id": step_id},
                     )
                     tool_result = await self.service_registry.route_tool_call(tool_name, tool_args, ctx)
