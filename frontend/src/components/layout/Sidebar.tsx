@@ -22,7 +22,7 @@ const navItems = [
     end: true,
   },
   {
-    title: "Dashboard",
+    title: "Runs",
     href: "/dashboard",
     icon: Play,
     description: "Agent execution & graph view",
