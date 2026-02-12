@@ -28,6 +28,7 @@ export function ChatPage() {
   const [showReasoning, setShowReasoning] = useState(false)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const currentSessionIdRef = useRef<string | null>(null)
+  const unmountedRef = useRef(false)
 
   // Keep ref in sync with state for use in async callbacks
   useEffect(() => {
@@ -67,7 +68,10 @@ export function ChatPage() {
 
   // Cleanup polling on unmount
   useEffect(() => {
-    return () => clearPolling()
+    return () => {
+      unmountedRef.current = true
+      clearPolling()
+    }
   }, [clearPolling])
 
   const pollRunStatus = useCallback(
@@ -80,6 +84,9 @@ export function ChatPage() {
       // overlapping ticks when a poll takes longer than the interval.
       const scheduleTick = () => {
         pollIntervalRef.current = setTimeout(async () => {
+          // Guard: stop if component has unmounted
+          if (unmountedRef.current) return
+
           // Guard: if user switched sessions, stop polling for this run
           if (currentSessionIdRef.current !== sessionId) {
             pollIntervalRef.current = null
@@ -175,7 +182,7 @@ export function ChatPage() {
           }
 
           // Schedule next tick only after this one completes
-          scheduleTick()
+          if (!unmountedRef.current) scheduleTick()
         }, 2000)
       }
 

@@ -52,7 +52,7 @@ export function RunCreator() {
         />
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground/70">
-            ⌘+Enter to submit
+            {navigator.platform?.startsWith("Mac") ? "⌘" : "Ctrl"}+Enter to submit
           </span>
           <Button
             type="submit"

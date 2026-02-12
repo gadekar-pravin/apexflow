@@ -711,7 +711,8 @@ class AgentLoop4:
                 try:
                     # Execute tool via ServiceRegistry (returns raw Python object)
                     ctx = ToolContext(
-                        user_id=context.plan_graph.graph.get("session_id", "unknown"),
+                        user_id=self._user_id,
+                        trace_id=f"{step_id}-{turn}",
                         metadata={"step_id": step_id},
                     )
                     tool_result = await self.service_registry.route_tool_call(tool_name, tool_args, ctx)

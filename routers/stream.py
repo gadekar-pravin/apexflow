@@ -5,7 +5,7 @@ import json
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from sse_starlette.sse import EventSourceResponse
 
 from core.auth import get_user_id
@@ -20,7 +20,6 @@ PING_INTERVAL = 15
 
 @router.get("/events")
 async def event_stream(
-    request: Request,
     user_id: str = Depends(get_user_id),
 ) -> EventSourceResponse:
     """Server-Sent Events (SSE) endpoint.
