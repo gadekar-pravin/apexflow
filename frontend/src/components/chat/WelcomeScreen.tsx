@@ -7,24 +7,32 @@ const suggestions = [
     title: "Search my documents",
     description: "Find insights across your indexed files and databases.",
     query: "Search my documents for key findings",
+    iconBg: "bg-blue-500/10",
+    iconColor: "text-blue-500 dark:text-blue-400",
   },
   {
     icon: BarChart3,
     title: "Analyze data",
     description: "Run analysis on uploaded datasets and spot trends.",
     query: "Analyze the data and summarize trends",
+    iconBg: "bg-purple-500/10",
+    iconColor: "text-purple-500 dark:text-purple-400",
   },
   {
     icon: FileText,
     title: "Summarize a document",
     description: "Get a concise summary of any file in seconds.",
     query: "Summarize my most recent document",
+    iconBg: "bg-indigo-500/10",
+    iconColor: "text-indigo-500 dark:text-indigo-400",
   },
   {
     icon: Lightbulb,
     title: "Brainstorm ideas",
     description: "Generate creative ideas for a project or topic.",
     query: "Help me brainstorm ideas for my project",
+    iconBg: "bg-amber-500/10",
+    iconColor: "text-amber-500 dark:text-amber-400",
   },
 ]
 
@@ -59,7 +67,7 @@ export function WelcomeScreen({ onSend, inputValue, onInputChange, onInputSend, 
                 disabled={disabled}
                 className="group flex items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left transition-all hover:border-foreground/20 hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none"
               >
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-foreground/[0.06] text-muted-foreground transition-all group-hover:bg-foreground/10 group-hover:text-foreground group-hover:scale-110">
+                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.iconBg} ${item.iconColor} transition-transform group-hover:scale-110`}>
                   <item.icon className="h-[18px] w-[18px]" />
                 </div>
                 <div className="min-w-0">
