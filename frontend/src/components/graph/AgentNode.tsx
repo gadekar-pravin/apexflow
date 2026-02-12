@@ -118,7 +118,7 @@ function AgentNodeComponent({ data, selected }: AgentNodeProps) {
         </div>
         <StatusIcon
           className={cn(
-            "h-4.5 w-4.5 shrink-0",
+            "size-[18px] shrink-0",
             config.iconClass,
             config.animate && "animate-spin"
           )}
