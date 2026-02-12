@@ -37,14 +37,14 @@ export function ChatSessionList({
           {sessions.map((session) => (
             <div
               key={session.id}
-              className={`group flex items-center gap-2 rounded-md px-3 py-2 text-sm cursor-pointer transition-colors ${
+              className={`group flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm cursor-pointer transition-colors ${
                 currentSessionId === session.id
-                  ? "bg-primary/10 text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  ? "bg-foreground/[0.06] text-foreground border border-foreground/10"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent"
               }`}
               onClick={() => onSelect(session.id)}
             >
-              <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+              <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${currentSessionId === session.id ? "fill-foreground/15" : ""}`} />
               <span className="flex-1 truncate">{session.title}</span>
               <button
                 onClick={(e) => {

@@ -29,7 +29,7 @@ const statusConfig: Record<
 > = {
   pending: { icon: Circle, color: "text-muted-foreground", badge: "muted" },
   idle: { icon: Circle, color: "text-muted-foreground", badge: "muted" },
-  running: { icon: Loader2, color: "text-primary", badge: "default", animate: true },
+  running: { icon: Loader2, color: "text-foreground", badge: "default", animate: true },
   completed: { icon: CheckCircle2, color: "text-success", badge: "success" },
   failed: { icon: XCircle, color: "text-destructive", badge: "destructive" },
   stale: { icon: AlertCircle, color: "text-warning", badge: "warning" },

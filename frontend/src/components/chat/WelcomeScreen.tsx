@@ -5,26 +5,34 @@ const suggestions = [
   {
     icon: Search,
     title: "Search my documents",
-    description: "Find insights across your indexed files",
+    description: "Find insights across your indexed files and databases.",
     query: "Search my documents for key findings",
+    iconBg: "bg-blue-500/10 dark:bg-cyan-400/10",
+    iconColor: "text-blue-500 dark:text-cyan-300",
   },
   {
     icon: BarChart3,
     title: "Analyze data",
-    description: "Run analysis on uploaded datasets",
+    description: "Run analysis on uploaded datasets and spot trends.",
     query: "Analyze the data and summarize trends",
+    iconBg: "bg-purple-500/10 dark:bg-violet-400/10",
+    iconColor: "text-purple-500 dark:text-violet-300",
   },
   {
     icon: FileText,
     title: "Summarize a document",
-    description: "Get a concise summary of any file",
+    description: "Get a concise summary of any file in seconds.",
     query: "Summarize my most recent document",
+    iconBg: "bg-indigo-500/10 dark:bg-emerald-400/10",
+    iconColor: "text-indigo-500 dark:text-emerald-300",
   },
   {
     icon: Lightbulb,
     title: "Brainstorm ideas",
-    description: "Generate ideas for a project or topic",
+    description: "Generate creative ideas for a project or topic.",
     query: "Help me brainstorm ideas for my project",
+    iconBg: "bg-amber-500/10 dark:bg-lime-400/10",
+    iconColor: "text-amber-500 dark:text-lime-300",
   },
 ]
 
@@ -41,30 +49,30 @@ export function WelcomeScreen({ onSend, inputValue, onInputChange, onInputSend, 
     <div className="flex-1 flex flex-col overflow-y-auto px-4 pt-4 pb-4">
       {/* Centered content block */}
       <div className="flex-1 flex items-center justify-center">
-        <div className="max-w-4xl w-full mx-auto space-y-6 px-4">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-semibold text-foreground">
+        <div className="max-w-4xl w-full mx-auto space-y-8 px-4">
+          <div className="text-center space-y-3">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground dark:bg-clip-text dark:text-transparent dark:bg-gradient-to-r dark:from-foreground dark:via-foreground/80 dark:to-muted-foreground">
               What can I help you with?
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-lg text-muted-foreground font-light">
               Ask a question or pick a suggestion below to get started.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {suggestions.map((item) => (
               <button
                 key={item.title}
                 onClick={() => onSend(item.query)}
                 disabled={disabled}
-                className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none"
+                className="group flex items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left transition-all hover:border-foreground/20 hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none"
               >
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
-                  <item.icon className="h-4 w-4" />
+                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.iconBg} ${item.iconColor} transition-transform group-hover:scale-110`}>
+                  <item.icon className="h-[18px] w-[18px]" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground">{item.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                     {item.description}
                   </p>
                 </div>
@@ -73,7 +81,7 @@ export function WelcomeScreen({ onSend, inputValue, onInputChange, onInputSend, 
           </div>
 
           {/* Inline input below suggestions */}
-          <div className="space-y-3">
+          <div className="space-y-3 mb-10">
             <p className="text-center text-sm text-muted-foreground">
               Or type your own question
             </p>

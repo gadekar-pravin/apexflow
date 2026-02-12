@@ -61,7 +61,7 @@ export function RightPanel({ messages, activeRunId, sessionId }: RightPanelProps
             <BarChart3 className="h-3.5 w-3.5" />
             Charts
             {hasCharts && (
-              <span className="ml-1 h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="ml-1 h-1.5 w-1.5 rounded-full bg-foreground" />
             )}
           </TabsTrigger>
         </TabsList>

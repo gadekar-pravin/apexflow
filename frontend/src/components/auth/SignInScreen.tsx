@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { Lock, Loader2, Server, Shield, FileKey } from "lucide-react"
 import { ApexFlowLogo } from "@/components/icons/ApexFlowLogo"
-import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
 
 function GoogleIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
       <path
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
         fill="#4285F4"
@@ -92,12 +91,12 @@ function NeuralBackground() {
           const dist = Math.sqrt(dx * dx + dy * dy)
 
           if (dist < connectionDistance) {
-            const opacity = (1 - dist / connectionDistance) * 0.35
+            const opacity = (1 - dist / connectionDistance) * 0.25
             ctx!.beginPath()
             ctx!.moveTo(nodes[i].x, nodes[i].y)
             ctx!.lineTo(nodes[j].x, nodes[j].y)
-            ctx!.strokeStyle = `rgba(99, 102, 241, ${opacity})`
-            ctx!.lineWidth = 0.8
+            ctx!.strokeStyle = `rgba(71, 85, 105, ${opacity})`
+            ctx!.lineWidth = 0.6
             ctx!.stroke()
           }
         }
@@ -107,14 +106,14 @@ function NeuralBackground() {
       for (const node of nodes) {
         // Outer glow
         ctx!.beginPath()
-        ctx!.arc(node.x, node.y, 6, 0, Math.PI * 2)
-        ctx!.fillStyle = "rgba(99, 102, 241, 0.08)"
+        ctx!.arc(node.x, node.y, 5, 0, Math.PI * 2)
+        ctx!.fillStyle = "rgba(71, 85, 105, 0.06)"
         ctx!.fill()
 
         // Core dot
         ctx!.beginPath()
-        ctx!.arc(node.x, node.y, 2.5, 0, Math.PI * 2)
-        ctx!.fillStyle = "rgba(99, 102, 241, 0.5)"
+        ctx!.arc(node.x, node.y, 2, 0, Math.PI * 2)
+        ctx!.fillStyle = "rgba(71, 85, 105, 0.4)"
         ctx!.fill()
       }
 
@@ -138,6 +137,27 @@ function NeuralBackground() {
   )
 }
 
+function StatusFooter() {
+  return (
+    <footer className="absolute bottom-0 w-full z-10 border-t border-border/30 bg-background/80 backdrop-blur-md py-4">
+      <div className="container mx-auto px-6 max-w-4xl">
+        <div className="flex items-center justify-center gap-6 opacity-40">
+          {[
+            { icon: Server, label: "Cloud Infrastructure" },
+            { icon: Shield, label: "Enterprise Security" },
+            { icon: FileKey, label: "Data Encryption" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em]">
+              <item.icon className="h-3 w-3" />
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </footer>
+  )
+}
+
 export function SignInScreen() {
   const auth = useAuth()
   const [isSigningIn, setIsSigningIn] = useState(false)
@@ -152,48 +172,111 @@ export function SignInScreen() {
   }
 
   return (
-    <div className="relative flex items-center justify-center h-screen bg-background bg-gradient-radial overflow-hidden">
+    <div className="relative flex flex-col h-screen bg-background overflow-hidden">
+      {/* Animated neural network background */}
       <NeuralBackground />
 
-      <div className="relative z-10 flex flex-col items-center gap-10 animate-fade-up">
-        {/* Logo + Hero Typography */}
-        <div className="flex flex-col items-center gap-6">
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-glow-sm">
-            <ApexFlowLogo className="h-10 w-10 text-primary-foreground" />
-          </div>
-          <div className="text-center">
-            <h1 className="text-7xl font-normal tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>
-              Cortex
-            </h1>
-            <p className="text-lg tracking-[0.2em] uppercase text-muted-foreground mt-3">
-              Think deeper. Work smarter.
-            </p>
+      {/* Subtle radial gradient overlay */}
+      <div
+        className="absolute inset-0 z-[2] pointer-events-none"
+        aria-hidden="true"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 15% 50%, hsl(var(--primary) / 0.06) 0%, transparent 25%), radial-gradient(circle at 85% 30%, hsl(var(--primary) / 0.06) 0%, transparent 25%)",
+        }}
+      />
+
+      {/* Top-edge fade for depth */}
+      <div
+        className="absolute inset-0 z-[3] pointer-events-none"
+        aria-hidden="true"
+        style={{
+          background:
+            "linear-gradient(to bottom, hsl(var(--background)) 0%, transparent 15%, transparent 85%, hsl(var(--background)) 100%)",
+        }}
+      />
+
+      {/* Secure Portal badge */}
+      <nav className="absolute top-0 w-full z-20 px-8 py-6">
+        <div className="container mx-auto flex justify-end">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/50 backdrop-blur-sm border border-border/40 text-muted-foreground shadow-elevation-1">
+            <Lock className="h-3 w-3" />
+            <span className="hidden sm:inline text-[10px] font-semibold tracking-[0.15em] uppercase">
+              Secure Portal
+            </span>
           </div>
         </div>
+      </nav>
 
-        {/* Sign-in card */}
-        <div className="w-96 rounded-xl border border-border/40 bg-card/80 p-8 shadow-glass-md backdrop-blur-md">
-          <Button
-            className="w-full gap-3 h-12 text-base"
-            variant="outline"
-            onClick={() => void handleSignIn()}
-            disabled={isSigningIn}
-          >
-            {isSigningIn ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <GoogleIcon />
-            )}
-            {isSigningIn ? "Signing in..." : "Sign in with Google"}
-          </Button>
+      {/* Main content */}
+      <main className="flex-grow flex items-center justify-center relative z-10 px-6 py-20">
+        <div className="w-full max-w-3xl text-center flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="space-y-16 w-full animate-fade-up">
+            {/* Logo + Hero Typography */}
+            <div className="flex flex-col items-center space-y-8">
+              <div className="w-24 h-24 bg-gradient-to-br from-slate-800 to-black dark:from-white dark:to-slate-200 rounded-3xl flex items-center justify-center shadow-2xl mb-2 transform hover:scale-105 transition-transform duration-500">
+                <ApexFlowLogo className="h-12 w-12 text-white dark:text-slate-900" />
+              </div>
 
-          {auth.lastError && (
-            <p className="mt-4 text-sm text-destructive text-center">
-              {auth.lastError}
-            </p>
-          )}
+              <div className="space-y-4">
+                <h1
+                  className="text-8xl md:text-9xl font-bold text-foreground tracking-tighter leading-none select-none"
+                  style={{ fontFamily: "'Instrument Serif', 'Playfair Display', serif" }}
+                >
+                  Cortex
+                </h1>
+                <p
+                  className="text-2xl md:text-3xl text-muted-foreground font-light tracking-wide"
+                  style={{ fontFamily: "'Instrument Serif', 'Playfair Display', serif", fontStyle: "italic" }}
+                >
+                  Enterprise Intelligence
+                </p>
+                <p className="text-lg md:text-xl tracking-[0.2em] uppercase text-muted-foreground mt-3">
+                  Think deeper. Work smarter.
+                </p>
+              </div>
+            </div>
+
+            {/* Sign-in button + credit */}
+            <div className="space-y-12 max-w-md mx-auto pt-4 w-full">
+              <button
+                onClick={() => void handleSignIn()}
+                disabled={isSigningIn}
+                className="group relative w-full flex items-center justify-center gap-4 bg-card border border-border/60 text-foreground px-8 py-5 rounded-xl hover:bg-muted/50 hover:border-border transition-all shadow-lg hover:shadow-xl duration-300 transform hover:-translate-y-0.5 disabled:opacity-60 disabled:pointer-events-none"
+              >
+                {isSigningIn ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                <span className="font-sans font-semibold text-xl tracking-tight">
+                  {isSigningIn ? "Signing in..." : "Sign in with Google"}
+                </span>
+                <div className="absolute inset-0 rounded-xl ring-2 ring-border/40 opacity-0 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-300 pointer-events-none" />
+              </button>
+
+              {auth.lastError && (
+                <p className="text-sm text-destructive text-center -mt-8">
+                  {auth.lastError}
+                </p>
+              )}
+
+              {/* Gradient divider + credit */}
+              <div className="relative pt-6">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                <div className="flex flex-col items-center gap-2 mt-6">
+                  <p className="text-sm md:text-base font-sans font-bold tracking-[0.15em] text-foreground uppercase">
+                    Designed &amp; Developed by Pravin Gadekar
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* System status footer */}
+      <StatusFooter />
     </div>
   )
 }

@@ -132,15 +132,18 @@ export function ReasoningSidebar({ activeRunId, sessionId }: ReasoningSidebarPro
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="relative space-y-0">
+            {/* Vertical connector line */}
+            <div className="absolute left-[9px] top-3 bottom-3 w-px bg-border" />
+
             {[
               { icon: Search, label: "Search your documents" },
               { icon: FileText, label: "Analyze and extract insights" },
               { icon: Sparkles, label: "Generate a response" },
             ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2.5">
-                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary/30">
-                  <item.icon className="h-3 w-3 text-primary/60" />
+              <div key={item.label} className="relative flex items-center gap-3 py-2">
+                <div className="relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background border border-border">
+                  <item.icon className="h-3 w-3 text-muted-foreground" />
                 </div>
                 <span className="text-xs text-muted-foreground">{item.label}</span>
               </div>
@@ -185,13 +188,13 @@ function StepTimelineItem({ step }: { step: ConsolidatedStep }) {
         <div
           className={cn(
             "relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background border",
-            status === "in_progress" && "border-primary/40",
+            status === "in_progress" && "border-foreground/30",
             status === "completed" && "border-success/40",
             status === "failed" && "border-destructive/40"
           )}
         >
           {status === "in_progress" && (
-            <Loader2 className="h-3 w-3 text-primary animate-spin" />
+            <Loader2 className="h-3 w-3 text-foreground animate-spin" />
           )}
           {status === "completed" && (
             <CheckCircle2 className="h-3 w-3 text-success" />

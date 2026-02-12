@@ -11,7 +11,7 @@ describe('Button', () => {
   it('applies default variant styles', () => {
     render(<Button>Default</Button>)
     const button = screen.getByRole('button')
-    expect(button).toHaveClass('bg-primary')
+    expect(button).toHaveClass('bg-foreground')
   })
 
   it('applies outline variant styles', () => {
