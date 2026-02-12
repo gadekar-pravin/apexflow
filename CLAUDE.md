@@ -91,7 +91,7 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-2`, `us-
 
 **Entry point:** `api.py` — FastAPI app with lifespan manager that initializes DB pool, `ServiceRegistry`, and Firebase auth.
 
-**Execution loop:** `AgentLoop4` (`core/loop.py`) orchestrates multi-phase agent workflows using a DAG-based plan graph. Supports cost thresholds (`cost_exceeded` status), stop requests, and exponential backoff retries for transient failures. Publishes SSE events for live execution visibility: `step_start`, `step_complete`, `step_failed`, and `tool_call` (each includes `session_id` for client-side filtering).
+**Execution loop:** `AgentLoop4` (`core/loop.py`) orchestrates multi-phase agent workflows using a DAG-based plan graph. Supports cost thresholds (`cost_exceeded` status), stop requests, and exponential backoff retries for transient failures. Publishes SSE events for live execution visibility: `step_start`, `step_complete`, `step_failed`, and `tool_call` (each includes `session_id` for client-side filtering). Tool call events use `_sanitize_args_summary()` with recursive `_mask_sensitive()` to strip secrets from nested dicts/lists before broadcasting. Each tool invocation creates a `ToolContext` with a 2-minute monotonic deadline (`time.monotonic() + 120`).
 
 **ServiceRegistry** (`core/service_registry.py`) replaces v1's MultiMCP. Registers `ServiceDefinition` objects (each containing `ToolDefinition` entries), indexes tools by name, and routes calls via `route_tool_call(name, args, ctx)`. Returns OpenAI-compatible function-calling format via `get_all_tools()`.
 
@@ -262,7 +262,7 @@ git push origin v2.0.0  # triggers CI
 - `scripts/migrate.py` — V1→V2 data migration CLI (sessions, jobs, notifications, memories, scanned runs, preferences)
 - `Dockerfile` — Multi-stage production build (uv builder + Python 3.12 slim runtime)
 - `docs/` — Phase documentation (7 phase docs + rewrite plan)
-- `frontend/` — React 19 + TypeScript + Vite SPA (Tailwind CSS, Radix UI, ReactFlow, TanStack Query, Zustand, Firebase Auth). Pages: Dashboard (DAG visualization), Chat (conversational agent interface with reasoning sidebar), Documents (RAG management), Settings
+- `frontend/` — React 19 + TypeScript + Vite SPA (Tailwind CSS, Radix UI, ReactFlow, TanStack Query, Zustand, Firebase Auth). Pages: Chat (`/`, `/chat` — conversational agent interface with reasoning sidebar), Runs (`/dashboard` — DAG visualization), Documents (RAG management), Settings
 
 ## Code Conventions
 
@@ -320,7 +320,13 @@ firebase deploy --only hosting:console
 
 **API integration:** All API calls go through `fetchAPI()` in `services/api.ts`, routed directly to Cloud Run via `VITE_API_URL`. Auth tokens are attached automatically when a provider is set via `setAuthTokenProvider()`. `getAPIUrl()` is used for non-fetch requests (health checks). `getSSEUrl()` is used for EventSource connections (also routes directly to Cloud Run via `VITE_SSE_URL`).
 
-**Chat page (`/chat`):** Conversational agent interface at `pages/ChatPage.tsx`. Components in `components/chat/`: `WelcomeScreen` (suggestion cards + inline input), `ChatMessageList` (markdown rendering via `react-markdown`), `ChatInput` (InsightAgent-style gradient glow, no focus ring), `ReasoningSidebar` (live SSE timeline of agent execution), `ChatSessionList` (session CRUD). Orchestration: user message → `chatService.addMessage()` → `runsService.create()` → poll `runsService.get()` every 2s → extract output → store as assistant message. Service layer in `services/chatService.ts` wraps `/api/chat/*` endpoints. Types in `types/chat.ts` (`AgentChatSession`, `AgentChatMessage`, `ReasoningEvent`).
+**Chat page (`/` and `/chat`):** Conversational agent interface at `pages/ChatPage.tsx`. Mounted at both `/` (home) and `/chat` (deep-linkable). Components in `components/chat/`: `WelcomeScreen` (suggestion cards + inline input), `ChatMessageList` (markdown rendering via `react-markdown` with `extractDisplayContent()` to parse `markdown_report` from JSON agent output at render time), `ChatInput` (InsightAgent-style gradient glow, no focus ring), `ReasoningSidebar` (live SSE timeline of agent execution, events consolidated by step), `ChatSessionList` (session CRUD). All three panels (sessions sidebar, main chat, reasoning sidebar) use `ResizablePanel` with localStorage persistence (`apexflow.chat.sessionsWidth`, `apexflow.chat.reasoningWidth`).
+
+**Chat orchestration:** User message → `chatService.addMessage()` (with local fallback on failure) → `runsService.create()` → independent poll loop via `activePollsRef` Set → extract `markdown_report` from agent output JSON → store as assistant message. Each `pollRunStatus` call creates a self-contained poll loop with its own timeout lifecycle tracked in a `Set<Timeout>` — multiple runs across different sessions can poll concurrently without cancelling each other. Run output extraction priority: `markdown_report` > `result` > `output` > raw JSON fallback (handles both object and stringified JSON).
+
+**Chat race condition guards:** `skipNextLoadRef` prevents the session-load effect from overwriting locally-managed messages when `sendMessage` just created a new session. Session switching does not cancel active polls — background polls persist assistant messages to DB regardless of which session the user is viewing (UI state updates are guarded by `onOriginalSession` check). All pending poll timeouts are cleaned up on component unmount.
+
+**Chat service layer:** `services/chatService.ts` wraps `/api/chat/*` endpoints. Types in `types/chat.ts` (`AgentChatSession`, `AgentChatMessage`, `ReasoningEvent`).
 
 **Known limitations (stubbed endpoints):**
 - Document chat (streaming `/rag/ask` endpoint not in v2)
