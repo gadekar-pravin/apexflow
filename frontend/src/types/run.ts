@@ -47,6 +47,11 @@ export interface NodeData {
   inputs?: Record<string, unknown>
   cost: number
   execution_time: number
+  input_tokens?: number
+  output_tokens?: number
+  total_tokens?: number
+  start_time?: string
+  end_time?: string
   output: string
   error: string
   execution_result?: ExecutionResult

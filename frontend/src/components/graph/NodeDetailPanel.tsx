@@ -13,6 +13,10 @@ import {
   Circle,
   Copy,
   Check,
+  Hash,
+  Calendar,
+  Terminal,
+  Wrench,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -151,6 +155,30 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
             <span className="font-mono">${nodeData.cost.toFixed(4)} (₹{(nodeData.cost * USD_TO_INR).toFixed(2)})</span>
           </div>
         )}
+        {(nodeData.total_tokens ?? 0) > 0 && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Hash className="h-3 w-3" strokeWidth={1.75} />
+            <span className="font-mono">
+              {nodeData.total_tokens?.toLocaleString()} tokens
+              {(nodeData.input_tokens || nodeData.output_tokens) && (
+                <span className="text-muted-foreground/60">
+                  {" "}({nodeData.input_tokens?.toLocaleString()} in / {nodeData.output_tokens?.toLocaleString()} out)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+        {nodeData.start_time && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Calendar className="h-3 w-3" strokeWidth={1.75} />
+            <span className="font-mono">
+              {new Date(nodeData.start_time).toLocaleTimeString()}
+              {nodeData.end_time && (
+                <span className="text-muted-foreground/60"> → {new Date(nodeData.end_time).toLocaleTimeString()}</span>
+              )}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -165,6 +193,14 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
             <TabsTrigger value="iterations" className="text-xs h-7">
               Iterations ({nodeData.iterations.length})
             </TabsTrigger>
+          )}
+          {nodeData.calls && nodeData.calls.length > 0 && (
+            <TabsTrigger value="calls" className="text-xs h-7">
+              Tools ({nodeData.calls.length})
+            </TabsTrigger>
+          )}
+          {nodeData.execution_logs && (
+            <TabsTrigger value="logs" className="text-xs h-7">Logs</TabsTrigger>
           )}
           {nodeData.error && <TabsTrigger value="error" className="text-xs h-7">Error</TabsTrigger>}
         </TabsList>
@@ -248,6 +284,56 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
                   </div>
                 ))}
               </div>
+            </TabsContent>
+          )}
+
+          {nodeData.calls && nodeData.calls.length > 0 && (
+            <TabsContent value="calls" className="p-4 m-0">
+              <div className="space-y-3">
+                {nodeData.calls.map((call, idx) => (
+                  <div key={idx} className="border border-border/40 rounded-md p-3 bg-muted/15 backdrop-blur-xs">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Wrench className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
+                      <p className="font-medium text-xs">{call.name}</p>
+                    </div>
+                    <div className="mb-2">
+                      <p className="text-xs text-muted-foreground mb-1">Arguments</p>
+                      <CopyBlock
+                        text={JSON.stringify(call.arguments, null, 2)}
+                        id={`call-args-${idx}`}
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                    </div>
+                    {call.result && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Result</p>
+                        <CopyBlock
+                          text={call.result}
+                          id={`call-result-${idx}`}
+                          copiedId={copiedId}
+                          onCopy={handleCopy}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          )}
+
+          {nodeData.execution_logs && (
+            <TabsContent value="logs" className="p-4 m-0">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Terminal className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
+                <p className="text-xs font-medium text-muted-foreground">Execution Logs</p>
+              </div>
+              <CopyBlock
+                text={nodeData.execution_logs}
+                id="execution-logs"
+                copiedId={copiedId}
+                onCopy={handleCopy}
+              />
             </TabsContent>
           )}
 
