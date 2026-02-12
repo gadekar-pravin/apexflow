@@ -262,7 +262,7 @@ git push origin v2.0.0  # triggers CI
 - `scripts/migrate.py` — V1→V2 data migration CLI (sessions, jobs, notifications, memories, scanned runs, preferences)
 - `Dockerfile` — Multi-stage production build (uv builder + Python 3.12 slim runtime)
 - `docs/` — Phase documentation (7 phase docs + rewrite plan)
-- `frontend/` — React 19 + TypeScript + Vite SPA (Tailwind CSS, Radix UI, ReactFlow, TanStack Query, Zustand, Firebase Auth). Pages: Chat (`/`, `/chat` — conversational agent interface with reasoning sidebar), Runs (`/dashboard` — DAG visualization), Documents (RAG management), Settings
+- `frontend/` — React 19 + TypeScript + Vite SPA branded as **Cortex** (Tailwind CSS, Radix UI, ReactFlow, TanStack Query, Zustand, Firebase Auth). Pages: Chat (`/`, `/chat` — conversational agent interface with reasoning sidebar), Runs (`/dashboard` — DAG visualization), Documents (RAG management), Settings. Sign-in screen: Instrument Serif hero typography, animated neural network canvas, brain icon logo
 
 ## Code Conventions
 
@@ -286,6 +286,8 @@ git push origin v2.0.0  # triggers CI
 - **Firebase Auth:** Identity Platform enabled with Google sign-in provider. `authDomain` is `cortex.pravin.work` (must match hosting domain for `signInWithRedirect` — using `firebaseapp.com` breaks due to third-party cookie blocking). OAuth redirect URIs: `https://cortex.pravin.work/__/auth/handler`, `https://apexflow-console.web.app/__/auth/handler`. Authorized domains: `localhost`, `cortex.pravin.work`, `apexflow-console.web.app`, `apexflow-ai.firebaseapp.com`, `apexflow-ai.web.app`
 
 ## Frontend
+
+**Branding:** The frontend is branded as **Cortex** (tagline: "Think deeper. Work smarter."). The sign-in screen uses Instrument Serif display font for the heading, an animated neural network canvas background (`NeuralBackground` component with 80 floating nodes and proximity-based connections), and a brain icon logo (`ApexFlowLogo` component — name kept for backwards compatibility). Internal identifiers (localStorage keys, component filenames) still use "apexflow" to avoid breaking changes.
 
 **Directory:** `frontend/` — React 19 + TypeScript + Vite SPA with Tailwind CSS, Radix UI, ReactFlow (DAG visualization), TanStack Query, and Zustand.
 
