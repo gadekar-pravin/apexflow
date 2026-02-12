@@ -262,7 +262,7 @@ git push origin v2.0.0  # triggers CI
 - `scripts/migrate.py` — V1→V2 data migration CLI (sessions, jobs, notifications, memories, scanned runs, preferences)
 - `Dockerfile` — Multi-stage production build (uv builder + Python 3.12 slim runtime)
 - `docs/` — Phase documentation (7 phase docs + rewrite plan)
-- `frontend/` — React 19 + TypeScript + Vite SPA branded as **Cortex** (Tailwind CSS, Radix UI, ReactFlow, Recharts, TanStack Query, Zustand, Firebase Auth). Pages: Chat (`/`, `/chat` — conversational agent interface with tabbed right panel: Activity reasoning trace + Charts visualization canvas), Runs (`/dashboard` — DAG visualization), Documents (RAG management), Settings. Sign-in screen: Instrument Serif hero typography, animated neural network canvas, brain icon logo
+- `frontend/` — React 19 + TypeScript + Vite SPA branded as **Cortex** (Tailwind CSS, Radix UI, ReactFlow, Recharts, TanStack Query, Zustand, Firebase Auth). Pages: Chat (`/`, `/chat` — conversational agent interface with tabbed right panel: Activity reasoning trace + Charts visualization canvas), Runs (`/runs` — DAG visualization), Documents (RAG management), Settings. Sign-in screen: Instrument Serif hero typography, animated neural network canvas, brain icon logo
 
 ## Code Conventions
 
