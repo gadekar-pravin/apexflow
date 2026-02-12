@@ -29,6 +29,7 @@ export function ChatPage() {
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const currentSessionIdRef = useRef<string | null>(null)
   const unmountedRef = useRef(false)
+  const skipNextLoadRef = useRef(false)
 
   // Keep ref in sync with state for use in async callbacks
   useEffect(() => {
@@ -49,6 +50,13 @@ export function ChatPage() {
       return
     }
     if (!canFetchData) return
+
+    // Skip loading when sendMessage just created this session —
+    // messages are managed locally and the server may not have them yet.
+    if (skipNextLoadRef.current) {
+      skipNextLoadRef.current = false
+      return
+    }
 
     let cancelled = false
     chatService.getSession(currentSessionId).then(({ messages: msgs }) => {
@@ -87,13 +95,8 @@ export function ChatPage() {
           // Guard: stop if component has unmounted
           if (unmountedRef.current) return
 
-          // Guard: if user switched sessions, stop polling for this run
-          if (currentSessionIdRef.current !== sessionId) {
-            pollIntervalRef.current = null
-            setIsRunning(false)
-            setActiveRunId(null)
-            return
-          }
+          // Continue polling even if the user switched sessions —
+          // the run must complete and persist its assistant message.
 
           try {
             const run = await runsService.get(runId)
@@ -134,27 +137,21 @@ export function ChatPage() {
                   : "Something went wrong."
               }
 
-              // Guard: verify session hasn't changed before appending
-              if (currentSessionIdRef.current !== sessionId) {
-                setIsRunning(false)
-                setActiveRunId(null)
-                return
-              }
-
-              // Store assistant message
+              // Always persist the assistant message to DB so it's
+              // available when the user navigates back to this session.
+              const onOriginalSession = currentSessionIdRef.current === sessionId
               try {
                 const assistantMsg = await chatService.addMessage(
                   sessionId,
                   "assistant",
                   outputText
                 )
-                // Final guard before updating messages state
-                if (currentSessionIdRef.current === sessionId) {
+                if (onOriginalSession) {
                   setMessages((prev) => [...prev, assistantMsg])
                 }
               } catch {
                 // Still show it locally even if DB save fails
-                if (currentSessionIdRef.current === sessionId) {
+                if (onOriginalSession) {
                   const localMsg: AgentChatMessage = {
                     id: `local-${Date.now()}`,
                     session_id: sessionId,
@@ -167,16 +164,20 @@ export function ChatPage() {
                 }
               }
 
-              setIsRunning(false)
-              setActiveRunId(null)
+              if (onOriginalSession) {
+                setIsRunning(false)
+                setActiveRunId(null)
+              }
               return
             }
           } catch {
             errorCount++
             if (errorCount >= MAX_POLL_ERRORS) {
               pollIntervalRef.current = null
-              setIsRunning(false)
-              setActiveRunId(null)
+              if (currentSessionIdRef.current === sessionId) {
+                setIsRunning(false)
+                setActiveRunId(null)
+              }
               return
             }
           }
@@ -203,6 +204,7 @@ export function ChatPage() {
           const title = trimmed.slice(0, 50) + (trimmed.length > 50 ? "..." : "")
           const session = await chatService.createSession(title)
           sessionId = session.id
+          skipNextLoadRef.current = true
           setCurrentSessionId(sessionId)
           queryClient.invalidateQueries({ queryKey: ["chatSessions"] })
         }
@@ -240,13 +242,13 @@ export function ChatPage() {
   )
 
   const handleCreateSession = useCallback(() => {
-    clearPolling()
+    // Don't cancel polling — let any background run persist its result
     setCurrentSessionId(null)
     setMessages([])
     setInputValue("")
     setActiveRunId(null)
     setIsRunning(false)
-  }, [clearPolling])
+  }, [])
 
   const handleDeleteSession = useCallback(
     async (id: string) => {
@@ -264,11 +266,11 @@ export function ChatPage() {
   )
 
   const handleSelectSession = useCallback((id: string) => {
-    clearPolling()
+    // Don't cancel polling — let any background run persist its result
     setCurrentSessionId(id)
     setActiveRunId(null)
     setIsRunning(false)
-  }, [clearPolling])
+  }, [])
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue)
