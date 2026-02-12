@@ -376,12 +376,13 @@ export function ChatPage() {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/40 px-6 h-14 shrink-0">
           <div className="flex items-center gap-1.5 text-sm min-w-0">
-            <span
-              className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0"
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0 bg-transparent border-none p-0 text-sm"
               onClick={handleCreateSession}
             >
               Home
-            </span>
+            </button>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
             <span className="font-medium text-foreground truncate">
               {currentSessionId

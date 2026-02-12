@@ -347,20 +347,21 @@
 }
 
 .dark .prose {
-  --tw-prose-body: hsl(220 15% 92%);
-  color: hsl(0 0% 95%);
+  --tw-prose-body: hsl(220deg 15% 92%);
+
+  color: hsl(0deg 0% 95%);
 }
 
 .dark .prose p, .dark .prose li, .dark .prose td, .dark .prose th {
-  color: hsl(0 0% 95%);
+  color: hsl(0deg 0% 95%);
 }
 
 .dark .prose strong {
-  color: hsl(0 0% 100%);
+  color: hsl(0deg 0% 100%);
 }
 
 .dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4 {
-  color: hsl(0 0% 100%);
+  color: hsl(0deg 0% 100%);
 }
 
 .prose pre {

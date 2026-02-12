@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Lock, Loader2, Server, Shield, FileKey, ChevronDown } from "lucide-react"
+import { Lock, Loader2, Server, Shield, FileKey } from "lucide-react"
 import { ApexFlowLogo } from "@/components/icons/ApexFlowLogo"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -138,43 +138,21 @@ function NeuralBackground() {
 }
 
 function StatusFooter() {
-  const [isOpen, setIsOpen] = useState(false)
-
-  const statusItems = [
-    { icon: Server, label: "Internal Sources", detail: "VPC Connections Active" },
-    { icon: Shield, label: "Data Compliance", detail: "PII Redaction Enabled" },
-    { icon: FileKey, label: "Secure Export", detail: "Watermarking Active" },
-  ]
-
   return (
     <footer className="absolute bottom-0 w-full z-10 border-t border-border/30 bg-background/80 backdrop-blur-md py-4">
       <div className="container mx-auto px-6 max-w-4xl">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex flex-col items-center cursor-pointer outline-none opacity-40 hover:opacity-80 transition-opacity"
-        >
-          <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
-            <span>System Status: Operational</span>
-            <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-            />
-          </div>
-        </button>
-
-        {isOpen && (
-          <div className="grid md:grid-cols-3 gap-8 pt-8 pb-4 animate-fade-up">
-            {statusItems.map((item) => (
-              <div
-                key={item.label}
-                className="text-center space-y-2 p-4 rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <item.icon className="h-5 w-5 mx-auto text-muted-foreground" />
-                <h3 className="font-sans font-semibold text-sm text-foreground">{item.label}</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{item.detail}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center justify-center gap-6 opacity-40">
+          {[
+            { icon: Server, label: "Cloud Infrastructure" },
+            { icon: Shield, label: "Enterprise Security" },
+            { icon: FileKey, label: "Data Encryption" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em]">
+              <item.icon className="h-3 w-3" />
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </footer>
   )
@@ -243,13 +221,13 @@ export function SignInScreen() {
               <div className="space-y-4">
                 <h1
                   className="text-8xl md:text-9xl font-bold text-foreground tracking-tighter leading-none select-none"
-                  style={{ fontFamily: "'Playfair Display', 'Instrument Serif', serif" }}
+                  style={{ fontFamily: "'Instrument Serif', 'Playfair Display', serif" }}
                 >
                   Cortex
                 </h1>
                 <p
                   className="text-2xl md:text-3xl text-muted-foreground font-light tracking-wide"
-                  style={{ fontFamily: "'Playfair Display', 'Instrument Serif', serif", fontStyle: "italic" }}
+                  style={{ fontFamily: "'Instrument Serif', 'Playfair Display', serif", fontStyle: "italic" }}
                 >
                   Enterprise Intelligence
                 </p>
