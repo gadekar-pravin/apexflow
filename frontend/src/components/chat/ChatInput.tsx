@@ -46,26 +46,26 @@ export function ChatInput({
   )
 
   const inputWidget = (
-    <div className="relative">
-      <div className="relative flex items-center gap-3 bg-card rounded-xl border border-border p-3 shadow-sm transition-colors focus-within:border-foreground/30">
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder={placeholder}
-          rows={3}
-          className="flex-1 resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none px-2 py-1.5 text-base text-foreground placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50 min-h-[5rem]"
-          style={{ maxHeight: 200 }}
-        />
+    <div className="relative rounded-2xl bg-card shadow-lg shadow-foreground/[0.04] border border-border/60 p-4 transition-shadow focus-within:shadow-xl focus-within:shadow-foreground/[0.06]">
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        disabled={disabled}
+        placeholder={placeholder}
+        rows={3}
+        className="w-full resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none px-1 py-1 text-base text-foreground placeholder:text-muted-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 min-h-[5rem]"
+        style={{ maxHeight: 200 }}
+      />
+      <div className="flex justify-end mt-2">
         <Button
           size="icon"
           onClick={onSend}
           disabled={disabled || !value.trim()}
-          className="h-10 w-10 shrink-0 rounded-lg transition-all hover:scale-105 bg-foreground text-background hover:bg-foreground/90"
+          className="h-11 w-11 shrink-0 rounded-xl transition-all hover:scale-105 bg-foreground text-background hover:bg-foreground/90"
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-[18px] w-[18px]" />
         </Button>
       </div>
     </div>
