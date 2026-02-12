@@ -15,17 +15,17 @@ import {
 
 const navItems = [
   {
-    title: "Dashboard",
+    title: "Chat",
     href: "/",
-    icon: Play,
-    description: "Agent execution & graph view",
+    icon: MessageSquare,
+    description: "Conversational agent interface",
     end: true,
   },
   {
-    title: "Chat",
-    href: "/chat",
-    icon: MessageSquare,
-    description: "Conversational agent interface",
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: Play,
+    description: "Agent execution & graph view",
   },
   {
     title: "Documents",
