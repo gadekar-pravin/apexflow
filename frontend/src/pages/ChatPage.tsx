@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { PanelRightOpen, PanelRightClose } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ResizablePanel } from "@/components/ui/resizable-panel"
 import {
   WelcomeScreen,
   ChatMessageList,
@@ -119,8 +120,18 @@ export function ChatPage() {
                   })
                 const lastNode = completedNodes[completedNodes.length - 1]
                 if (lastNode?.data.output) {
-                  const raw = lastNode.data.output
-                  outputText = typeof raw === "string" ? raw : JSON.stringify(raw, null, 2)
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  let raw: any = lastNode.data.output
+                  // Parse stringified JSON if needed
+                  if (typeof raw === "string") {
+                    try { raw = JSON.parse(raw) } catch { /* keep as string */ }
+                  }
+                  if (typeof raw === "string") {
+                    outputText = raw
+                  } else if (raw && typeof raw === "object") {
+                    // Extract markdown_report from agent output JSON
+                    outputText = raw.markdown_report || raw.result || raw.output || JSON.stringify(raw, null, 2)
+                  }
                 }
               }
 
@@ -285,7 +296,13 @@ export function ChatPage() {
   return (
     <div className="flex h-full">
       {/* Session sidebar */}
-      <div className="w-56 border-r border-border/40 bg-sidebar/40 flex-shrink-0">
+      <ResizablePanel
+        defaultWidth={224}
+        minWidth={180}
+        maxWidth={400}
+        storageKey="apexflow.chat.sessionsWidth"
+        className="border-r border-border/40 bg-sidebar/40"
+      >
         <ChatSessionList
           sessions={sessions}
           currentSessionId={currentSessionId}
@@ -293,7 +310,7 @@ export function ChatPage() {
           onCreate={handleCreateSession}
           onDelete={handleDeleteSession}
         />
-      </div>
+      </ResizablePanel>
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -343,9 +360,18 @@ export function ChatPage() {
       </div>
 
       {/* Reasoning sidebar — always mounted to preserve events across toggle */}
-      <div className={showReasoning ? "w-80 border-l border-border/40 bg-sidebar/40 flex-shrink-0" : "hidden"}>
-        <ReasoningSidebar activeRunId={activeRunId} sessionId={currentSessionId} />
-      </div>
+      {showReasoning && (
+        <ResizablePanel
+          defaultWidth={320}
+          minWidth={240}
+          maxWidth={600}
+          storageKey="apexflow.chat.reasoningWidth"
+          side="left"
+          className="border-l border-border/40 bg-sidebar/40"
+        >
+          <ReasoningSidebar activeRunId={activeRunId} sessionId={currentSessionId} />
+        </ResizablePanel>
+      )}
     </div>
   )
 }
