@@ -52,6 +52,9 @@ core/skills/registry.json
 *.log
 logs/
 
+# Temporary / scratch files
+tmp/
+
 # Firebase
 .firebase/
 
