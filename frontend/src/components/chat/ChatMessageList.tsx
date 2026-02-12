@@ -4,6 +4,18 @@ import remarkGfm from "remark-gfm"
 import { Sparkles } from "lucide-react"
 import type { AgentChatMessage } from "@/types"
 
+/** Extract markdown_report from assistant content that may be raw JSON. */
+function extractDisplayContent(content: string): string {
+  if (!content.trimStart().startsWith("{")) return content
+  try {
+    const parsed = JSON.parse(content)
+    if (parsed && typeof parsed === "object") {
+      return parsed.markdown_report || parsed.result || parsed.output || content
+    }
+  } catch { /* not JSON, render as-is */ }
+  return content
+}
+
 interface ChatMessageListProps {
   messages: AgentChatMessage[]
   isRunning: boolean
@@ -40,7 +52,7 @@ export function ChatMessageList({ messages, isRunning }: ChatMessageListProps) {
                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
               ) : (
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {msg.content}
+                  {extractDisplayContent(msg.content)}
                 </ReactMarkdown>
               )}
             </div>
