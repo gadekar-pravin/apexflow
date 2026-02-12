@@ -215,7 +215,7 @@ The frontend deploys to Firebase Hosting in the `apexflow-ai` GCP project — th
 |---------|-------|
 | Project | `apexflow-ai` |
 | Site | `apexflow-console` |
-| URL | https://apexflow-console.web.app |
+| URL | https://cortex.pravin.work (alias: https://apexflow-console.web.app) |
 | Deploy target | `console` |
 | Public dir | `frontend/dist` |
 

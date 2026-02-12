@@ -151,7 +151,7 @@ steps:
       - '--vpc-connector=${_VPC_CONNECTOR}'
       - '--vpc-egress=private-ranges-only'
       - '--set-secrets=ALLOYDB_PASSWORD=apexflow-db-password:latest'
-      - '--set-env-vars=^||^ALLOYDB_HOST=${_ALLOYDB_HOST}||ALLOYDB_DB=apexflow||ALLOYDB_USER=apexflow||LOG_LEVEL=INFO||CORS_ORIGINS=https://apexflow.web.app,https://apexflow-console.web.app'
+      - '--set-env-vars=^||^ALLOYDB_HOST=${_ALLOYDB_HOST}||ALLOYDB_DB=apexflow||ALLOYDB_USER=apexflow||LOG_LEVEL=INFO||CORS_ORIGINS=https://apexflow.web.app,https://apexflow-console.web.app,https://cortex.pravin.work'
       - '--memory=2Gi'
       - '--cpu=2'
       - '--concurrency=80'

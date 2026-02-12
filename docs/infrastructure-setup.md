@@ -58,7 +58,7 @@ export DB_USER="apexflow"                     # PostgreSQL username
 export DB_NAME="apexflow"                     # PostgreSQL database name
 export GITHUB_OWNER="gadekar-pravin"          # GitHub username or org
 export GITHUB_REPO="apexflow"                 # GitHub repository name
-export FRONTEND_ORIGIN="https://apexflow-console.web.app"  # Firebase Hosting URL
+export FRONTEND_ORIGIN="https://cortex.pravin.work"  # Firebase Hosting URL (custom domain)
 export CLOUD_RUN_SERVICE="apexflow-api"       # Cloud Run service name
 export AR_REPO="apexflow-api"                 # Artifact Registry repo name
 export VPC_CONNECTOR="apexflow-vpc-connector" # VPC connector name
@@ -828,9 +828,9 @@ gcloud run services update-traffic $CLOUD_RUN_SERVICE \
                  ▼
   ┌─────────────────────────────┐
   │    Firebase Hosting         │
-  │  apexflow-console.web.app   │
+  │  cortex.pravin.work         │
+  │  (alias: apexflow-console)  │
   │  Serves: frontend/dist      │
-  │  (static assets only)       │
   └──────────────┬──────────────┘
                  │ VITE_API_URL (direct)
                  ▼
@@ -926,7 +926,7 @@ firebase projects:addfirebase $PROJECT_ID
 firebase hosting:sites:create apexflow-console --project $PROJECT_ID
 ```
 
-This creates the site at `https://apexflow-console.web.app`.
+This creates the site at `https://apexflow-console.web.app`. A custom domain `cortex.pravin.work` is also configured (CNAME → `apexflow-console.web.app`).
 
 ### 22c. Configuration files
 
@@ -1023,7 +1023,7 @@ Since all API calls are cross-origin (browser on `apexflow-console.web.app` → 
 
 ```bash
 gcloud run services update apexflow-api --region=us-central1 \
-  --update-env-vars="^||^CORS_ORIGINS=https://apexflow-console.web.app,https://apexflow-ai.web.app" \
+  --update-env-vars="^||^CORS_ORIGINS=https://apexflow-console.web.app,https://apexflow-ai.web.app,https://cortex.pravin.work" \
   --project=apexflow-ai
 ```
 
@@ -1063,7 +1063,8 @@ This auto-creates the OAuth consent screen and Web OAuth client.
 1. Go to https://console.firebase.google.com/project/$PROJECT_ID/authentication/settings
 2. Under **Authorized domains**, verify these are listed:
    - `localhost` (local dev)
-   - `apexflow-console.web.app` (Firebase Hosting — also used as `authDomain`)
+   - `cortex.pravin.work` (custom domain — also used as `authDomain`)
+   - `apexflow-console.web.app` (Firebase Hosting default domain)
    - `apexflow-ai.firebaseapp.com` (default Firebase domain)
 
 ### 23d. Verify via CLI
@@ -1092,14 +1093,14 @@ Firebase config values are set in `frontend/.env.production`. These are public (
 
 ```env
 VITE_FIREBASE_API_KEY=AIzaSy...
-VITE_FIREBASE_AUTH_DOMAIN=apexflow-console.web.app
+VITE_FIREBASE_AUTH_DOMAIN=cortex.pravin.work
 VITE_FIREBASE_PROJECT_ID=apexflow-ai
 VITE_FIREBASE_STORAGE_BUCKET=apexflow-ai.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=807506425655
 VITE_FIREBASE_APP_ID=1:807506425655:web:...
 ```
 
-> **Important:** `AUTH_DOMAIN` must be the Firebase Hosting domain (`apexflow-console.web.app`), not `apexflow-ai.firebaseapp.com`. The `signInWithRedirect` flow redirects through the `authDomain` — using a different domain triggers third-party cookie blocking in modern browsers (Chrome 120+), breaking the sign-in flow. Firebase Hosting auto-serves `/__/auth/handler` on all hosting sites. The OAuth client's **Authorized redirect URIs** (in [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)) must include `https://apexflow-console.web.app/__/auth/handler`.
+> **Important:** `AUTH_DOMAIN` must be a Firebase Hosting domain that matches where users visit. The primary domain is `cortex.pravin.work` (custom domain CNAME → `apexflow-console.web.app`). The `signInWithRedirect` flow redirects through the `authDomain` — using a different domain triggers third-party cookie blocking in modern browsers (Chrome 120+), breaking the sign-in flow. Firebase Hosting auto-serves `/__/auth/handler` on all hosting sites (including custom domains). The OAuth client's **Authorized redirect URIs** (in [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)) must include both `https://cortex.pravin.work/__/auth/handler` and `https://apexflow-console.web.app/__/auth/handler`.
 
 When these are unset (local dev without `.env.production`), auth is bypassed entirely.
 
@@ -1107,7 +1108,7 @@ When these are unset (local dev without `.env.production`), auth is bypassed ent
 
 The frontend uses `signInWithRedirect` (not `signInWithPopup`). The redirect flow navigates the page to Google's sign-in page and back, avoiding cross-origin popup issues. Google's sign-in page sets `Cross-Origin-Opener-Policy: same-origin`, which blocks `signInWithPopup`'s `window.closed` polling, producing noisy COOP console errors. The redirect approach eliminates these entirely. `getRedirectResult()` is called on app init to catch errors from the redirect flow.
 
-**Critical:** The `authDomain` must match the Firebase Hosting domain (`apexflow-console.web.app`) so the redirect stays same-origin. If it's set to `apexflow-ai.firebaseapp.com`, the redirect goes cross-origin and modern browsers block the third-party cookies needed to pass the auth result back. When changing the `authDomain`, add `https://<new-authDomain>/__/auth/handler` to the OAuth client's authorized redirect URIs in [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
+**Critical:** The `authDomain` must match the domain users visit (`cortex.pravin.work`) so the redirect stays same-origin. If it's set to `apexflow-ai.firebaseapp.com`, the redirect goes cross-origin and modern browsers block the third-party cookies needed to pass the auth result back. When changing the `authDomain`, add `https://<new-authDomain>/__/auth/handler` to the OAuth client's authorized redirect URIs in [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
 
 No COOP headers are needed in `firebase.json` or `vite.config.ts`.
 
@@ -1191,6 +1192,6 @@ gcloud run services describe apexflow-api \
 | Cloud Scheduler | `cloudrun-auto-stop` | `0 23 * * *` Asia/Kolkata, sets Cloud Run ingress to internal-only |
 | Cloud Build Connection | `apexflow-github` | GitHub OAuth, linked to repo |
 | Cloud Build Trigger | `apexflow-ci` | Tag `^v.*$`, substitution: `_ALLOYDB_HOST` |
-| Firebase Hosting | `apexflow-console` | Site in `apexflow-ai`, serves `frontend/dist`, rewrites `/api/**` to Cloud Run |
-| Firebase Auth | Identity Platform | Google sign-in provider, authorized domains: localhost + `*.web.app` |
+| Firebase Hosting | `apexflow-console` | Site in `apexflow-ai`, serves `frontend/dist`, rewrites `/api/**` to Cloud Run. Custom domain: `cortex.pravin.work` |
+| Firebase Auth | Identity Platform | Google sign-in provider, authorized domains: localhost, `cortex.pravin.work`, `*.web.app` |
 | APIs Enabled | 10 APIs | compute, run, vpcaccess, artifactregistry, secretmanager, cloudbuild, cloudscheduler, firebase, identitytoolkit, iap |
