@@ -7,15 +7,49 @@ import {
   WelcomeScreen,
   ChatMessageList,
   ChatInput,
-  ReasoningSidebar,
   ChatSessionList,
+  RightPanel,
 } from "@/components/chat"
 import { chatService } from "@/services/chatService"
 import { runsService } from "@/services/runsService"
 import { useAuth } from "@/contexts/AuthContext"
-import type { AgentChatMessage } from "@/types"
+import type { AgentChatMessage, VisualizationSpec } from "@/types"
 
 const MAX_POLL_ERRORS = 15
+const MAX_VIZ_PER_MESSAGE = 5
+const MAX_ROWS_PER_CHART = 50
+
+function isValidVizSpec(spec: unknown): spec is VisualizationSpec {
+  if (!spec || typeof spec !== "object") return false
+  const s = spec as Record<string, unknown>
+  return (
+    s.schema_version === 1 &&
+    typeof s.id === "string" &&
+    typeof s.title === "string" &&
+    typeof s.chart_type === "string" &&
+    ["bar", "line", "pie", "area"].includes(s.chart_type as string) &&
+    Array.isArray(s.data) &&
+    s.data.length > 0 &&
+    typeof s.x_key === "string" &&
+    Array.isArray(s.y_keys) &&
+    s.y_keys.length > 0 &&
+    // Validate keys exist in data
+    s.x_key in (s.data as Record<string, unknown>[])[0] &&
+    (s.y_keys as string[]).every((k) => k in (s.data as Record<string, unknown>[])[0])
+  )
+}
+
+function sanitizeVisualizations(rawViz: unknown): VisualizationSpec[] | null {
+  if (!Array.isArray(rawViz) || rawViz.length === 0) return null
+  const valid = rawViz
+    .filter(isValidVizSpec)
+    .slice(0, MAX_VIZ_PER_MESSAGE)
+    .map((spec) => ({
+      ...spec,
+      data: spec.data.slice(0, MAX_ROWS_PER_CHART),
+    }))
+  return valid.length > 0 ? valid : null
+}
 
 export function ChatPage() {
   const auth = useAuth()
@@ -26,15 +60,21 @@ export function ChatPage() {
   const [inputValue, setInputValue] = useState("")
   const [isRunning, setIsRunning] = useState(false)
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
-  const [showReasoning, setShowReasoning] = useState(false)
+  const [showPanel, setShowPanel] = useState(false)
   const activePollsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
   const currentSessionIdRef = useRef<string | null>(null)
   const unmountedRef = useRef(false)
   const skipNextLoadRef = useRef(false)
+  const hasOpenedForChartsRef = useRef(false)
 
   // Keep ref in sync with state for use in async callbacks
   useEffect(() => {
     currentSessionIdRef.current = currentSessionId
+  }, [currentSessionId])
+
+  // Reset chart auto-open flag on session change
+  useEffect(() => {
+    hasOpenedForChartsRef.current = false
   }, [currentSessionId])
 
   // Fetch chat sessions
@@ -97,6 +137,8 @@ export function ChatPage() {
             if (run.status === "completed" || run.status === "failed") {
               // Extract output from run graph
               let outputText = ""
+              let visualizations: VisualizationSpec[] | null = null
+
               if (run.status === "completed" && run.graph?.nodes) {
                 const completedNodes = run.graph.nodes
                   .filter((n) => n.data.status === "completed" && n.data.output)
@@ -116,6 +158,8 @@ export function ChatPage() {
                     outputText = raw
                   } else if (raw && typeof raw === "object") {
                     outputText = raw.markdown_report || raw.result || raw.output || JSON.stringify(raw, null, 2)
+                    // Extract and validate visualizations
+                    visualizations = sanitizeVisualizations(raw.visualizations)
                   }
                 }
               }
@@ -133,6 +177,11 @@ export function ChatPage() {
                   : "Something went wrong."
               }
 
+              // Build metadata with visualizations if present
+              const metadata = visualizations
+                ? { visualizations_schema_version: 1, visualizations }
+                : undefined
+
               // Always persist the assistant message to DB so it's
               // available when the user navigates back to this session.
               const onOriginalSession = currentSessionIdRef.current === sessionId
@@ -140,10 +189,16 @@ export function ChatPage() {
                 const assistantMsg = await chatService.addMessage(
                   sessionId,
                   "assistant",
-                  outputText
+                  outputText,
+                  metadata
                 )
                 if (onOriginalSession) {
                   setMessages((prev) => [...prev, assistantMsg])
+                  // Auto-open panel on first chart in this session
+                  if (visualizations && !hasOpenedForChartsRef.current) {
+                    hasOpenedForChartsRef.current = true
+                    setShowPanel(true)
+                  }
                 }
               } catch {
                 if (onOriginalSession) {
@@ -152,10 +207,14 @@ export function ChatPage() {
                     session_id: sessionId,
                     role: "assistant",
                     content: outputText,
-                    metadata: null,
+                    metadata: metadata ?? null,
                     created_at: new Date().toISOString(),
                   }
                   setMessages((prev) => [...prev, localMsg])
+                  if (visualizations && !hasOpenedForChartsRef.current) {
+                    hasOpenedForChartsRef.current = true
+                    setShowPanel(true)
+                  }
                 }
               }
 
@@ -307,15 +366,15 @@ export function ChatPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setShowReasoning(!showReasoning)}
+            onClick={() => setShowPanel(!showPanel)}
             className="text-muted-foreground"
           >
-            {showReasoning ? (
+            {showPanel ? (
               <PanelRightClose className="h-4 w-4 mr-1.5" />
             ) : (
               <PanelRightOpen className="h-4 w-4 mr-1.5" />
             )}
-            <span className="text-xs">Reasoning</span>
+            <span className="text-xs">Panel</span>
           </Button>
         </div>
 
@@ -342,8 +401,8 @@ export function ChatPage() {
         )}
       </div>
 
-      {/* Reasoning sidebar — always mounted to preserve events across toggle */}
-      {showReasoning && (
+      {/* Right panel — tabbed Activity + Charts */}
+      {showPanel && (
         <ResizablePanel
           defaultWidth={320}
           minWidth={240}
@@ -352,7 +411,11 @@ export function ChatPage() {
           side="left"
           className="border-l border-border/40 bg-sidebar/40"
         >
-          <ReasoningSidebar activeRunId={activeRunId} sessionId={currentSessionId} />
+          <RightPanel
+            messages={messages}
+            activeRunId={activeRunId}
+            sessionId={currentSessionId}
+          />
         </ResizablePanel>
       )}
     </div>

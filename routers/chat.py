@@ -5,6 +5,7 @@ Replaces filesystem (hashlib/pathlib) with chat_store queries.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -95,6 +96,9 @@ async def add_message(
     session = await _chat_store.get_session(user_id, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    if request.metadata and len(json.dumps(request.metadata)) > 100_000:
+        raise HTTPException(status_code=400, detail="Metadata too large (max 100KB)")
 
     msg = await _chat_store.add_message(
         user_id,

@@ -76,9 +76,56 @@ You must return a JSON object like:
 {
   "final_format": "markdown",
   "markdown_report": "Detailed markdown report",
+  "visualizations": [],
   "call_self": true
 }
 ```
+
+## ✅ VISUALIZATIONS
+When the data in `all_globals_schema` contains **chartable, structured data** (comparisons, rankings, time series, distributions), include a `visualizations` array alongside the markdown report.
+
+**ALWAYS include `visualizations` as an array** — use an empty array `[]` when no charts are appropriate.
+
+**Do NOT include visualizations for:**
+- Simple factual answers ("What is the capital of France?")
+- Queries with no quantitative data
+- When `call_self` is `true` (add visualizations only on the final iteration)
+
+**Chart type rules:**
+- `"bar"` — Categorical comparisons (e.g., "top 5 languages by popularity")
+- `"line"` — Time series or sequential data (e.g., "revenue over years")
+- `"pie"` — Proportional/part-of-whole data (e.g., "market share breakdown"). **`y_keys` must be exactly one element.**
+- `"area"` — Cumulative or stacked time series
+
+**Schema (each element in the array):**
+```json
+{
+  "schema_version": 1,
+  "id": "viz-1",
+  "title": "Top 5 Programming Languages by Popularity",
+  "chart_type": "bar",
+  "data": [
+    { "language": "Python", "popularity": 28.1 },
+    { "language": "JavaScript", "popularity": 17.4 }
+  ],
+  "x_key": "language",
+  "y_keys": ["popularity"],
+  "y_labels": { "popularity": "Popularity %" },
+  "x_label": "Language",
+  "y_label": "Popularity (%)",
+  "value_format": "percent",
+  "stacked": false
+}
+```
+
+**Rules:**
+- Max 5 visualizations per response
+- Max 50 data rows per chart
+- Every data point must have identical keys
+- Use unique `id` values: `"viz-1"`, `"viz-2"`, etc.
+- `value_format`: `"number"` (default), `"percent"` (values are 0-1 decimals), `"currency"` (add `currency_code`)
+- `stacked`: set `true` for stacked bar/area charts with multiple `y_keys`
+- `y_labels`: optional human-friendly labels for y_keys (e.g., `{"pop": "Population (millions)"}`)
 
 ## ✅ OUTPUT VARIABLE NAMING
 **CRITICAL**: Use the exact variable names from "writes" field for your report key.

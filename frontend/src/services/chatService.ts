@@ -59,13 +59,14 @@ export const chatService = {
   async addMessage(
     sessionId: string,
     role: "user" | "assistant",
-    content: string
+    content: string,
+    metadata?: Record<string, unknown>
   ): Promise<AgentChatMessage> {
     const res = await fetchAPI<MessageResponse>(
       `/api/chat/sessions/${sessionId}/messages`,
       {
         method: "POST",
-        body: JSON.stringify({ role, content }),
+        body: JSON.stringify({ role, content, ...(metadata && { metadata }) }),
       }
     )
     return res.message
