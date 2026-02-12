@@ -59,7 +59,7 @@ export function ChatInput({
           disabled={disabled}
           placeholder={placeholder}
           rows={3}
-          className="flex-1 resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none px-2 py-1.5 text-base text-foreground placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex-1 resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none px-2 py-1.5 text-base text-foreground placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50 min-h-[5rem]"
           style={{ maxHeight: 200 }}
         />
         <Button
