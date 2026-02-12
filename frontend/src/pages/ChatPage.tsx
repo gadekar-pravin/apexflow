@@ -33,6 +33,9 @@ function isValidVizSpec(spec: unknown): spec is VisualizationSpec {
     typeof s.x_key === "string" &&
     Array.isArray(s.y_keys) &&
     s.y_keys.length > 0 &&
+    // Validate first data row is a non-null object before using `in`
+    typeof (s.data as unknown[])[0] === "object" &&
+    (s.data as unknown[])[0] !== null &&
     // Validate keys exist in data
     s.x_key in (s.data as Record<string, unknown>[])[0] &&
     (s.y_keys as string[]).every((k) => k in (s.data as Record<string, unknown>[])[0])

@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { Activity, BarChart3, Loader2 } from "lucide-react"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ReasoningSidebar } from "./ReasoningSidebar"
+import { cn } from "@/utils/utils"
 import type { AgentChatMessage } from "@/types"
 
 const VisualizationCanvas = lazy(() =>
@@ -66,11 +67,13 @@ export function RightPanel({ messages, activeRunId, sessionId }: RightPanelProps
         </TabsList>
       </div>
 
-      <TabsContent value="activity" className="flex-1 min-h-0 mt-0">
+      {/* Always-mounted panels — CSS visibility toggle keeps ReasoningSidebar
+          subscribed to SSE events even when the Charts tab is active */}
+      <div className={cn("flex-1 min-h-0", activeTab !== "activity" && "hidden")}>
         <ReasoningSidebar activeRunId={activeRunId} sessionId={sessionId} />
-      </TabsContent>
+      </div>
 
-      <TabsContent value="charts" className="flex-1 min-h-0 mt-0">
+      <div className={cn("flex-1 min-h-0", activeTab !== "charts" && "hidden")}>
         <Suspense
           fallback={
             <div className="flex h-full items-center justify-center">
@@ -80,7 +83,7 @@ export function RightPanel({ messages, activeRunId, sessionId }: RightPanelProps
         >
           <VisualizationCanvas messages={messages} />
         </Suspense>
-      </TabsContent>
+      </div>
     </Tabs>
   )
 }
