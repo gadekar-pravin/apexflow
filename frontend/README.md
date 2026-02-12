@@ -8,6 +8,7 @@ React frontend for the ApexFlow Agentic AI system.
 - **UI**: shadcn/ui + Tailwind CSS
 - **State**: TanStack Query (server) + Zustand (client)
 - **Graph**: ReactFlow
+- **Charts**: Recharts (lazy-loaded for visualization canvas)
 - **Hosting**: Firebase Hosting (project: `apexflow-ai`, site: `apexflow-console`)
 
 ## Development
@@ -84,7 +85,7 @@ src/
 │   ├── layout/       # AppShell, Sidebar
 │   ├── runs/         # RunCreator, RunList
 │   ├── graph/        # GraphView, AgentNode, NodeDetailPanel
-│   ├── chat/         # ChatPage components (WelcomeScreen, ChatInput, MessageList, ReasoningSidebar, SessionList)
+│   ├── chat/         # ChatPage components (WelcomeScreen, ChatInput, MessageList, RightPanel, ReasoningSidebar, ChartCard, VisualizationCanvas, SessionList)
 │   └── documents/    # DocumentTree, DocumentChat, ChatMessage
 ├── contexts/         # SSEContext (shared EventSource connection)
 ├── hooks/            # useApiHealth, useDbHealth, useSSE (deprecated)
