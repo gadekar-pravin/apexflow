@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   X,
@@ -10,6 +11,8 @@ import {
   Loader2,
   AlertCircle,
   Circle,
+  Copy,
+  Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -42,6 +45,14 @@ interface NodeDetailPanelProps {
 
 export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
   const setSelectedNodeId = useAppStore((s) => s.setSelectedNodeId)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopy = useCallback((text: string, id: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }, [])
   const auth = useAuth()
   const canQueryRun = !auth.isConfigured || auth.isAuthenticated
 
@@ -157,15 +168,12 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
 
         <ScrollArea className="flex-1">
           <TabsContent value="output" className="p-4 m-0">
-            {typeof parsedOutput === "object" ? (
-              <pre className="text-xs bg-muted/30 backdrop-blur-xs p-3 rounded-md overflow-auto border border-border/40 font-mono leading-relaxed">
-                {JSON.stringify(parsedOutput, null, 2)}
-              </pre>
-            ) : (
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <pre className="whitespace-pre-wrap text-xs leading-relaxed">{parsedOutput}</pre>
-              </div>
-            )}
+            <CopyBlock
+              text={typeof parsedOutput === "object" ? JSON.stringify(parsedOutput, null, 2) : String(parsedOutput)}
+              id="output"
+              copiedId={copiedId}
+              onCopy={handleCopy}
+            />
           </TabsContent>
 
           <TabsContent value="prompt" className="p-4 m-0">
@@ -183,9 +191,7 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">
                     Prompt
                   </p>
-                  <pre className="text-xs bg-muted/30 backdrop-blur-xs p-3 rounded-md whitespace-pre-wrap border border-border/40 font-mono leading-relaxed">
-                    {nodeData.prompt}
-                  </pre>
+                  <CopyBlock text={nodeData.prompt} id="prompt" copiedId={copiedId} onCopy={handleCopy} />
                 </div>
               )}
             </div>
@@ -199,17 +205,23 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
                     <p className="font-medium text-xs text-muted-foreground mb-2">
                       Iteration {iter.iteration}
                     </p>
-                    <pre className="text-xs bg-muted/30 p-2.5 rounded border border-border/40 overflow-auto font-mono leading-relaxed">
-                      {JSON.stringify(iter.output, null, 2)}
-                    </pre>
+                    <CopyBlock
+                      text={JSON.stringify(iter.output, null, 2)}
+                      id={`iter-${idx}`}
+                      copiedId={copiedId}
+                      onCopy={handleCopy}
+                    />
                     {iter.tool_result && (
                       <div className="mt-2.5">
                         <p className="text-xs text-muted-foreground mb-1.5">
                           Tool Result
                         </p>
-                        <pre className="text-xs bg-muted/30 p-2.5 rounded border border-border/40 overflow-auto font-mono leading-relaxed">
-                          {iter.tool_result}
-                        </pre>
+                        <CopyBlock
+                          text={iter.tool_result}
+                          id={`iter-tool-${idx}`}
+                          copiedId={copiedId}
+                          onCopy={handleCopy}
+                        />
                       </div>
                     )}
                   </div>
@@ -229,6 +241,37 @@ export function NodeDetailPanel({ runId, nodeId }: NodeDetailPanelProps) {
           )}
         </ScrollArea>
       </Tabs>
+    </div>
+  )
+}
+
+function CopyBlock({
+  text,
+  id,
+  copiedId,
+  onCopy,
+}: {
+  text: string
+  id: string
+  copiedId: string | null
+  onCopy: (text: string, id: string) => void
+}) {
+  return (
+    <div className="relative group">
+      <button
+        onClick={() => onCopy(text, id)}
+        className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 border border-border/40 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        aria-label="Copy to clipboard"
+      >
+        {copiedId === id ? (
+          <Check className="h-3.5 w-3.5 text-success" strokeWidth={2} />
+        ) : (
+          <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
+        )}
+      </button>
+      <pre className="text-xs bg-muted/30 backdrop-blur-xs p-3 rounded-md border border-border/40 font-mono leading-relaxed whitespace-pre-wrap break-all">
+        {text}
+      </pre>
     </div>
   )
 }

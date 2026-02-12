@@ -112,9 +112,9 @@ export function RunList() {
             <div
               key={run.id}
               className={cn(
-                "group flex items-start gap-2.5 rounded-md px-3 py-2.5 cursor-pointer transition-all duration-150",
+                "group flex items-start gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-150",
                 isSelected
-                  ? "bg-primary/5 backdrop-blur-xs border border-primary/20 shadow-sm shadow-primary/5"
+                  ? "bg-primary/5 backdrop-blur-xs border-2 border-primary/30 shadow-sm shadow-primary/5"
                   : "border border-transparent hover:bg-muted/40 hover:backdrop-blur-xs"
               )}
               onClick={() => setSelectedRunId(run.id)}
@@ -136,9 +136,9 @@ export function RunList() {
                 strokeWidth={2}
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate leading-tight">{run.query}</p>
+                <p className="text-sm font-medium line-clamp-2 leading-tight">{run.query}</p>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <Badge variant={config.badge} className="text-2xs capitalize">
+                  <Badge variant={config.badge} className="text-2xs uppercase">
                     {run.status}
                   </Badge>
                   <span className="text-2xs text-muted-foreground">

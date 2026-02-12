@@ -25,10 +25,23 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+const FIREBASE_HOSTING_DOMAINS: ReadonlySet<string> = new Set([
+  "askcortex.dev",
+  "apexflow-console.web.app",
+])
+
+function resolveAuthDomain(): string | undefined {
+  const hostname = window.location.hostname
+  if (FIREBASE_HOSTING_DOMAINS.has(hostname)) {
+    return hostname
+  }
+  return import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined
+}
+
 function getFirebaseConfig() {
   const config = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
+    authDomain: resolveAuthDomain(),
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
