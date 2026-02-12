@@ -39,7 +39,7 @@ function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<ChatPage />} />
             <Route path="/chat" element={<ChatPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/runs" element={<DashboardPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
