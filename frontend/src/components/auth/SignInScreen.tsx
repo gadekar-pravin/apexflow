@@ -155,24 +155,26 @@ export function SignInScreen() {
     <div className="relative flex items-center justify-center h-screen bg-background bg-gradient-radial overflow-hidden">
       <NeuralBackground />
 
-      <div className="relative z-10 flex flex-col items-center gap-8 animate-fade-up">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary shadow-glow-sm">
-            <ApexFlowLogo className="h-8 w-8 text-primary-foreground" />
+      <div className="relative z-10 flex flex-col items-center gap-10 animate-fade-up">
+        {/* Logo + Hero Typography */}
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-glow-sm">
+            <ApexFlowLogo className="h-10 w-10 text-primary-foreground" />
           </div>
           <div className="text-center">
-            <h1 className="text-3xl font-semibold tracking-tight">Cortex</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h1 className="text-7xl font-normal tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>
+              Cortex
+            </h1>
+            <p className="text-lg tracking-[0.2em] uppercase text-muted-foreground mt-3">
               Think deeper. Work smarter.
             </p>
           </div>
         </div>
 
         {/* Sign-in card */}
-        <div className="w-80 rounded-xl border border-border/40 bg-card/80 p-6 shadow-glass-md backdrop-blur-md">
+        <div className="w-96 rounded-xl border border-border/40 bg-card/80 p-8 shadow-glass-md backdrop-blur-md">
           <Button
-            className="w-full gap-3 h-11"
+            className="w-full gap-3 h-12 text-base"
             variant="outline"
             onClick={() => void handleSignIn()}
             disabled={isSigningIn}
