@@ -328,12 +328,10 @@ export function ChatPage() {
         )}
       </div>
 
-      {/* Reasoning sidebar */}
-      {showReasoning && (
-        <div className="w-80 border-l border-border/40 bg-sidebar/40 flex-shrink-0">
-          <ReasoningSidebar activeRunId={activeRunId} />
-        </div>
-      )}
+      {/* Reasoning sidebar — always mounted to preserve events across toggle */}
+      <div className={showReasoning ? "w-80 border-l border-border/40 bg-sidebar/40 flex-shrink-0" : "hidden"}>
+        <ReasoningSidebar activeRunId={activeRunId} sessionId={currentSessionId} />
+      </div>
     </div>
   )
 }

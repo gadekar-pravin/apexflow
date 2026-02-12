@@ -1,20 +1,41 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CheckCircle2, XCircle, Loader2, Wrench, Search, FileText, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSSESubscription } from "@/contexts/SSEContext"
+import { cn } from "@/utils/utils"
 import type { SSEEvent, ReasoningEvent } from "@/types"
+
+interface ConsolidatedStep {
+  step_id: string
+  status: "in_progress" | "completed" | "failed"
+  agent_type?: string
+  execution_time?: number
+  cost?: number
+  error?: string
+  tool_calls: Array<{ tool_name: string; args_summary?: string }>
+}
 
 interface ReasoningSidebarProps {
   activeRunId: string | null
+  sessionId: string | null
 }
 
-export function ReasoningSidebar({ activeRunId }: ReasoningSidebarProps) {
+export function ReasoningSidebar({ activeRunId, sessionId }: ReasoningSidebarProps) {
   const [events, setEvents] = useState<ReasoningEvent[]>([])
+  const prevRunIdRef = useRef<string | null>(null)
 
-  // Clear events when run changes (including when set to null)
+  // Clear events when session changes (user switched or created new chat)
   useEffect(() => {
     setEvents([])
+  }, [sessionId])
+
+  // Clear events only when a NEW run starts, not when a run completes (null)
+  useEffect(() => {
+    if (activeRunId && activeRunId !== prevRunIdRef.current) {
+      setEvents([])
+    }
+    prevRunIdRef.current = activeRunId
   }, [activeRunId])
 
   const handleSSEEvent = useCallback(
@@ -47,6 +68,56 @@ export function ReasoningSidebar({ activeRunId }: ReasoningSidebarProps) {
   )
 
   useSSESubscription(handleSSEEvent)
+
+  // Consolidate raw events by step_id into one entry per step
+  const consolidatedSteps = useMemo(() => {
+    const stepMap = new Map<string, ConsolidatedStep>()
+    const stepOrder: string[] = []
+
+    for (const evt of events) {
+      const id = evt.step_id
+      if (!id) continue
+
+      if (!stepMap.has(id)) {
+        stepMap.set(id, {
+          step_id: id,
+          status: "in_progress",
+          agent_type: evt.agent_type,
+          tool_calls: [],
+        })
+        stepOrder.push(id)
+      }
+
+      const step = stepMap.get(id)!
+
+      switch (evt.type) {
+        case "step_start":
+          step.agent_type = step.agent_type || evt.agent_type
+          break
+        case "tool_call":
+          if (evt.tool_name) {
+            step.tool_calls.push({
+              tool_name: evt.tool_name,
+              args_summary: evt.args_summary,
+            })
+          }
+          break
+        case "step_complete":
+          step.status = "completed"
+          step.agent_type = evt.agent_type || step.agent_type
+          step.execution_time = evt.execution_time
+          step.cost = evt.cost
+          break
+        case "step_failed":
+          step.status = "failed"
+          step.agent_type = evt.agent_type || step.agent_type
+          step.error = evt.error
+          break
+      }
+    }
+
+    return stepOrder.map((id) => stepMap.get(id)!)
+  }, [events])
 
   if (!activeRunId && events.length === 0) {
     return (
@@ -89,13 +160,13 @@ export function ReasoningSidebar({ activeRunId }: ReasoningSidebarProps) {
 
         <div className="relative">
           {/* Timeline line */}
-          {events.length > 0 && (
+          {consolidatedSteps.length > 0 && (
             <div className="absolute left-3 top-3 bottom-3 w-px bg-border" />
           )}
 
           <div className="space-y-3">
-            {events.map((evt, i) => (
-              <TimelineItem key={i} event={evt} />
+            {consolidatedSteps.map((step) => (
+              <StepTimelineItem key={step.step_id} step={step} />
             ))}
           </div>
         </div>
@@ -104,78 +175,67 @@ export function ReasoningSidebar({ activeRunId }: ReasoningSidebarProps) {
   )
 }
 
-function TimelineItem({ event }: { event: ReasoningEvent }) {
-  const { type, step_id, agent_type, tool_name, args_summary, execution_time, error } = event
+function StepTimelineItem({ step }: { step: ConsolidatedStep }) {
+  const { step_id, status, agent_type, execution_time, error, tool_calls } = step
 
-  if (type === "step_start") {
-    return (
+  return (
+    <div>
+      {/* Main step row */}
       <div className="relative flex items-start gap-3 pl-1">
-        <div className="relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background border border-primary/40">
-          <Loader2 className="h-3 w-3 text-primary animate-spin" />
+        <div
+          className={cn(
+            "relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background border",
+            status === "in_progress" && "border-primary/40",
+            status === "completed" && "border-success/40",
+            status === "failed" && "border-destructive/40"
+          )}
+        >
+          {status === "in_progress" && (
+            <Loader2 className="h-3 w-3 text-primary animate-spin" />
+          )}
+          {status === "completed" && (
+            <CheckCircle2 className="h-3 w-3 text-success" />
+          )}
+          {status === "failed" && (
+            <XCircle className="h-3 w-3 text-destructive" />
+          )}
         </div>
         <div className="min-w-0 pt-px">
-          <p className="text-sm font-medium text-foreground">{step_id}</p>
+          <p className="text-sm font-medium text-foreground">
+            {step_id}
+            {execution_time != null && execution_time > 0 && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {execution_time.toFixed(1)}s
+              </span>
+            )}
+          </p>
           {agent_type && (
             <Badge variant="muted" className="mt-1">{agent_type}</Badge>
           )}
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "tool_call") {
-    return (
-      <div className="relative flex items-start gap-3 pl-1 ml-4">
-        <div className="relative z-10 mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-muted">
-          <Wrench className="h-2.5 w-2.5 text-muted-foreground" />
-        </div>
-        <div className="min-w-0 pt-px">
-          <p className="text-xs text-foreground">
-            <span className="font-medium">{tool_name}</span>
-          </p>
-          {args_summary && (
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 font-mono">
-              {args_summary}
-            </p>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "step_complete") {
-    return (
-      <div className="relative flex items-start gap-3 pl-1">
-        <div className="relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background border border-success/40">
-          <CheckCircle2 className="h-3 w-3 text-success" />
-        </div>
-        <div className="min-w-0 pt-px">
-          <p className="text-sm text-foreground">{step_id}</p>
-          {execution_time != null && execution_time > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {execution_time.toFixed(1)}s
-            </p>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "step_failed") {
-    return (
-      <div className="relative flex items-start gap-3 pl-1">
-        <div className="relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background border border-destructive/40">
-          <XCircle className="h-3 w-3 text-destructive" />
-        </div>
-        <div className="min-w-0 pt-px">
-          <p className="text-sm text-foreground">{step_id}</p>
           {error && (
             <p className="text-xs text-destructive mt-0.5 line-clamp-3">{error}</p>
           )}
         </div>
       </div>
-    )
-  }
 
-  return null
+      {/* Nested tool calls */}
+      {tool_calls.map((tc, i) => (
+        <div key={i} className="relative flex items-start gap-3 pl-1 ml-4 mt-1.5">
+          <div className="relative z-10 mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-muted">
+            <Wrench className="h-2.5 w-2.5 text-muted-foreground" />
+          </div>
+          <div className="min-w-0 pt-px">
+            <p className="text-xs text-foreground">
+              <span className="font-medium">{tc.tool_name}</span>
+            </p>
+            {tc.args_summary && (
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 font-mono">
+                {tc.args_summary}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
