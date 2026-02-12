@@ -9,7 +9,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20",
+          "bg-foreground text-background shadow-sm hover:bg-foreground/90 hover:shadow-md",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:shadow-md hover:shadow-destructive/20",
         outline:
@@ -19,7 +19,7 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-muted text-muted-foreground hover:text-foreground",
         link:
-          "text-primary underline-offset-4 hover:underline",
+          "text-foreground underline-offset-4 hover:underline",
         glass:
           "backdrop-blur-glass bg-white/10 border border-white/20 text-foreground hover:bg-white/20 hover:shadow-glass-sm",
       },
