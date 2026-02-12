@@ -171,7 +171,7 @@ export function SettingsPage() {
                         "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all duration-150",
                         "border backdrop-blur-xs",
                         theme === option.value
-                          ? "border-primary/40 bg-primary/10 text-primary font-medium shadow-sm shadow-primary/10"
+                          ? "border-foreground/20 bg-foreground/[0.06] text-foreground font-medium shadow-sm"
                           : "border-border/50 bg-background/50 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                       )}
                     >

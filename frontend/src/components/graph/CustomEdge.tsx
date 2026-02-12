@@ -32,7 +32,7 @@ function CustomEdgeComponent({
           id={`${id}-glow`}
           path={edgePath}
           style={{
-            stroke: "hsl(var(--primary) / 0.3)",
+            stroke: "hsl(var(--foreground) / 0.15)",
             strokeWidth: 6,
             strokeLinecap: "round",
             filter: "blur(4px)",
@@ -43,7 +43,7 @@ function CustomEdgeComponent({
         id={id}
         path={edgePath}
         style={{
-          stroke: animated ? "hsl(var(--primary) / 0.6)" : "hsl(var(--border))",
+          stroke: animated ? "hsl(var(--foreground) / 0.4)" : "hsl(var(--border))",
           strokeWidth: 1.5,
           strokeLinecap: "round",
           ...style,
@@ -64,7 +64,7 @@ function CustomEdgeComponent({
           </defs>
           <circle
             r="3"
-            fill="hsl(var(--primary))"
+            fill="hsl(var(--foreground) / 0.6)"
             filter={`url(#${filterId})`}
             className="edge-flow-dot"
           >

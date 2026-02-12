@@ -339,6 +339,28 @@
    ---------------------------------------- */
 .prose {
   @apply text-foreground;
+  color: hsl(var(--foreground));
+}
+
+.prose p, .prose li, .prose td, .prose th, .prose blockquote {
+  color: inherit;
+}
+
+.dark .prose {
+  --tw-prose-body: hsl(220 15% 92%);
+  color: hsl(0 0% 95%);
+}
+
+.dark .prose p, .dark .prose li, .dark .prose td, .dark .prose th {
+  color: hsl(0 0% 95%);
+}
+
+.dark .prose strong {
+  color: hsl(0 0% 100%);
+}
+
+.dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4 {
+  color: hsl(0 0% 100%);
 }
 
 .prose pre {

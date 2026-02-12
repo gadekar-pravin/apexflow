@@ -7,53 +7,26 @@ const suggestions = [
     title: "Search my documents",
     description: "Find insights across your indexed files and databases.",
     query: "Search my documents for key findings",
-    color: "blue" as const,
   },
   {
     icon: BarChart3,
     title: "Analyze data",
     description: "Run analysis on uploaded datasets and spot trends.",
     query: "Analyze the data and summarize trends",
-    color: "purple" as const,
   },
   {
     icon: FileText,
     title: "Summarize a document",
     description: "Get a concise summary of any file in seconds.",
     query: "Summarize my most recent document",
-    color: "cyan" as const,
   },
   {
     icon: Lightbulb,
     title: "Brainstorm ideas",
     description: "Generate creative ideas for a project or topic.",
     query: "Help me brainstorm ideas for my project",
-    color: "amber" as const,
   },
 ]
-
-const colorMap = {
-  blue: {
-    bg: "bg-blue-500/10",
-    text: "text-blue-500 dark:text-blue-400",
-    hoverBorder: "hover:border-blue-300 dark:hover:border-blue-700",
-  },
-  purple: {
-    bg: "bg-purple-500/10",
-    text: "text-purple-500 dark:text-purple-400",
-    hoverBorder: "hover:border-purple-300 dark:hover:border-purple-700",
-  },
-  cyan: {
-    bg: "bg-cyan-500/10",
-    text: "text-cyan-500 dark:text-cyan-400",
-    hoverBorder: "hover:border-cyan-300 dark:hover:border-cyan-700",
-  },
-  amber: {
-    bg: "bg-amber-500/10",
-    text: "text-amber-500 dark:text-amber-400",
-    hoverBorder: "hover:border-amber-300 dark:hover:border-amber-700",
-  },
-}
 
 interface WelcomeScreenProps {
   onSend: (query: string) => void
@@ -70,7 +43,7 @@ export function WelcomeScreen({ onSend, inputValue, onInputChange, onInputSend, 
       <div className="flex-1 flex items-center justify-center">
         <div className="max-w-4xl w-full mx-auto space-y-8 px-4">
           <div className="text-center space-y-3">
-            <h1 className="text-4xl font-bold tracking-tight text-foreground dark:bg-clip-text dark:text-transparent dark:bg-gradient-to-r dark:from-foreground dark:via-primary/80 dark:to-muted-foreground">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground dark:bg-clip-text dark:text-transparent dark:bg-gradient-to-r dark:from-foreground dark:via-foreground/80 dark:to-muted-foreground">
               What can I help you with?
             </h1>
             <p className="text-lg text-muted-foreground font-light">
@@ -79,27 +52,24 @@ export function WelcomeScreen({ onSend, inputValue, onInputChange, onInputSend, 
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {suggestions.map((item) => {
-              const colors = colorMap[item.color]
-              return (
-                <button
-                  key={item.title}
-                  onClick={() => onSend(item.query)}
-                  disabled={disabled}
-                  className={`group flex items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left transition-all hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none ${colors.hoverBorder}`}
-                >
-                  <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${colors.bg} ${colors.text} transition-transform group-hover:scale-110`}>
-                    <item.icon className="h-4.5 w-4.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">{item.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {item.description}
-                    </p>
-                  </div>
-                </button>
-              )
-            })}
+            {suggestions.map((item) => (
+              <button
+                key={item.title}
+                onClick={() => onSend(item.query)}
+                disabled={disabled}
+                className="group flex items-start gap-3 rounded-2xl border border-border bg-card p-5 text-left transition-all hover:border-foreground/20 hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-foreground/[0.06] text-muted-foreground transition-all group-hover:bg-foreground/10 group-hover:text-foreground group-hover:scale-110">
+                  <item.icon className="h-4.5 w-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{item.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {item.description}
+                  </p>
+                </div>
+              </button>
+            ))}
           </div>
 
           {/* Inline input below suggestions */}

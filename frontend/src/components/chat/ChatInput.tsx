@@ -47,10 +47,7 @@ export function ChatInput({
 
   const inputWidget = (
     <div className="relative">
-      {/* Animated gradient glow behind input */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-blue-500/20 to-primary/20 rounded-2xl blur-sm opacity-60 animate-pulse" />
-
-      <div className="relative flex items-center gap-3 bg-card rounded-xl border-2 border-primary/30 p-3 shadow-lg shadow-primary/10">
+      <div className="relative flex items-center gap-3 bg-card rounded-xl border border-border p-3 shadow-sm transition-colors focus-within:border-foreground/30">
         <textarea
           ref={textareaRef}
           value={value}
@@ -66,7 +63,7 @@ export function ChatInput({
           size="icon"
           onClick={onSend}
           disabled={disabled || !value.trim()}
-          className="h-10 w-10 shrink-0 rounded-lg transition-all hover:scale-105"
+          className="h-10 w-10 shrink-0 rounded-lg transition-all hover:scale-105 bg-foreground text-background hover:bg-foreground/90"
         >
           <Send className="h-4 w-4" />
         </Button>

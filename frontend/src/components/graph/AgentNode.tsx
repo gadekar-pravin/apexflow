@@ -60,8 +60,8 @@ const statusConfig: Record<
   },
   running: {
     icon: Loader2,
-    containerClass: "border-primary/40 bg-primary/5 backdrop-blur-xs",
-    iconClass: "text-primary",
+    containerClass: "border-foreground/30 bg-foreground/5 backdrop-blur-xs",
+    iconClass: "text-foreground",
     animate: true,
     glow: true,
   },
@@ -109,7 +109,7 @@ function AgentNodeComponent({ data, selected }: AgentNodeProps) {
         config.glow && "node-active-glow",
         config.glowClass,
         data.status === "stale" && "node-stale",
-        selected && "ring-1 ring-primary/60 ring-offset-1 ring-offset-background shadow-glass-glow"
+        selected && "ring-1 ring-foreground/40 ring-offset-1 ring-offset-background shadow-glass-md"
       )}
       style={nodeIndex != null ? { animationDelay: `${nodeIndex * 80}ms` } : undefined}
     >

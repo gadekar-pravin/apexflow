@@ -51,8 +51,8 @@ export function DashboardPage() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-md px-8">
               <div className="flex justify-center mb-6">
-                <div className="h-14 w-14 rounded-xl backdrop-blur-glass bg-primary/10 border border-primary/20 flex items-center justify-center shadow-glass-glow glow-on-hover transition-all duration-300">
-                  <Hexagon className="h-7 w-7 text-primary" strokeWidth={1.5} />
+                <div className="h-14 w-14 rounded-xl backdrop-blur-glass bg-foreground/[0.06] border border-foreground/10 flex items-center justify-center shadow-glass-sm glow-on-hover transition-all duration-300">
+                  <Hexagon className="h-7 w-7 text-foreground/70" strokeWidth={1.5} />
                 </div>
               </div>
               <h2 className="text-xl font-semibold tracking-tight mb-2">

@@ -22,11 +22,11 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-          isUser ? "bg-primary" : "bg-secondary"
+          isUser ? "bg-foreground" : "bg-secondary"
         )}
       >
         {isUser ? (
-          <User className="h-4 w-4 text-primary-foreground" />
+          <User className="h-4 w-4 text-background" />
         ) : (
           <Bot className="h-4 w-4 text-secondary-foreground" />
         )}
@@ -75,7 +75,7 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline"
+                  className="text-foreground underline underline-offset-2 hover:opacity-80"
                 >
                   {children}
                 </a>
