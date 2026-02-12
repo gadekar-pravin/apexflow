@@ -36,11 +36,8 @@ export function RunCreator() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="relative">
-      {/* Animated gradient glow behind input */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-blue-500/20 to-primary/20 rounded-2xl blur-sm opacity-60 animate-pulse" />
-
-      <div className="relative rounded-xl border-2 border-primary/30 bg-card p-3 shadow-lg shadow-primary/10 space-y-2.5">
+    <form onSubmit={handleSubmit}>
+      <div className="rounded-2xl bg-card shadow-lg shadow-foreground/[0.04] border border-border/60 p-4 transition-shadow focus-within:shadow-xl focus-within:shadow-foreground/[0.06]">
         <textarea
           placeholder="Describe what you want the agents to do..."
           value={query}
@@ -48,16 +45,17 @@ export function RunCreator() {
           onKeyDown={handleKeyDown}
           rows={3}
           disabled={!canCreateRun || createRun.isPending}
-          className="w-full resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none text-sm text-foreground placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full resize-none bg-transparent border-none ring-0 focus:ring-0 focus:outline-none text-sm text-foreground placeholder:text-muted-foreground/40 disabled:cursor-not-allowed disabled:opacity-50"
         />
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground/70">
-            {navigator.platform?.startsWith("Mac") ? "⌘" : "Ctrl"}+Enter to submit
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs text-muted-foreground/50">
+            {navigator.platform?.startsWith("Mac") ? "⌘" : "Ctrl"}+Enter
           </span>
           <Button
             type="submit"
             disabled={!canCreateRun || !query.trim() || createRun.isPending}
             size="sm"
+            className="rounded-xl"
           >
             {createRun.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
