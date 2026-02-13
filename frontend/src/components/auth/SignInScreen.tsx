@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { BrainCog, ChevronDown, FileKey, Loader2, Lock, Server, Shield } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { NeuralBackground } from "./NeuralBackground"
 import "./SignInScreen.css"
 
 function GoogleIcon() {
@@ -23,39 +24,6 @@ function GoogleIcon() {
         fill="#EA4335"
       />
     </svg>
-  )
-}
-
-const NETWORK_NODES = [
-  { top: "20%", left: "10%", size: 4, delay: 0 },
-  { top: "30%", left: "20%", size: 6, delay: 2 },
-  { top: "70%", left: "80%", size: 8, delay: 4 },
-  { top: "40%", left: "90%", size: 5, delay: 1 },
-  { top: "80%", left: "15%", size: 7, delay: 3 },
-  { top: "15%", left: "85%", size: 4, delay: 5 },
-  { top: "50%", left: "50%", size: 3, delay: 1.5 },
-  { top: "60%", left: "30%", size: 6, delay: 2.5 },
-]
-
-function NetworkBackground() {
-  return (
-    <div className="signin-network-bg">
-      <div className="signin-connections" />
-      <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-white dark:from-[#0f172a] dark:via-transparent dark:to-[#0f172a] opacity-80" />
-      {NETWORK_NODES.map((node, index) => (
-        <div
-          key={`${node.top}-${node.left}-${index}`}
-          className="signin-node animate-signin-float"
-          style={{
-            top: node.top,
-            left: node.left,
-            width: `${node.size}px`,
-            height: `${node.size}px`,
-            animationDelay: `${node.delay}s`,
-          }}
-        />
-      ))}
-    </div>
   )
 }
 
@@ -109,7 +77,7 @@ export function SignInScreen() {
 
   return (
     <div className="relative flex flex-col min-h-screen overflow-hidden bg-white text-slate-800 dark:bg-[#0f172a] dark:text-slate-200 signin-zen-bg">
-      <NetworkBackground />
+      <NeuralBackground />
 
       <nav className="absolute top-0 w-full z-20 px-8 py-6">
         <div className="container mx-auto flex justify-between items-center">
