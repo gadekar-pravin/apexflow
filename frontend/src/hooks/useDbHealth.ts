@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { getAPIUrl } from "../services/api"
 import type { ConnectionState } from "./useApiHealth"
-
-const DB_HEALTH_INTERVAL = 30000 // 30 seconds
+import { useSmartInterval } from "./useSmartInterval"
 
 export function useDbHealth(): ConnectionState {
   const [state, setState] = useState<ConnectionState>("connecting")
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const check = useCallback(async () => {
@@ -26,14 +24,13 @@ export function useDbHealth(): ConnectionState {
     }
   }, [])
 
+  useSmartInterval({ callback: check, intervalMs: 60_000 })
+
   useEffect(() => {
-    check()
-    intervalRef.current = setInterval(check, DB_HEALTH_INTERVAL)
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
       if (abortRef.current) abortRef.current.abort()
     }
-  }, [check])
+  }, [])
 
   return state
 }

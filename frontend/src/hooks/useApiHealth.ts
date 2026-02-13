@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { getAPIUrl } from "../services/api"
+import { useSmartInterval } from "./useSmartInterval"
 
 export type ConnectionState = "connected" | "connecting" | "disconnected"
 
@@ -11,16 +12,12 @@ interface UseApiHealthResult {
   checkNow: () => void
 }
 
-const HEALTH_CHECK_INTERVAL = 30000 // 30 seconds
-
 export function useApiHealth(): UseApiHealthResult {
   const [state, setState] = useState<ConnectionState>("connecting")
   const [lastError, setLastError] = useState<Error | null>(null)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const checkHealth = useCallback(async () => {
-    // Cancel any pending request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
@@ -42,28 +39,22 @@ export function useApiHealth(): UseApiHealthResult {
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        return // Ignore aborted requests
+        return
       }
       setState("disconnected")
       setLastError(error instanceof Error ? error : new Error("Unknown error"))
     }
   }, [])
 
-  // Initial check and interval setup
+  useSmartInterval({ callback: checkHealth, intervalMs: 60_000 })
+
   useEffect(() => {
-    checkHealth()
-
-    intervalRef.current = setInterval(checkHealth, HEALTH_CHECK_INTERVAL)
-
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
     }
-  }, [checkHealth])
+  }, [])
 
   return {
     state,
