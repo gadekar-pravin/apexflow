@@ -77,10 +77,14 @@ export function useSmartInterval({
   useEffect(() => {
     if (!enabled) return
 
-    // Fire immediately on mount, start interval + idle timer
-    callbackRef.current()
-    startPolling()
-    startIdleTimer()
+    // Start paused if tab is already hidden (e.g. opened in background)
+    if (document.hidden) {
+      isPausedRef.current = true
+    } else {
+      callbackRef.current()
+      startPolling()
+      startIdleTimer()
+    }
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
