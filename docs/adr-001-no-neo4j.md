@@ -35,7 +35,7 @@ The database is purely a persistence layer for opaque JSONB blobs. All graph log
 | `memory/context.py:530` | `nx.node_link_data()` — session persistence |
 | `core/graph_adapter.py` | `nx.topological_generations()` — layout only (visualization) |
 
-**Zero JSONB graph queries exist in SQL** — no `@>`, `->`, `->>`, `jsonb_path_query`, or joins on graph fields. Typical DAG size: 5-15 nodes, <30 edges.
+**Zero JSONB graph queries exist in SQL** — no `@>`, `->`, `->>`, `jsonb_path_query`, or joins on graph fields. Estimated DAG size: 5-15 nodes, <30 edges (based on agent config step counts, not measured).
 
 ### REMME Evidence/Staging: Flat Arrays, Not Graphs
 
@@ -90,7 +90,7 @@ If graph-like queries emerge without justifying a second database:
 
 If integrating LightRAG: run Neo4j AuraDB for **LightRAG's knowledge graph only**. Keep all 13 ApexFlow tables in AlloyDB. Two databases with clean separation:
 
-- **AlloyDB** owns: sessions, jobs, job_runs, notifications, chat_messages, system_state, documents, document_chunks, memories, user_preferences, security_logs, scanned_runs, users
+- **AlloyDB** owns: sessions, jobs, job_runs, notifications, chat_sessions, chat_messages, system_state, documents, document_chunks, memories, user_preferences, security_logs, scanned_runs
 - **Neo4j** owns: LightRAG entity nodes, relationship edges, community structures (if applicable)
 
 No dual-write needed — LightRAG manages its own graph lifecycle independently from ApexFlow's transactional data.
@@ -99,7 +99,7 @@ No dual-write needed — LightRAG manages its own graph lifecycle independently 
 
 ```bash
 # Confirm minimal graph algorithm usage
-grep -r "predecessors\|successors\|neighbors\|shortest_path\|bfs\|dfs" --include="*.py"
+grep -r "predecessors\|successors\|neighbors\|shortest_path\|bfs\|dfs" --include="*.py" core/ agents/ memory/ remme/ routers/ tools/ services/
 
 # Confirm no JSONB graph queries in stores
 grep -r "@>\|jsonb_path\|->>" --include="*.py" core/stores/
