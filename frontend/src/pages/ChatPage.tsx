@@ -1,18 +1,18 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { PanelRightOpen, PanelRightClose, ChevronRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ChevronRight } from "lucide-react"
 import { ResizablePanel } from "@/components/ui/resizable-panel"
 import {
   WelcomeScreen,
   ChatMessageList,
   ChatInput,
   ChatSessionList,
-  RightPanel,
 } from "@/components/chat"
 import { chatService } from "@/services/chatService"
 import { runsService } from "@/services/runsService"
 import { useAuth } from "@/contexts/AuthContext"
+import { useReasoningEvents } from "@/hooks/useReasoningEvents"
+import { parseMetadata, stepsFromGraphNodes, type ConsolidatedStep } from "@/components/chat/reasoning-shared"
 import type { AgentChatMessage, VisualizationSpec } from "@/types"
 
 const MAX_POLL_ERRORS = 15
@@ -63,21 +63,97 @@ export function ChatPage() {
   const [inputValue, setInputValue] = useState("")
   const [isRunning, setIsRunning] = useState(false)
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
-  const [showPanel, setShowPanel] = useState(false)
+  const [expandedReasoningIds, setExpandedReasoningIds] = useState<Set<string>>(new Set())
   const activePollsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
   const currentSessionIdRef = useRef<string | null>(null)
   const unmountedRef = useRef(false)
   const skipNextLoadRef = useRef(false)
-  const hasOpenedForChartsRef = useRef(false)
+
+  // Centralized SSE reasoning events
+  const { stepsMap: liveStepsMap } = useReasoningEvents(activeRunId, currentSessionId)
+
+  // Persisted reasoning steps reconstructed from graph data
+  const [persistedStepsMap, setPersistedStepsMap] = useState<Map<string, ConsolidatedStep[]>>(new Map())
+  const fetchedRunIdsRef = useRef<Set<string>>(new Set())
+
+  // Clear persisted state on session change
+  useEffect(() => {
+    setPersistedStepsMap(new Map())
+    fetchedRunIdsRef.current = new Set()
+  }, [currentSessionId])
+
+  // Fetch graph data for run_ids found in messages
+  useEffect(() => {
+    if (messages.length === 0) return
+
+    const runIdsToFetch: string[] = []
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue
+      const meta = parseMetadata(msg.metadata)
+      const runId = meta?.run_id as string | undefined
+      if (
+        runId &&
+        !fetchedRunIdsRef.current.has(runId) &&
+        !liveStepsMap.has(runId)
+      ) {
+        runIdsToFetch.push(runId)
+      }
+    }
+
+    if (runIdsToFetch.length === 0) return
+
+    // Mark as in-flight to prevent duplicate concurrent requests
+    for (const id of runIdsToFetch) fetchedRunIdsRef.current.add(id)
+
+    Promise.allSettled(
+      runIdsToFetch.map((id) => runsService.get(id).then((run) => ({ id, run })))
+    ).then((results) => {
+      const newEntries: [string, ConsolidatedStep[]][] = []
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i]
+        if (result.status === "fulfilled") {
+          const { id, run } = result.value
+          if (run.graph?.nodes?.length) {
+            const steps = stepsFromGraphNodes(run.graph.nodes)
+            if (steps.length > 0) newEntries.push([id, steps])
+          }
+        } else {
+          // Remove failed IDs so the effect can retry on next trigger
+          fetchedRunIdsRef.current.delete(runIdsToFetch[i])
+        }
+      }
+      if (newEntries.length > 0) {
+        setPersistedStepsMap((prev) => {
+          const next = new Map(prev)
+          for (const [id, steps] of newEntries) next.set(id, steps)
+          return next
+        })
+      }
+    })
+  }, [messages, liveStepsMap])
+
+  // Merge persisted + live steps (live always wins)
+  const stepsMap = useMemo(() => {
+    const merged = new Map(persistedStepsMap)
+    for (const [id, steps] of liveStepsMap) merged.set(id, steps)
+    return merged
+  }, [persistedStepsMap, liveStepsMap])
+
+  const handleToggleReasoning = useCallback((messageId: string) => {
+    setExpandedReasoningIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(messageId)) {
+        next.delete(messageId)
+      } else {
+        next.add(messageId)
+      }
+      return next
+    })
+  }, [])
 
   // Keep ref in sync with state for use in async callbacks
   useEffect(() => {
     currentSessionIdRef.current = currentSessionId
-  }, [currentSessionId])
-
-  // Reset chart auto-open flag on session change
-  useEffect(() => {
-    hasOpenedForChartsRef.current = false
   }, [currentSessionId])
 
   // Fetch chat sessions
@@ -194,10 +270,12 @@ export function ChatPage() {
                   : "Something went wrong."
               }
 
-              // Build metadata with visualizations if present
-              const metadata = visualizations
-                ? { visualizations_schema_version: 1, visualizations }
-                : undefined
+              // Build metadata — always include run_id for reasoning trace lookup
+              const metadata: Record<string, unknown> = { run_id: runId }
+              if (visualizations) {
+                metadata.visualizations_schema_version = 1
+                metadata.visualizations = visualizations
+              }
 
               // Always persist the assistant message to DB so it's
               // available when the user navigates back to this session.
@@ -211,11 +289,6 @@ export function ChatPage() {
                 )
                 if (onOriginalSession) {
                   setMessages((prev) => [...prev, assistantMsg])
-                  // Auto-open panel on first chart in this session
-                  if (visualizations && !hasOpenedForChartsRef.current) {
-                    hasOpenedForChartsRef.current = true
-                    setShowPanel(true)
-                  }
                 }
               } catch {
                 if (onOriginalSession) {
@@ -224,14 +297,10 @@ export function ChatPage() {
                     session_id: sessionId,
                     role: "assistant",
                     content: outputText,
-                    metadata: metadata ?? null,
+                    metadata: metadata,
                     created_at: new Date().toISOString(),
                   }
                   setMessages((prev) => [...prev, localMsg])
-                  if (visualizations && !hasOpenedForChartsRef.current) {
-                    hasOpenedForChartsRef.current = true
-                    setShowPanel(true)
-                  }
                 }
               }
 
@@ -390,25 +459,19 @@ export function ChatPage() {
                 : "New Chat"}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowPanel(!showPanel)}
-            className="text-muted-foreground"
-          >
-            {showPanel ? (
-              <PanelRightClose className="h-4 w-4 mr-1.5" />
-            ) : (
-              <PanelRightOpen className="h-4 w-4 mr-1.5" />
-            )}
-            <span className="text-xs">Panel</span>
-          </Button>
         </div>
 
         {/* Messages with fixed footer input, or Welcome with inline input */}
         {hasMessages ? (
           <>
-            <ChatMessageList messages={messages} isRunning={isRunning} />
+            <ChatMessageList
+              messages={messages}
+              isRunning={isRunning}
+              stepsMap={stepsMap}
+              activeRunId={activeRunId}
+              expandedReasoningIds={expandedReasoningIds}
+              onToggleReasoning={handleToggleReasoning}
+            />
             <ChatInput
               value={inputValue}
               onChange={setInputValue}
@@ -427,24 +490,6 @@ export function ChatPage() {
           />
         )}
       </div>
-
-      {/* Right panel — tabbed Activity + Charts */}
-      {showPanel && (
-        <ResizablePanel
-          defaultWidth={320}
-          minWidth={240}
-          maxWidth={600}
-          storageKey="apexflow.chat.reasoningWidth"
-          side="left"
-          className="border-l border-border/40 bg-sidebar/40"
-        >
-          <RightPanel
-            messages={messages}
-            activeRunId={activeRunId}
-            sessionId={currentSessionId}
-          />
-        </ResizablePanel>
-      )}
     </div>
   )
 }
