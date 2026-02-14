@@ -3,158 +3,145 @@
 @tailwind utilities;
 
 /* ============================================
-   DEEP INDIGO DESIGN SYSTEM
-   Cortex UI - Precision, authority, innovation
-   Inspired by Linear, Stripe, Vercel
+   INSIGHTAGENT-ALIGNED DESIGN TOKENS
+   Palette: #137fec, #f6f7f8, #101922
+   Typography: Manrope
    ============================================ */
 
 @layer base {
   /* ----------------------------------------
-     LIGHT THEME (Primary Experience)
-     Cool paper whites with deep indigo accents
-     Electric blue highlights for tech-forward feel
+     LIGHT THEME (InsightAgent palette)
      ---------------------------------------- */
   :root {
-    /* Core surfaces - cool, crisp whites */
-    --background: 220 20% 99%;
-    --foreground: 230 12% 6%;
+    /* Core surfaces */
+    --background: 210 12% 97%;
+    --foreground: 212 37% 10%;
 
-    /* Cards - subtle cool elevation */
-    --card: 220 16% 98%;
-    --card-foreground: 230 12% 6%;
+    /* Cards */
+    --card: 0 0% 100%;
+    --card-foreground: 212 37% 10%;
 
-    /* Popovers - slightly lifted */
+    /* Popovers */
     --popover: 0 0% 100%;
-    --popover-foreground: 230 12% 6%;
+    --popover-foreground: 212 37% 10%;
 
-    /* Primary - deep indigo, authoritative and rich */
-    --primary: 230 60% 32%;
-    --primary-foreground: 220 30% 98%;
+    /* Primary brand blue (#137fec) */
+    --primary: 208 85% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - cool gray surface */
-    --secondary: 220 14% 94%;
-    --secondary-foreground: 230 12% 20%;
+    /* Neutral surfaces */
+    --secondary: 210 22% 94%;
+    --secondary-foreground: 212 27% 20%;
 
-    /* Muted - subtle cool differentiation */
-    --muted: 220 14% 92%;
-    --muted-foreground: 220 8% 46%;
+    --muted: 210 18% 92%;
+    --muted-foreground: 214 14% 42%;
 
-    /* Accent - electric blue highlight */
-    --accent: 210 85% 90%;
-    --accent-foreground: 210 80% 28%;
+    --accent: 208 88% 92%;
+    --accent-foreground: 208 80% 33%;
 
-    /* Semantic colors - clear and modern */
+    /* Semantic colors */
     --destructive: 0 65% 52%;
     --destructive-foreground: 0 0% 100%;
     --success: 155 55% 38%;
     --success-foreground: 0 0% 100%;
     --warning: 38 85% 52%;
     --warning-foreground: 38 80% 15%;
-    --neutral: 220 6% 58%;
-    --neutral-foreground: 230 12% 20%;
+    --neutral: 214 10% 58%;
+    --neutral-foreground: 212 27% 20%;
 
-    /* Sidebar - distinct but harmonious */
-    --sidebar: 225 20% 97%;
-    --sidebar-foreground: 230 12% 6%;
+    --sidebar: 210 17% 96%;
+    --sidebar-foreground: 212 37% 10%;
 
-    /* Borders - cool, barely there */
-    --border: 220 13% 88%;
-    --input: 220 14% 90%;
-    --ring: 230 60% 32%;
+    --border: 212 20% 86%;
+    --input: 212 20% 88%;
+    --ring: 208 85% 50%;
 
     /* System */
     --radius: 0.375rem;
 
-    /* Glass surfaces - light theme */
+    /* Glass surfaces */
     --glass: 0 0% 100%;
-    --glass-alpha: 0.7;
-    --glass-muted: 220 16% 97%;
-    --glass-muted-alpha: 0.6;
+    --glass-alpha: 0.72;
+    --glass-muted: 210 20% 96%;
+    --glass-muted-alpha: 0.65;
     --glass-border: 0 0% 100%;
-    --glass-border-alpha: 0.2;
+    --glass-border-alpha: 0.24;
 
     /* Glow colors for status indicators */
-    --glow-primary: 230 60% 32%;
-    --glow-accent: 210 80% 50%;
+    --glow-primary: 208 85% 50%;
+    --glow-accent: 208 85% 50%;
     --glow-success: 155 55% 38%;
     --glow-warning: 38 85% 52%;
     --glow-destructive: 0 65% 52%;
 
     /* Gradient backgrounds */
-    --gradient-subtle: linear-gradient(135deg, hsl(220 16% 98%) 0%, hsl(225 20% 96%) 100%);
+    --gradient-subtle: linear-gradient(135deg, hsl(210 12% 97%) 0%, hsl(210 22% 94%) 100%);
     --gradient-radial: radial-gradient(ellipse at top, hsl(var(--primary) / 0.06) 0%, transparent 50%);
   }
 
   /* ----------------------------------------
-     DARK THEME
-     Navy-charcoal depths with blue undertones
-     Luminous indigo-blue for visual anchors
+     DARK THEME (InsightAgent palette)
      ---------------------------------------- */
   .dark {
-    /* Core surfaces - navy-charcoal depths */
-    --background: 230 14% 7%;
-    --foreground: 220 15% 92%;
+    /* Core surfaces (#101922 base) */
+    --background: 212 37% 10%;
+    --foreground: 210 16% 92%;
 
-    /* Cards - subtle blue-tinted lift */
-    --card: 228 12% 10%;
-    --card-foreground: 220 15% 92%;
+    /* Cards */
+    --card: 212 31% 13%;
+    --card-foreground: 210 16% 92%;
 
-    /* Popovers - floating elements */
-    --popover: 228 10% 12%;
-    --popover-foreground: 220 15% 92%;
+    /* Popovers */
+    --popover: 212 27% 14%;
+    --popover-foreground: 210 16% 92%;
 
-    /* Primary - luminous indigo-blue, vibrant */
-    --primary: 225 70% 62%;
-    --primary-foreground: 230 10% 7%;
+    /* Primary blue tuned for dark contrast */
+    --primary: 208 85% 56%;
+    --primary-foreground: 212 37% 10%;
 
-    /* Secondary - blue-tinted dark surface */
-    --secondary: 225 8% 14%;
-    --secondary-foreground: 220 15% 85%;
+    --secondary: 213 25% 18%;
+    --secondary-foreground: 210 16% 88%;
 
-    /* Muted - gentle cool differentiation */
-    --muted: 225 8% 16%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 213 22% 16%;
+    --muted-foreground: 212 12% 64%;
 
-    /* Accent - muted blue surface */
-    --accent: 210 40% 18%;
-    --accent-foreground: 210 80% 70%;
+    --accent: 210 42% 22%;
+    --accent-foreground: 208 90% 74%;
 
-    /* Semantic colors - visible but not harsh */
+    /* Semantic colors */
     --destructive: 0 58% 58%;
     --destructive-foreground: 0 0% 100%;
     --success: 155 48% 50%;
     --success-foreground: 155 50% 10%;
     --warning: 38 75% 58%;
     --warning-foreground: 38 80% 10%;
-    --neutral: 220 6% 45%;
-    --neutral-foreground: 220 15% 85%;
+    --neutral: 212 8% 48%;
+    --neutral-foreground: 210 16% 88%;
 
-    /* Sidebar - deep navy for hierarchy */
-    --sidebar: 232 16% 5%;
-    --sidebar-foreground: 220 15% 90%;
+    --sidebar: 214 40% 8%;
+    --sidebar-foreground: 210 16% 90%;
 
-    /* Borders - blue-tinted subtle definition */
-    --border: 225 8% 18%;
-    --input: 225 8% 18%;
-    --ring: 225 70% 62%;
+    --border: 213 20% 22%;
+    --input: 213 20% 22%;
+    --ring: 208 85% 56%;
 
-    /* Glass surfaces - dark theme */
-    --glass: 228 10% 12%;
-    --glass-alpha: 0.7;
-    --glass-muted: 228 10% 10%;
-    --glass-muted-alpha: 0.6;
+    /* Glass surfaces */
+    --glass: 212 27% 14%;
+    --glass-alpha: 0.72;
+    --glass-muted: 212 31% 13%;
+    --glass-muted-alpha: 0.62;
     --glass-border: 0 0% 100%;
-    --glass-border-alpha: 0.12;
+    --glass-border-alpha: 0.14;
 
     /* Glow colors for status indicators */
-    --glow-primary: 225 70% 62%;
-    --glow-accent: 210 80% 58%;
+    --glow-primary: 208 85% 56%;
+    --glow-accent: 208 85% 56%;
     --glow-success: 155 48% 50%;
     --glow-warning: 38 75% 58%;
     --glow-destructive: 0 58% 58%;
 
     /* Gradient backgrounds */
-    --gradient-subtle: linear-gradient(135deg, hsl(230 12% 8%) 0%, hsl(232 14% 6%) 100%);
+    --gradient-subtle: linear-gradient(135deg, hsl(212 35% 11%) 0%, hsl(214 40% 8%) 100%);
     --gradient-radial: radial-gradient(ellipse at top, hsl(var(--primary) / 0.08) 0%, transparent 50%);
   }
 }
@@ -184,9 +171,9 @@
     min-height: 100vh;
   }
 
-  /* Refined code typography */
+  /* Code typography */
   code, pre {
-    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-family: ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", monospace;
     font-feature-settings: "liga" 1, "calt" 1;
   }
 

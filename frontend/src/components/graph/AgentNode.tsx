@@ -26,19 +26,19 @@ const agentIcons: Record<string, React.ElementType> = {
 }
 
 const agentAccentColors: Record<string, { iconBg: string; iconText: string }> = {
-  PlannerAgent:    { iconBg: "bg-indigo-500/10 border-indigo-500/20",  iconText: "text-indigo-600 dark:text-indigo-400" },
-  CoderAgent:      { iconBg: "bg-emerald-500/10 border-emerald-500/20", iconText: "text-emerald-600 dark:text-emerald-400" },
-  BrowserAgent:    { iconBg: "bg-cyan-500/10 border-cyan-500/20",     iconText: "text-cyan-600 dark:text-cyan-400" },
-  RetrieverAgent:  { iconBg: "bg-blue-500/10 border-blue-500/20",     iconText: "text-blue-600 dark:text-blue-400" },
-  SummarizerAgent: { iconBg: "bg-amber-500/10 border-amber-500/20",   iconText: "text-amber-600 dark:text-amber-400" },
-  ThinkerAgent:    { iconBg: "bg-purple-500/10 border-purple-500/20",  iconText: "text-purple-600 dark:text-purple-400" },
-  FormatterAgent:  { iconBg: "bg-orange-500/10 border-orange-500/20",  iconText: "text-orange-600 dark:text-orange-400" },
+  PlannerAgent:    { iconBg: "bg-primary/10 border-primary/20",  iconText: "text-primary" },
+  CoderAgent:      { iconBg: "bg-success/10 border-success/20", iconText: "text-success" },
+  BrowserAgent:    { iconBg: "bg-primary/10 border-primary/25",  iconText: "text-primary" },
+  RetrieverAgent:  { iconBg: "bg-primary/15 border-primary/30",  iconText: "text-primary" },
+  SummarizerAgent: { iconBg: "bg-warning/10 border-warning/20",  iconText: "text-warning" },
+  ThinkerAgent:    { iconBg: "bg-primary/15 border-primary/30",  iconText: "text-primary" },
+  FormatterAgent:  { iconBg: "bg-primary/20 border-primary/30",  iconText: "text-primary" },
 }
 
-const defaultAccent = { iconBg: "bg-muted/40 border-white/10", iconText: "text-foreground/70" }
+const defaultAccent = { iconBg: "bg-muted/40 border-primary/15", iconText: "text-foreground/70" }
 
 // Glass card style shared across all statuses — matches mockup's glass-panel
-const GLASS_CARD = "bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border-border/40"
+const GLASS_CARD = "bg-card/80 backdrop-blur-md border-primary/15"
 
 const statusConfig: Record<
   string,
@@ -58,7 +58,7 @@ const statusConfig: Record<
   },
   running: {
     icon: Loader2,
-    iconClass: "text-foreground",
+    iconClass: "text-primary",
     animate: true,
   },
   completed: {

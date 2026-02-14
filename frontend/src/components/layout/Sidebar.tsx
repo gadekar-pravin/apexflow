@@ -43,11 +43,11 @@ const navItems = [
 
 export function Sidebar() {
   return (
-    <aside className="flex h-full w-14 flex-col border-r border-border/40 backdrop-blur-glass bg-sidebar/60">
+    <aside className="flex h-full w-14 flex-col border-r border-border/50 backdrop-blur-glass bg-sidebar/70">
       {/* Logo */}
       <div className="flex h-14 items-center justify-center">
-        <div className="group flex h-8 w-8 items-center justify-center rounded-md bg-foreground shadow-sm transition-all duration-200 hover:shadow-elevation-2 hover:scale-105">
-          <ApexFlowLogo className="h-4 w-4 text-background transition-transform duration-200 group-hover:scale-110" />
+        <div className="group flex h-8 w-8 items-center justify-center rounded-md bg-primary shadow-sm transition-all duration-200 hover:shadow-elevation-2 hover:scale-105">
+          <ApexFlowLogo className="h-4 w-4 text-primary-foreground transition-transform duration-200 group-hover:scale-110" />
         </div>
       </div>
 
@@ -66,7 +66,7 @@ export function Sidebar() {
                   cn(
                     "group flex items-center justify-center rounded-md p-2.5 transition-all duration-150",
                     isActive
-                      ? "bg-foreground/10 text-foreground shadow-sm"
+                      ? "bg-primary/15 text-primary border border-primary/20 shadow-sm"
                       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )
                 }

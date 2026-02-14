@@ -141,8 +141,8 @@ export function ResizablePanel({
         className={cn(
           "absolute top-0 h-full w-1 cursor-col-resize transition-colors",
           side === "left" ? "left-0" : "right-0",
-          "hover:bg-foreground/20",
-          isDragging && "bg-foreground/30"
+          "hover:bg-primary/20",
+          isDragging && "bg-primary/30"
         )}
       />
     </div>

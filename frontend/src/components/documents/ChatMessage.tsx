@@ -22,11 +22,11 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-          isUser ? "bg-foreground" : "bg-secondary"
+          isUser ? "bg-primary" : "bg-secondary"
         )}
       >
         {isUser ? (
-          <User className="h-4 w-4 text-background" />
+          <User className="h-4 w-4 text-primary-foreground" />
         ) : (
           <Bot className="h-4 w-4 text-secondary-foreground" />
         )}
@@ -35,7 +35,7 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
         <p className="text-sm font-medium">
           {isUser ? "You" : "Assistant"}
         </p>
-        <div className="prose prose-sm dark:prose-invert max-w-none">
+        <div className="prose dark:prose-invert max-w-none">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{

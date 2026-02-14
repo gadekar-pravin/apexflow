@@ -32,14 +32,14 @@ export function DocumentsPage() {
         minWidth={200}
         maxWidth={600}
         storageKey="apexflow.documents.sidebarWidth"
-        className="border-r border-border/40 flex flex-col backdrop-blur-glass bg-sidebar/40"
+        className="border-r border-border/50 flex flex-col backdrop-blur-glass bg-sidebar/70"
       >
         <div className="flex items-center justify-between px-4 pt-5 pb-4">
           <h2 className="text-sm font-medium">Documents</h2>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
             onClick={() => reindex.mutate()}
             disabled={!canMutateDocuments || reindex.isPending}
             aria-label="Reindex documents"
@@ -62,7 +62,7 @@ export function DocumentsPage() {
       <div className="flex-1 flex flex-col bg-background">
         {selectedDocumentPath ? (
           <>
-            <div className="border-b border-border/40 px-6 py-4 backdrop-blur-xs bg-card/30">
+            <div className="border-b border-border/50 px-6 py-4 backdrop-blur-xs bg-card/70">
               <h2 className="text-sm font-medium truncate">{selectedDocumentName || selectedDocumentPath}</h2>
             </div>
             <div className="flex-1 overflow-hidden">
@@ -73,8 +73,8 @@ export function DocumentsPage() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-md px-8">
               <div className="flex justify-center mb-6">
-                <div className="h-14 w-14 rounded-xl backdrop-blur-glass bg-muted/40 border border-white/10 flex items-center justify-center glow-on-hover transition-all duration-300">
-                  <FileText className="h-7 w-7 text-muted-foreground" strokeWidth={1.5} />
+                <div className="h-14 w-14 rounded-xl backdrop-blur-glass bg-primary/10 border border-primary/20 flex items-center justify-center glow-on-hover transition-all duration-300">
+                  <FileText className="h-7 w-7 text-primary/80" strokeWidth={1.5} />
                 </div>
               </div>
               <h2 className="text-xl font-semibold tracking-tight mb-2">

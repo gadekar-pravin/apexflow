@@ -84,15 +84,15 @@ export function ChatMessageList({
               className={`group relative flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               {msg.role === "assistant" && (
-                <div className="mr-3 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground/[0.06] text-foreground">
+                <div className="mr-3 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
                   <Sparkles className="h-4 w-4" />
                 </div>
               )}
               <div
                 className={
                   msg.role === "user"
-                    ? "relative max-w-[75%] rounded-2xl rounded-tr-sm bg-foreground px-4 py-2.5 text-background"
-                    : "relative max-w-4xl prose prose-sm dark:prose-invert prose-p:my-1 prose-headings:mt-3 prose-headings:mb-1 prose-pre:bg-muted prose-pre:border prose-pre:border-border"
+                    ? "relative max-w-[75%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-primary-foreground shadow-sm"
+                    : "relative max-w-4xl prose dark:prose-invert prose-p:my-1 prose-headings:mt-3 prose-headings:mb-1 prose-pre:bg-muted prose-pre:border prose-pre:border-border"
                 }
               >
                 <button
@@ -122,7 +122,7 @@ export function ChatMessageList({
                 )}
 
                 {msg.role === "user" ? (
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <p className="text-base font-medium whitespace-pre-wrap">{msg.content}</p>
                 ) : (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {displayContent}
@@ -140,7 +140,7 @@ export function ChatMessageList({
 
         {isRunning && (
           <div className="flex justify-start">
-            <div className="mr-3 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground/[0.06] text-foreground">
+            <div className="mr-3 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="min-w-0">

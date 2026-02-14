@@ -37,7 +37,7 @@ export function RunCreator() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="rounded-2xl bg-card shadow-lg shadow-foreground/[0.04] border border-border/60 p-4 transition-shadow focus-within:shadow-xl focus-within:shadow-foreground/[0.06]">
+      <div className="rounded-2xl bg-card shadow-lg shadow-primary/[0.08] border border-primary/20 p-4 transition-shadow focus-within:shadow-xl focus-within:shadow-primary/[0.12]">
         <textarea
           placeholder="Describe what you want the agents to do..."
           value={query}

@@ -429,7 +429,7 @@ export function ChatPage() {
         minWidth={180}
         maxWidth={400}
         storageKey="apexflow.chat.sessionsWidth"
-        className="border-r border-border/40 bg-sidebar/40"
+        className="border-r border-border/50 bg-sidebar/70"
       >
         <ChatSessionList
           sessions={sessions}
@@ -443,11 +443,11 @@ export function ChatPage() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/40 px-6 h-14 shrink-0">
+        <div className="flex items-center justify-between border-b border-border/50 bg-card/70 backdrop-blur-xs px-6 h-14 shrink-0">
           <div className="flex items-center gap-1.5 text-sm min-w-0">
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0 bg-transparent border-none p-0 text-sm"
+              className="text-muted-foreground hover:text-primary cursor-pointer transition-colors shrink-0 bg-transparent border-none p-0 text-sm"
               onClick={handleCreateSession}
             >
               Home

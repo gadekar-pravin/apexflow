@@ -89,10 +89,10 @@ export function NeuralBackground() {
 
       ctx!.clearRect(0, 0, w, h)
 
-      // Colors from the existing sign-in palette
-      const nodeColor = dark ? [100, 116, 139] : [148, 163, 184] // slate-500 / slate-400
-      const lineColor = dark ? [71, 85, 105] : [203, 213, 225]   // slate-600 / slate-300
-      const glowColor = dark ? [30, 58, 138] : [30, 58, 138]     // blue-900
+      // InsightAgent-aligned blue palette
+      const nodeColor = dark ? [92, 155, 236] : [19, 127, 236]
+      const lineColor = dark ? [60, 113, 185] : [141, 191, 243]
+      const glowColor = [19, 127, 236]
 
       // Update node positions
       for (const node of nodes) {

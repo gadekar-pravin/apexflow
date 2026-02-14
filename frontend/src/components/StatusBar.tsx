@@ -65,7 +65,7 @@ export function StatusBar() {
       : "disconnected"
 
   return (
-    <footer className="h-7 flex-shrink-0 border-t border-white/10 backdrop-blur-md bg-background/60">
+    <footer className="h-7 flex-shrink-0 border-t border-border/50 backdrop-blur-md bg-card/70">
       <div className="h-full px-3 flex items-center justify-between text-xs">
         <div className="flex items-center gap-4">
           <ConnectionIndicator label="API" state={apiHealth.state} />
@@ -84,7 +84,7 @@ export function StatusBar() {
             <Button
               variant="outline"
               size="sm"
-              className="h-6 px-2 text-xs text-red-400 border-red-400/40 hover:bg-red-400/10 hover:text-red-300"
+              className="h-6 px-2 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
               onClick={() => void auth.signOut()}
             >
               Sign out
@@ -94,10 +94,10 @@ export function StatusBar() {
             <>
               <span className="flex items-center gap-1.5">
                 <span className="text-foreground/50">Run Cost:</span>
-                <span className="font-mono tabular-nums text-red-400">
+                <span className="font-mono tabular-nums text-primary">
                   {formatCost(metrics.currentRunCost).usd}
                 </span>
-                <span className="font-mono tabular-nums text-cyan-500">
+                <span className="font-mono tabular-nums text-foreground/75">
                   {formatCost(metrics.currentRunCost).inr}
                 </span>
               </span>

@@ -150,12 +150,12 @@ export function GraphView({ runId }: GraphViewProps) {
           type: "custom",
         }}
       >
-        <Controls position="top-right" className="!shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] !bg-white dark:!bg-slate-800 !border-border/40 !rounded-xl" />
+        <Controls position="top-right" className="!shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] !bg-card/90 !border-primary/20 !rounded-xl" />
         <Background
           variant={BackgroundVariant.Dots}
           gap={20}
           size={1.5}
-          color="hsl(var(--foreground) / 0.25)"
+          color="hsl(var(--primary) / 0.28)"
         />
       </ReactFlow>
     </div>

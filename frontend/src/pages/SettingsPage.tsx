@@ -111,7 +111,7 @@ export function SettingsPage() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-8 py-6 border-b border-border/40 backdrop-blur-xs bg-card/30">
+      <div className="flex items-center justify-between px-8 py-6 border-b border-border/50 backdrop-blur-xs bg-card/70">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -171,7 +171,7 @@ export function SettingsPage() {
                         "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all duration-150",
                         "border backdrop-blur-xs",
                         theme === option.value
-                          ? "border-foreground/20 bg-foreground/[0.06] text-foreground font-medium shadow-sm"
+                          ? "border-primary/20 bg-primary/10 text-primary font-medium shadow-sm"
                           : "border-border/50 bg-background/50 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                       )}
                     >
