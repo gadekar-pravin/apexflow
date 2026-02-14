@@ -87,6 +87,8 @@ AlloyDB Omni 15.12.0 runs on a GCE VM (`alloydb-omni-dev`, `n2-standard-2`, `us-
 
 **ScaNN indexes** cannot be created on empty tables in AlloyDB. They are deferred until data insertion. Use `scripts/create-scann-indexes.sql` after populating `memories` and `document_chunks`. CI uses pgvector with IVFFlat as fallback.
 
+**No Neo4j:** All 13 tables remain in AlloyDB. A Neo4j migration was evaluated and rejected — execution DAGs use in-memory NetworkX (not graph queries), REMME evidence/staging are flat arrays, and memory provenance uses text strings. See `docs/adr-001-no-neo4j.md` for the full analysis. If LightRAG is integrated, Neo4j AuraDB would be used exclusively for LightRAG's knowledge graph, not for ApexFlow's core data.
+
 ### Core Engine (Phase 2)
 
 **Entry point:** `api.py` — FastAPI app with lifespan manager that initializes DB pool, `ServiceRegistry`, and Firebase auth.
@@ -261,7 +263,7 @@ git push origin v2.0.0  # triggers CI
 - `prompts/` — Prompt templates (planner, coder, thinker, retriever, etc.)
 - `scripts/migrate.py` — V1→V2 data migration CLI (sessions, jobs, notifications, memories, scanned runs, preferences)
 - `Dockerfile` — Multi-stage production build (uv builder + Python 3.12 slim runtime)
-- `docs/` — Phase documentation (7 phase docs + rewrite plan)
+- `docs/` — Phase documentation (7 phase docs + rewrite plan + ADR-001 Neo4j decision)
 - `frontend/` — React 19 + TypeScript + Vite SPA branded as **Cortex** (Tailwind CSS, Radix UI, ReactFlow, Recharts, TanStack Query, Zustand, Firebase Auth). Pages: Chat (`/`, `/chat` — conversational agent interface with tabbed right panel: Activity reasoning trace + Charts visualization canvas), Runs (`/runs` — DAG visualization), Documents (RAG management), Settings. Sign-in screen: Playfair Display hero typography, canvas-based neural network animation (`NeuralBackground` component with 50 nodes, proximity connections, mouse interaction), BrainCog icon logo
 
 ## Code Conventions
