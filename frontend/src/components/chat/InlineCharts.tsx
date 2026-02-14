@@ -23,9 +23,11 @@ export function InlineCharts({ visualizations, messageId }: InlineChartsProps) {
           </div>
         }
       >
-        {visualizations.map((spec) => (
-          <ChartCard key={`${messageId}:${spec.id}`} spec={spec} />
-        ))}
+        {visualizations
+          .filter((spec): spec is VisualizationSpec => spec != null && typeof spec === "object")
+          .map((spec) => (
+            <ChartCard key={`${messageId}:${spec.id}`} spec={spec} />
+          ))}
       </Suspense>
     </div>
   )

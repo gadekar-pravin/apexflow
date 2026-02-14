@@ -68,7 +68,7 @@ export function InlineReasoningTrace({ steps, isLive, isExpanded, onToggle }: In
       <div
         ref={contentRef}
         className="overflow-hidden transition-[max-height] duration-200 ease-in-out"
-        style={{ maxHeight: isExpanded ? undefined : 0 }}
+        style={{ maxHeight: 0 }}
       >
         <div className="relative pt-2 pl-1">
           {steps.length > 0 && (
