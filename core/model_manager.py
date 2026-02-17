@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 import yaml
-from google.genai.errors import ServerError
+from google.genai.errors import ClientError, ServerError
 
 from core.gemini_client import get_gemini_client
 
@@ -96,7 +96,6 @@ class ModelManager:
         - str: Text content
         - PIL.Image: Image to process
         """
-        await self._wait_for_rate_limit()
         return await self._gemini_generate_content(contents)
 
     async def _wait_for_rate_limit(self) -> None:
@@ -118,34 +117,64 @@ class ModelManager:
         output_tokens = getattr(usage, "candidates_token_count", 0) or 0
         return input_tokens, output_tokens
 
-    async def _gemini_generate(self, prompt: str) -> GenerateResult:
-        await self._wait_for_rate_limit()
-        try:
-            # Use synchronous SDK client in thread to bypass aiohttp/DNS issues common on macOS
-            response = await asyncio.to_thread(
-                self.client.models.generate_content, model=self.model_info["model"], contents=prompt
-            )
-            result_text = (response.text or "").strip()
-            input_tokens, output_tokens = self._extract_usage(response)
-            return GenerateResult(text=result_text, input_tokens=input_tokens, output_tokens=output_tokens)
+    async def _call_with_retry(self, contents: Any, label: str = "generation") -> GenerateResult:
+        """Call Gemini with retry logic for rate-limit (429) and transient server errors.
 
-        except ServerError:
-            raise
-        except Exception as e:
-            raise RuntimeError(f"Gemini generation failed: {e!s}") from e
+        Retries up to 3 times with escalating delays: 10s → 30s → 60s.
+        """
+        max_retries = 3
+        retry_delays = [10, 30, 60]
+
+        for attempt in range(max_retries + 1):
+            await self._wait_for_rate_limit()
+            try:
+                response = await asyncio.to_thread(
+                    self.client.models.generate_content,
+                    model=self.model_info["model"],
+                    contents=contents,
+                )
+                result_text = (response.text or "").strip()
+                input_tokens, output_tokens = self._extract_usage(response)
+                return GenerateResult(text=result_text, input_tokens=input_tokens, output_tokens=output_tokens)
+
+            except ClientError as e:
+                if e.code == 429 and attempt < max_retries:
+                    delay = retry_delays[attempt]
+                    logger.warning(
+                        "Gemini 429 rate limit hit, retrying in %ds (attempt %d/%d)",
+                        delay,
+                        attempt + 1,
+                        max_retries,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                if e.code == 429:
+                    raise RuntimeError("Gemini API rate limit exceeded. Please try again in a few minutes.") from e
+                raise RuntimeError(f"Gemini {label} failed: {e!s}") from e
+
+            except ServerError as e:
+                if attempt < max_retries:
+                    delay = retry_delays[attempt]
+                    logger.warning(
+                        "Gemini server error (%s), retrying in %ds (attempt %d/%d)",
+                        e,
+                        delay,
+                        attempt + 1,
+                        max_retries,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                raise
+
+            except Exception as e:
+                raise RuntimeError(f"Gemini {label} failed: {e!s}") from e
+
+        # Should not be reached, but satisfies type checker
+        raise RuntimeError(f"Gemini {label} failed after {max_retries} retries")
+
+    async def _gemini_generate(self, prompt: str) -> GenerateResult:
+        return await self._call_with_retry(prompt, label="generation")
 
     async def _gemini_generate_content(self, contents: list[Any]) -> GenerateResult:
         """Generate content with support for text and images using Gemini SDK"""
-        try:
-            # Use synchronous SDK client in thread (text + images)
-            response = await asyncio.to_thread(
-                self.client.models.generate_content, model=self.model_info["model"], contents=contents
-            )
-            result_text = (response.text or "").strip()
-            input_tokens, output_tokens = self._extract_usage(response)
-            return GenerateResult(text=result_text, input_tokens=input_tokens, output_tokens=output_tokens)
-
-        except ServerError:
-            raise
-        except Exception as e:
-            raise RuntimeError(f"Gemini content generation failed: {e!s}") from e
+        return await self._call_with_retry(contents, label="content generation")

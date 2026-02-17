@@ -18,6 +18,8 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
+from google.genai.errors import ServerError
+
 from agents.base_agent import AgentRunner
 from core.event_bus import event_bus
 from core.service_registry import ServiceRegistry, ToolExecutionError, ToolNotFoundError
@@ -76,6 +78,7 @@ async def retry_with_backoff(
             asyncio.TimeoutError,
             ConnectionError,
             TimeoutError,
+            ServerError,
         )
 
     last_exception: BaseException | None = None
